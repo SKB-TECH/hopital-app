@@ -59,7 +59,7 @@ const icons: Record<string, any> = {
   inventory: Warehouse,
   reports: BarChart3,
   administration: Settings,
-  portals: Package,
+
 };
 
 export default function DashboardSidebar() {

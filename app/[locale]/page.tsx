@@ -88,8 +88,8 @@ export default function LoginPage() {
             >
                 <div className="flex flex-1 items-center justify-center px-4 py-10">
                     <div className="w-full max-w-[500px] rounded bg-white p-7 shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
-                        <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded bg-blue-50">
-                            <Image src="/images/logo.jpeg" alt="logo" width={100} height={100} />
+                        <div className="mx-auto mt-3  mb-5 flex size-14 items-center justify-center w-full">
+                            <Image src="/logo.png" alt="logo" width={300} height={300} />
                         </div>
 
                         <div className="text-center">
