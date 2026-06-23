@@ -170,7 +170,7 @@ export default function LoginPage() {
                 </div>
 
                 <footer className="flex flex-col gap-3 px-6 pb-6 text-xs text-slate-400 md:flex-row md:items-center md:justify-between">
-                    <p>© 2026 Kongo Event. All right reserved.</p>
+                    <p>© 2026 Afia Smart. All right reserved.</p>
 
                     <div className="flex items-center gap-5">
             <span className="inline-flex items-center gap-1.5">
