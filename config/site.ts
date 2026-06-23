@@ -1,10 +1,10 @@
 export const siteConfig = {
-  name: "Kongo Event",
+  name: "Afia Smart",
   description:
-    "Plateforme événementielle moderne pour découvrir, organiser, vendre et gérer des événements en RDC.",
+      "Smart Healthcare Platform connecting patients, doctors, hospitals, laboratories, pharmacies, and healthcare providers through a modern and intelligent digital ecosystem.",
   url: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-  logo: "/images/kongo-event-logo.jpeg",
+  logo: "/images/afia-smart-logo.jpeg",
   links: {
-    email: "contact@kongo-event.com",
+    email: "contact@afiasmart.com",
   },
 };

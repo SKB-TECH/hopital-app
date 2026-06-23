@@ -32,14 +32,7 @@ export const metadata: Metadata = {
   description: siteConfig.description,
   applicationName: siteConfig.name,
   keywords: [
-    "Kongo Event",
-    "événement",
-    "billetterie",
-    "ticket",
-    "concert",
-    "conférence",
-    "RDC",
-    "Kinshasa",
+    "Afia"
   ],
   authors: [{ name: siteConfig.name }],
   creator: siteConfig.name,

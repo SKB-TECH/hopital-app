@@ -32,6 +32,7 @@ import {
 import { useParams, usePathname } from "next/navigation";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { HOSPITAL_GROUPS, HOSPITAL_MODULES } from "@/shared/config/hospital-modules";
+import Image from "next/image";
 
 const icons: Record<string, any> = {
   patients: UserRound,
@@ -77,13 +78,9 @@ export default function DashboardSidebar() {
       <div className="flex h-full flex-col">
         <div className="flex h-24 items-center justify-between border-b border-slate-200 px-6">
           <Link href={`/${locale}/overview`} className="flex items-center gap-4">
-            <div className="flex size-12 items-center justify-center border border-blue-700 bg-blue-700 text-white">
-              <Hospital className="size-6" />
-            </div>
             {!isCollapsed && (
               <div>
-                <p className="text-lg font-black tracking-tight text-slate-950">Afia Hospital</p>
-                <p className="text-sm font-semibold text-slate-500">Système national de gestion</p>
+                <Image src={"/logo.png"} alt={"logo"} width={400} height={400}/>
               </div>
             )}
           </Link>
