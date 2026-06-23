@@ -1,0 +1,4 @@
+export type FieldType = "text" | "number" | "date" | "datetime" | "select" | "textarea" | "checkbox" | "json";
+export type HospitalField = { name: string; label: string; type?: FieldType; required?: boolean; placeholder?: string; options?: { label: string; value: string }[]; reference?: { endpoint: string; labelKeys: string[]; descriptionKeys?: string[] } };
+export type HospitalResource = { key: string; title: string; description: string; endpoint: string; columns: { key: string; label: string }[]; fields: HospitalField[]; canCreate?: boolean; canUpdate?: boolean; canDelete?: boolean };
+export type HospitalModule = { key: string; title: string; shortTitle?: string; description: string; group: "clinical" | "operations" | "diagnostics" | "finance" | "admin" | "portals"; resources: HospitalResource[] };

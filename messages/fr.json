@@ -1,0 +1,1386 @@
+{
+  "nav": {
+    "home": "Accueil",
+    "events": "Événements",
+    "about": "À propos",
+    "contact": "Contact",
+    "login": "Connexion"
+  },
+  "home": {
+    "hero": {
+      "badge": "Billetterie, POS et contrôle d’accès",
+      "title": "La plateforme événementielle moderne pour la RDC",
+      "description": "Découvrez, organisez, vendez et contrôlez vos événements avec une solution web et mobile simple, professionnelle et sécurisée.",
+      "primaryAction": "Voir les événements",
+      "secondaryAction": "Nous contacter",
+      "stats": {
+        "events": "Événements",
+        "ticketing": "Tickets",
+        "rdc": "RDC"
+      }
+    },
+    "features": {
+      "eyebrow": "Fonctionnalités",
+      "title": "Tout pour gérer vos événements",
+      "ticketing": {
+        "title": "Billetterie",
+        "description": "Créez et vendez des tickets en ligne avec une expérience simple."
+      },
+      "checkin": {
+        "title": "Check-in QR",
+        "description": "Contrôlez les entrées avec scan QR rapide et sécurisé."
+      },
+      "mobile": {
+        "title": "Application mobile",
+        "description": "Permettez au public de découvrir et suivre les événements."
+      },
+      "organizers": {
+        "title": "Organisateurs",
+        "description": "Gérez les ventes, les participants et les rapports."
+      }
+    },
+    "events": {
+      "eyebrow": "À la une",
+      "title": "Événements populaires",
+      "viewAll": "Tout voir",
+      "festival": {
+        "title": "Festival Kongo Live",
+        "date": "15 Juin 2026",
+        "location": "Kinshasa"
+      },
+      "conference": {
+        "title": "Tech Business Forum",
+        "date": "22 Juin 2026",
+        "location": "Gombe"
+      },
+      "concert": {
+        "title": "Urban Music Night",
+        "date": "28 Juin 2026",
+        "location": "Lingwala"
+      }
+    }
+  },
+  "eventsPage": {
+    "title": "Événements",
+    "description": "Parcourez les événements disponibles et achetez vos tickets facilement.",
+    "items": {
+      "festival": {
+        "title": "Festival Kongo Live",
+        "date": "15 Juin 2026",
+        "location": "Kinshasa"
+      },
+      "conference": {
+        "title": "Tech Business Forum",
+        "date": "22 Juin 2026",
+        "location": "Gombe"
+      },
+      "concert": {
+        "title": "Urban Music Night",
+        "date": "28 Juin 2026",
+        "location": "Lingwala"
+      },
+      "expo": {
+        "title": "Expo Créative",
+        "date": "5 Juillet 2026",
+        "location": "Limete"
+      },
+      "gala": {
+        "title": "Gala Prestige",
+        "date": "12 Juillet 2026",
+        "location": "Gombe"
+      },
+      "workshop": {
+        "title": "Workshop Digital",
+        "date": "19 Juillet 2026",
+        "location": "Kinshasa"
+      }
+    }
+  },
+  "aboutPage": {
+    "title": "À propos de Kongo Event",
+    "description": "Kongo Event aide les organisateurs à digitaliser la gestion des événements : création, billetterie, vente, contrôle d’accès, statistiques et expérience mobile pour le public."
+  },
+  "contactPage": {
+    "title": "Contactez-nous",
+    "description": "Vous organisez un événement ou vous souhaitez devenir partenaire ? Envoyez-nous un message.",
+    "name": "Nom complet",
+    "email": "Adresse email",
+    "message": "Votre message",
+    "send": "Envoyer"
+  },
+  "loginPage": {
+    "title": "Connexion",
+    "description": "Accédez à votre espace Kongo Event.",
+    "email": "Adresse email",
+    "password": "Mot de passe",
+    "submit": "Se connecter"
+  },
+  "footer": {
+    "description": "Billetterie, gestion d’événements, contrôle d’accès, streaming et solutions POS.",
+    "contactTitle": "Contact"
+  },
+  "auth": {
+    "login": {
+      "title": "Bon retour",
+      "description": "Connectez-vous à votre compte.",
+      "email": "Adresse email",
+      "emailPlaceholder": "Entrez votre email",
+      "emailError": "L’adresse email saisie est incorrecte.",
+      "password": "Mot de passe",
+      "passwordPlaceholder": "Entrez votre mot de passe",
+      "remember": "Se souvenir de moi",
+      "forgot": "Mot de passe oublié ?",
+      "submit": "Connexion",
+      "noAccount": "Vous n’avez pas de compte ?",
+      "register": "Créer un compte"
+    },
+    "register": {
+      "title": "Créer un compte",
+      "description": "Entrez vos informations pour vous inscrire.",
+      "fullName": "Nom complet",
+      "fullNamePlaceholder": "Entrez votre nom",
+      "email": "Adresse email",
+      "emailPlaceholder": "Entrez votre email",
+      "accountType": "Type de compte",
+      "businessName": "Nom de l’entreprise",
+      "businessNamePlaceholder": "Ex: Kongo Live Productions",
+      "password": "Mot de passe",
+      "passwordPlaceholder": "Entrez votre mot de passe",
+      "submit": "Créer le compte",
+      "submitOrganizer": "Créer mon espace",
+      "hasAccount": "Vous avez déjà un compte ?",
+      "login": "Connexion",
+      "phone": "Téléphone",
+      "phonePlaceholder": "Ex: +243810000000",
+      "requiredTitle": "Champ obligatoire",
+      "fullNameRequired": "Veuillez saisir votre nom complet.",
+      "emailRequired": "Veuillez saisir votre adresse email.",
+      "phoneRequired": "Veuillez saisir votre numéro de téléphone.",
+      "passwordRequired": "Veuillez saisir votre mot de passe.",
+      "businessNameRequired": "Veuillez saisir le nom de votre entreprise.",
+      "successTitle": "Compte créé avec succès",
+      "successDescription": "Redirection vers votre espace...",
+      "errorTitle": "Inscription échouée",
+      "errorDescription": "Une erreur est survenue. Veuillez réessayer.",
+      "accountTypes": {
+        "ATTENDEE": "Acheteur de billets",
+        "EVENT_ORGANIZER": "Organisateur",
+        "TICKETING_SELLER": "Vendeur de billets",
+        "TRAVEL_SELLER": "Transport et vols",
+        "HOTEL_SELLER": "Hôtels et séjours",
+        "VOUCHER_SELLER": "Vouchers et offres",
+        "FULL_PLATFORM": "Plateforme complète"
+      }
+    },
+    "forgot": {
+      "title": "Mot de passe oublié",
+      "description": "Entrez votre adresse email et nous vous enverrons les instructions de réinitialisation.",
+      "email": "Adresse email",
+      "submit": "Envoyer",
+      "noAccess": "Vous n’avez plus accès ?",
+      "tryAnother": "Essayer une autre méthode"
+    },
+    "otp": {
+      "title": "Vérification OTP",
+      "description": "Nous avons envoyé un code de vérification à",
+      "submit": "Vérifier",
+      "resend": "Renvoyer le code dans"
+    }
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "breadcrumbHome": "Accueil",
+    "generateReport": "Générer le rapport",
+    "createEvent": "Créer un événement",
+    "search": "Rechercher",
+    "from": "Du",
+    "to": "Au",
+    "refresh": "Actualiser",
+    "loadError": "Impossible de charger le tableau de bord.",
+    "noData": "Aucune donnée",
+    "emptyEvents": "Aucun événement trouvé",
+    "emptyUpcoming": "Aucun événement à venir",
+    "learnMore": "En savoir plus",
+    "roleOrganizer": "Organisateur",
+    "home": "Accueil",
+    "management": "Gestion",
+    "other": "Autre",
+    "menu": {
+      "dashboard": "Tableau de bord",
+      "calendars": "Calendriers",
+      "promotions": "Promotions",
+      "payouts": "Paiements",
+      "users": "Utilisateurs",
+      "organizations": "Organisations",
+      "organizers": "Organisateurs",
+      "events": "Événements",
+      "tickets": "Tickets",
+      "media": "Médias",
+      "eventCategories": "Catégories",
+      "venues": "Lieux",
+      "rooms": "Salles",
+      "sponsors": "Sponsors",
+      "eventSponsors": "Sponsors événements",
+      "ticketTypes": "Types de billets",
+      "busRoutes": "Trajets bus",
+      "flightOffers": "Offres de vols",
+      "voucherOffers": "Offres vouchers",
+      "stayOffers": "Offres séjours",
+      "manageTickets": "Gestion tickets",
+      "earnings": "Revenus",
+      "reviews": "Avis",
+      "reports": "Rapports",
+      "settings": "Paramètres"
+    },
+    "metrics": {
+      "totalTicketsSold": "Total tickets vendus",
+      "totalRevenue": "Revenu total",
+      "upcomingEvents": "Événements à venir",
+      "checkinsCompleted": "Check-ins effectués"
+    },
+    "analytics": "Analyse des ventes",
+    "deadlineCalendar": "Échéances & Calendrier",
+    "upcomingEvents": "Événements à venir",
+    "eventName": "Nom de l’événement",
+    "dateTime": "Date & heure",
+    "status": "Statut",
+    "ticketsSold": "Tickets vendus",
+    "active": "Actif",
+    "upcoming": "À venir",
+    "helpTitle": "Centre d’aide",
+    "helpDescription": "Vous avez des difficultés avec la billetterie ? Contactez-nous pour plus d’informations."
+  },
+  "settings": {
+    "title": "Paramètres",
+    "breadcrumbOther": "Autre",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "tabs": {
+      "general": "Général",
+      "modules": "Modules",
+      "plan": "Plan & Tarification",
+      "account": "Mon compte",
+      "billing": "Paiement & Facturation",
+      "tax": "Taxes & Droits",
+      "link": "Comptes liés",
+      "language": "Temps & Langue",
+      "password": "Mot de passe",
+      "notifications": "Notifications"
+    },
+    "modules": {
+      "title": "Modules de l’entreprise",
+      "description": "Choisissez uniquement les fonctionnalités utiles à votre activité. Le menu et l’expérience admin s’adaptent automatiquement.",
+      "loading": "Chargement des modules...",
+      "loadError": "Impossible de charger les modules.",
+      "save": "Enregistrer les modules",
+      "saving": "Enregistrement...",
+      "saveSuccess": "Modules enregistrés.",
+      "saveError": "Impossible d’enregistrer les modules.",
+      "items": {
+        "events": {
+          "title": "Événements",
+          "description": "Création et gestion des événements, lieux, salles et catégories."
+        },
+        "ticketing": {
+          "title": "Billetterie",
+          "description": "Types de billets, ventes, tickets clients et contrôle de disponibilité."
+        },
+        "marketplace": {
+          "title": "Marketplace",
+          "description": "Articles, packs et produits associés aux événements."
+        },
+        "buses": {
+          "title": "Bus",
+          "description": "Gestion des trajets et offres de transport par bus."
+        },
+        "flights": {
+          "title": "Vols",
+          "description": "Gestion des offres de billets d’avion et intégrations fournisseurs."
+        },
+        "vouchers": {
+          "title": "Vouchers",
+          "description": "Gestion des coupons, deals et offres partenaires."
+        },
+        "stay": {
+          "title": "Séjours",
+          "description": "Gestion des hôtels, chambres et offres d’hébergement."
+        },
+        "sponsors": {
+          "title": "Sponsors",
+          "description": "Sponsors et associations sponsors-événements."
+        },
+        "reports": {
+          "title": "Rapports",
+          "description": "Statistiques, rapports financiers et export de données."
+        },
+        "payouts": {
+          "title": "Paiements sortants",
+          "description": "Revenus, retraits et compte de réception."
+        },
+        "reviews": {
+          "title": "Avis",
+          "description": "Retours clients, évaluations et suivi qualité."
+        }
+      }
+    },
+    "general": {
+      "title": "Général",
+      "description": "Gérez les informations principales de votre organisation.",
+      "accountDetails": "Détails du compte",
+      "accountDetailsDescription": "Vos clients utiliseront ces informations pour vous contacter.",
+      "companyName": "Nom de l’entreprise",
+      "industry": "Industrie",
+      "currency": "Devise",
+      "timezone": "Fuseau horaire",
+      "address": "Adresse",
+      "addressDescription": "Cette adresse apparaîtra sur vos factures.",
+      "addressName": "Nom de l’adresse",
+      "country": "Pays ou région",
+      "city": "Ville",
+      "addressLine": "Adresse",
+      "postalCode": "Code postal"
+    },
+    "plan": {
+      "title": "Plan & Tarification",
+      "description": "Gérez vos abonnements et choisissez le plan adapté à votre activité."
+    },
+    "account": {
+      "title": "Mon compte",
+      "description": "Modifiez vos informations personnelles.",
+      "firstName": "Prénom",
+      "lastName": "Nom",
+      "email": "Adresse email",
+      "phone": "Téléphone",
+      "role": "Rôle",
+      "memberSince": "Membre depuis"
+    },
+    "billing": {
+      "title": "Compte de réception",
+      "description": "Configurez le compte bancaire ou mobile money utilisé pour recevoir vos revenus.",
+      "loading": "Chargement du compte de réception...",
+      "loadError": "Impossible de charger le compte de réception.",
+      "saveSuccess": "Compte de réception enregistré. Il sera vérifié avant les paiements.",
+      "saveError": "Impossible d’enregistrer le compte de réception.",
+      "saving": "Enregistrement...",
+      "savePayout": "Enregistrer le compte",
+      "preferredMethod": "Méthode de réception",
+      "mobileMoney": "Mobile money",
+      "bankTransfer": "Virement bancaire",
+      "status": "Statut",
+      "statuses": {
+        "PENDING": "En attente de vérification",
+        "VERIFIED": "Vérifié",
+        "REJECTED": "Rejeté"
+      },
+      "accountHolderName": "Nom du bénéficiaire",
+      "country": "Pays",
+      "currency": "Devise",
+      "mobileProvider": "Fournisseur mobile money",
+      "mobileNumber": "Numéro mobile money",
+      "bankName": "Nom de la banque",
+      "bankAccountNumber": "Numéro de compte",
+      "bankRoutingNumber": "Code banque / routing",
+      "bankSwiftCode": "Code SWIFT",
+      "bankIban": "IBAN",
+      "securityNotice": "Vos informations de réception sont protégées et utilisées uniquement pour traiter les paiements organisateur."
+    },
+    "tax": {
+      "title": "Taxes & Droits",
+      "description": "Consultez les taxes et droits liés à vos achats et abonnements.",
+      "country": "Pays ou région",
+      "collecting": "Collecte",
+      "percentage": "Pourcentage",
+      "fullName": "Nom complet",
+      "countryTreaty": "Pays de traité",
+      "residence": "Résidence permanente",
+      "taxId": "Numéro fiscal",
+      "mailingAddress": "Adresse postale"
+    },
+    "link": {
+      "title": "Comptes liés",
+      "description": "Vos clients utiliseront ces informations pour vous contacter."
+    },
+    "language": {
+      "title": "Temps & Langue",
+      "description": "Configurez votre fuseau horaire et votre langue.",
+      "timeTitle": "Temps",
+      "timeDescription": "Définissez votre fuseau horaire préféré pour que toutes les activités soient alignées avec votre heure locale.",
+      "timeZone": "Fuseau horaire",
+      "languageTitle": "Définir votre langue",
+      "languageDescription": "Choisissez la langue. Tous les textes et communications seront affichés dans la langue choisie.",
+      "language": "Langue"
+    },
+    "password": {
+      "title": "Mot de passe",
+      "description": "Modifiez ou consultez votre mot de passe.",
+      "currentPassword": "Mot de passe actuel",
+      "newPassword": "Nouveau mot de passe",
+      "confirmPassword": "Confirmer le mot de passe",
+      "hint": "Doit contenir au moins 8 caractères"
+    },
+    "notifications": {
+      "title": "Notifications push",
+      "description": "Recevez des alertes pour les nouvelles commandes, les mises à jour de traitement et les commandes terminées ou annulées.",
+      "loading": "Chargement des préférences de notification...",
+      "loadError": "Impossible de charger les préférences de notification.",
+      "save": "Enregistrer les préférences",
+      "saving": "Enregistrement...",
+      "saveSuccess": "Préférences de notification enregistrées.",
+      "saveError": "Impossible d’enregistrer les préférences de notification.",
+      "emailPreferences": "Préférences email",
+      "items": {
+        "transactionConfirmation": {
+          "title": "Confirmation de transaction",
+          "description": "Envoyée automatiquement au client après qu’il a passé sa commande."
+        },
+        "transactionEdited": {
+          "title": "Transaction modifiée",
+          "description": "Envoyée au client après la modification de sa commande."
+        },
+        "transactionInvoice": {
+          "title": "Facture de transaction",
+          "description": "Envoyée au client lorsqu’une commande a un solde impayé."
+        },
+        "transactionCancelled": {
+          "title": "Transaction annulée",
+          "description": "Envoyée automatiquement au client si sa commande est annulée."
+        },
+        "transactionRefund": {
+          "title": "Remboursement de transaction",
+          "description": "Envoyée automatiquement au client si sa commande est remboursée."
+        },
+        "paymentError": {
+          "title": "Erreur de paiement",
+          "description": "Envoyée automatiquement au client si son paiement ne peut pas être traité."
+        },
+        "marketingEmails": {
+          "title": "Emails marketing",
+          "description": "Recevoir les nouveautés, fonctionnalités et promotions."
+        },
+        "weeklyDigest": {
+          "title": "Résumé hebdomadaire",
+          "description": "Recevoir chaque semaine un résumé de votre activité événementielle."
+        }
+      }
+    }
+  },
+  "reports": {
+    "day": "Jour",
+    "week": "Semaine",
+    "year": "Année",
+    "title": "Rapports des ventes",
+    "breadcrumbHome": "Accueil",
+    "breadcrumbDashboard": "Tableau de bord",
+    "exportCsv": "Exporter CSV",
+    "month": "Mois",
+    "fromLastPeriod": "par rapport à la période précédente",
+    "revenueAnalytics": "Analyse des revenus",
+    "chart": {
+      "thisPeriod": "Cette période",
+      "lastPeriod": "Période précédente",
+      "totalThisPeriod": "Revenu total sur la période",
+      "noData": "Aucune donnée pour cette période"
+    },
+    "recentTransactions": "Transactions récentes",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "sortBy": "Trier par",
+    "paid": "Payé",
+    "cancelled": "Annulé",
+    "refunded": "Remboursé",
+    "emptyTransactions": "Aucune transaction trouvée",
+    "metrics": {
+      "totalRevenue": "Revenu total",
+      "ticketsSold": "Tickets vendus",
+      "refundedAmount": "Montant remboursé",
+      "payoutsIssued": "Paiements effectués"
+    },
+    "table": {
+      "no": "N°",
+      "name": "Nom",
+      "email": "Email",
+      "ticketType": "Type de ticket",
+      "purchaseDate": "Date d’achat",
+      "amount": "Montant",
+      "checkinStatus": "Statut"
+    },
+    "pagination": {
+      "showing": "Affichage de {from} à {to} sur {total} transactions"
+    }
+  },
+  "tickets": {
+    "breadcrumbManagement": "Gestion",
+    "breadcrumbTickets": "Tickets",
+    "exportCsv": "Exporter CSV",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "sortBy": "Trier par",
+    "checkedIn": "Check-in fait",
+    "notCheckedIn": "Non check-in",
+    "sales": {
+      "title": "Ventes de tickets",
+      "tableTitle": "Table des participants"
+    },
+    "metrics": {
+      "ticketsSold": "Tickets vendus",
+      "revenueGenerated": "Revenu généré",
+      "ticketsRemaining": "Tickets restants",
+      "checkinsCompleted": "Check-ins effectués",
+      "checkinsRemaining": "Check-ins restants"
+    },
+    "table": {
+      "no": "N°",
+      "name": "Nom",
+      "email": "Email",
+      "ticketType": "Type de ticket",
+      "purchaseDate": "Date d’achat",
+      "checkinStatus": "Statut check-in"
+    },
+    "active": "Actif",
+    "soldOut": "Épuisé",
+    "public": "Public",
+    "hidden": "Masqué",
+    "ticketTypes": {
+      "title": "Tickets",
+      "create": "Créer un ticket",
+      "tableTitle": "Table des tickets",
+      "table": {
+        "no": "N°",
+        "ticketName": "Nom du ticket",
+        "price": "Prix",
+        "quantity": "Quantité",
+        "sold": "Vendus",
+        "salesStatus": "Statut de vente",
+        "visibility": "Visibilité"
+      }
+    }
+  },
+  "resources": {
+    "common": {
+      "createdAt": "Créé"
+    },
+    "eventCategories": {
+      "title": "Catégories d’événements",
+      "description": "Créer, modifier et supprimer les catégories d’événements.",
+      "create": "Créer une catégorie",
+      "fields": {
+        "name": "Nom",
+        "slug": "Slug",
+        "createdAt": "Créé"
+      }
+    },
+    "venues": {
+      "title": "Lieux",
+      "description": "Gérer les lieux utilisés par les événements.",
+      "create": "Créer un lieu",
+      "fields": {
+        "name": "Nom",
+        "address": "Adresse",
+        "city": "Ville",
+        "country": "Pays",
+        "latitude": "Latitude",
+        "longitude": "Longitude"
+      }
+    },
+    "rooms": {
+      "title": "Salles",
+      "description": "Gérer les salles liées aux lieux.",
+      "create": "Créer une salle",
+      "fields": {
+        "venue": "Lieu",
+        "name": "Nom",
+        "capacity": "Capacité",
+        "createdAt": "Créé"
+      }
+    },
+    "sponsors": {
+      "title": "Sponsors",
+      "description": "Gérer les sponsors et leurs logos Cloudinary.",
+      "create": "Créer un sponsor",
+      "fields": {
+        "name": "Nom",
+        "logo": "Logo",
+        "website": "Site web",
+        "createdAt": "Créé"
+      }
+    },
+    "eventSponsors": {
+      "title": "Sponsors d’événements",
+      "description": "Attacher et détacher des sponsors aux événements.",
+      "create": "Attacher un sponsor",
+      "fields": {
+        "event": "Événement",
+        "sponsor": "Sponsor",
+        "eventId": "ID événement",
+        "sponsorId": "ID sponsor"
+      }
+    },
+    "media": {
+      "title": "Médias",
+      "description": "Gérer les fichiers médias liés aux événements. Les fichiers passent par Cloudinary.",
+      "create": "Créer un média",
+      "fields": {
+        "event": "Événement",
+        "url": "URL Cloudinary",
+        "type": "Type",
+        "size": "Taille",
+        "createdAt": "Créé"
+      }
+    },
+    "ticketTypes": {
+      "title": "Types de billets",
+      "description": "Gérer les types de billets par événement.",
+      "create": "Créer un type de billet",
+      "fields": {
+        "event": "Événement",
+        "name": "Nom",
+        "description": "Description",
+        "price": "Prix",
+        "currency": "Devise",
+        "quantity": "Quantité",
+        "saleStartAt": "Début de vente",
+        "saleEndAt": "Fin de vente"
+      }
+    },
+    "tickets": {
+      "title": "Tickets",
+      "description": "Gérer les tickets, QR codes et statuts.",
+      "create": "Créer un ticket",
+      "fields": {
+        "event": "Événement",
+        "ticketType": "Type de billet",
+        "userId": "ID utilisateur",
+        "user": "Utilisateur",
+        "code": "Code",
+        "qrCodeUrl": "URL QR code",
+        "status": "Statut"
+      }
+    },
+    "organizations": {
+      "title": "Organisations",
+      "description": "Gérer les organisations multi-tenant.",
+      "create": "Créer une organisation",
+      "fields": {
+        "name": "Nom",
+        "slug": "Slug",
+        "logo": "Logo",
+        "domain": "Domaine",
+        "primaryColor": "Couleur principale",
+        "plan": "Plan"
+      }
+    },
+    "organizers": {
+      "title": "Organisateurs",
+      "description": "Gérer les profils organisateurs.",
+      "create": "Créer un organisateur",
+      "fields": {
+        "user": "Utilisateur",
+        "organization": "Organisation",
+        "displayName": "Nom affiché",
+        "description": "Description",
+        "verified": "Vérifié"
+      }
+    }
+  },
+  "eventsAdmin": {
+    "title": "Mes événements",
+    "breadcrumbManagement": "Gestion",
+    "breadcrumbEvents": "Événements",
+    "createEvent": "Créer un événement",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "sortBy": "Trier par",
+    "tableTitle": "Table des événements",
+    "metrics": {
+      "published": "Publiés",
+      "draft": "Brouillons",
+      "rejected": "Rejetés",
+      "revenue": "Revenu"
+    },
+    "table": {
+      "no": "N°",
+      "eventName": "Nom de l’événement",
+      "dateTime": "Date & heure",
+      "status": "Statut",
+      "ticketsSold": "Tickets vendus",
+      "revenue": "Revenu",
+      "actions": "Actions"
+    },
+    "status": {
+      "published": "Publié",
+      "draft": "Brouillon",
+      "cancelled": "Annulé"
+    },
+    "form": {
+      "subtitle": "Renseignez les informations, traductions, médias Cloudinary, billets et sessions.",
+      "thumbnail": "Image",
+      "drop": "Glissez-déposez vos fichiers ou",
+      "browse": "parcourir",
+      "title": "Titre",
+      "slug": "Slug",
+      "shortDescription": "Résumé",
+      "description": "Description",
+      "location": "Lieu",
+      "date": "Date",
+      "startAt": "Début",
+      "endAt": "Fin",
+      "timezone": "Fuseau horaire",
+      "capacity": "Capacité",
+      "type": "Type",
+      "organizerId": "Organisateur",
+      "categoryId": "Catégorie",
+      "venueId": "Lieu",
+      "sponsorIds": "Sponsors",
+      "speakerIds": "Intervenants",
+      "uploadCompleted": "Téléversement terminé"
+    },
+    "create": {
+      "title": "Créer un événement",
+      "submit": "Créer"
+    },
+    "update": {
+      "title": "Modifier l’événement",
+      "submit": "Modifier"
+    },
+    "cancel": "Annuler",
+    "filters": {
+      "all": "Tous"
+    },
+    "sort": {
+      "date": "Date",
+      "title": "Titre",
+      "sales": "Ventes"
+    },
+    "actions": {
+      "view": "Voir",
+      "edit": "Modifier",
+      "duplicate": "Dupliquer",
+      "delete": "Supprimer"
+    },
+    "empty": {
+      "events": "Aucun événement trouvé",
+      "location": "Lieu non défini",
+      "sponsors": "Aucun sponsor trouvé"
+    },
+    "sections": {
+      "identity": "Identité",
+      "schedule": "Date et capacité",
+      "tickets": "Billets",
+      "sessions": "Sessions",
+      "media": "Médias",
+      "settings": "Paramètres",
+      "partners": "Sponsors et intervenants"
+    },
+    "tickets": {
+      "add": "Ajouter un billet",
+      "name": "Nom",
+      "price": "Prix",
+      "currency": "Devise",
+      "quantity": "Quantité"
+    },
+    "sessions": {
+      "add": "Ajouter une session",
+      "title": "Titre",
+      "speakerId": "Intervenant",
+      "startAt": "Début",
+      "endAt": "Fin"
+    },
+    "cloudinary": {
+      "drop": "Téléverser vers Cloudinary",
+      "only": "Tous les fichiers et images passent par Cloudinary.",
+      "uploading": "Téléversement en cours",
+      "missing": "Configurez NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME et NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET."
+    },
+    "errors": {
+      "organizerRequired": "Choisissez ou créez d'abord un organisateur avant de créer l'événement.",
+      "updateFailed": "Impossible de modifier l'événement."
+    }
+  },
+  "usersAdmin": {
+    "title": "Utilisateurs",
+    "breadcrumbManagement": "Gestion",
+    "breadcrumbUsers": "Utilisateurs",
+    "exportCsv": "Exporter CSV",
+    "addUser": "Ajouter un utilisateur",
+    "tableTitle": "Table des utilisateurs",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "sortBy": "Trier par",
+    "cancel": "Annuler",
+    "table": {
+      "no": "N°",
+      "name": "Nom",
+      "email": "Email",
+      "phone": "Téléphone",
+      "role": "Rôle",
+      "status": "Statut",
+      "actions": "Actions"
+    },
+    "pagination": {
+      "showing": "Affichage de 1 à 10 sur 500 résultats"
+    },
+    "form": {
+      "name": "Nom",
+      "email": "Adresse email",
+      "phone": "Téléphone",
+      "password": "Mot de passe",
+      "role": "Rôle"
+    },
+    "update": {
+      "title": "Modifier l’utilisateur",
+      "submit": "Modifier"
+    }
+  },
+  "earnings": {
+    "title": "Revenus",
+    "breadcrumbManagement": "Gestion",
+    "requestPayout": "Demander un paiement",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "sortBy": "Trier par",
+    "cancel": "Annuler",
+    "submit": "Soumettre",
+    "tableTitle": "Table des revenus",
+    "metrics": {
+      "totalRevenue": "Revenu total",
+      "totalPayouts": "Paiements totaux",
+      "pendingPayouts": "Paiements en attente",
+      "availableBalance": "Solde disponible"
+    },
+    "table": {
+      "no": "N°",
+      "eventName": "Nom de l’événement",
+      "ticketsSold": "Tickets vendus",
+      "revenue": "Revenu",
+      "platformFee": "Frais plateforme",
+      "netEarnings": "Revenu net",
+      "status": "Statut"
+    },
+    "status": {
+      "paid": "Payé",
+      "available": "Disponible",
+      "pending": "En attente"
+    },
+    "modal": {
+      "title": "Demande de paiement",
+      "amount": "Montant à retirer",
+      "paymentMethod": "Méthode de paiement",
+      "details": "Détails banque/PayPal",
+      "note": "Note (optionnel)"
+    }
+  },
+  "reviewsAdmin": {
+    "title": "Avis",
+    "breadcrumbManagement": "Gestion",
+    "exportCsv": "Exporter CSV",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "sortBy": "Trier par",
+    "public": "Public",
+    "hidden": "Masqué",
+    "tableTitle": "Table des avis",
+    "metrics": {
+      "averageRating": "Note moyenne",
+      "totalReviews": "Avis totaux",
+      "positiveReviews": "Avis positifs",
+      "negativeReviews": "Avis négatifs"
+    },
+    "table": {
+      "no": "N°",
+      "attendeeName": "Nom du participant",
+      "eventName": "Nom de l’événement",
+      "rating": "Note",
+      "reviewText": "Texte de l’avis",
+      "date": "Date",
+      "visibility": "Visibilité"
+    },
+    "pagination": {
+      "showing": "Affichage de 1 à 10 sur 500 résultats"
+    }
+  },
+  "calendarAdmin": {
+    "title": "Calendrier",
+    "breadcrumbHome": "Accueil",
+    "addEvent": "Ajouter un événement",
+    "monthTitle": "Mai 2025",
+    "monthDescription": "Vue mensuelle des événements programmés",
+    "today": "Aujourd’hui",
+    "upcomingTitle": "Événements à venir",
+    "upcomingDescription": "Liste des prochains événements programmés",
+    "upcoming": "À venir",
+    "draft": "Brouillon",
+    "cancelled": "Annulé",
+    "draftTitle": "Brouillons",
+    "draftDescription": "Événements en attente de publication",
+    "totalEvents": "Total événements",
+    "emptyUpcoming": "Aucun événement à venir",
+    "refresh": "Actualiser",
+    "loadError": "Impossible de charger le calendrier.",
+    "date": "Date",
+    "time": "Heure",
+    "location": "Lieu",
+    "description": "Description",
+    "close": "Fermer"
+  },
+  "promotionsAdmin": {
+    "title": "Promotions",
+    "breadcrumbManagement": "Gestion",
+    "addPromotion": "Ajouter une promotion",
+    "exportCsv": "Exporter CSV",
+    "tableTitle": "Table des promotions",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "filterAll": "Tous les statuts",
+    "sortBy": "Trier par",
+    "active": "Actif",
+    "expired": "Expiré",
+    "emptyPromotions": "Aucune promotion trouvée",
+    "createFirst": "+ Créer votre première promotion",
+    "metrics": {
+      "discountCodes": "Codes de réduction actifs",
+      "referralLinks": "Liens de parrainage créés",
+      "salesFromPromotions": "Ventes via promotions"
+    },
+    "statusSummary": {
+      "active": "Promotions actives",
+      "expired": "Promotions expirées"
+    },
+    "table": {
+      "no": "N°",
+      "code": "Code",
+      "discount": "Réduction",
+      "type": "Type",
+      "typePercentage": "Pourcentage",
+      "typeFixed": "Montant fixe",
+      "used": "Utilisé",
+      "usageLimit": "Limite d’utilisation",
+      "unlimited": "∞ Illimité",
+      "expiryDate": "Date d’expiration",
+      "status": "Statut",
+      "actions": "Actions",
+      "copyCode": "Copier le code",
+      "view": "Voir",
+      "edit": "Modifier",
+      "delete": "Supprimer"
+    },
+    "tableFooter": {
+      "showing": "Affichage de {count} sur {total} promotions",
+      "showingRange": "Affichage de {from} à {to} sur {total} promotions",
+      "selected": "({count} sélectionnées)"
+    },
+    "pagination": {
+      "previous": "Précédent",
+      "next": "Suivant"
+    },
+    "modal": {
+      "editTitle": "Modifier la promotion",
+      "cancel": "Annuler",
+      "create": "Créer la promotion",
+      "update": "Mettre à jour",
+      "code": "Code promo",
+      "codePlaceholder": "ex. ETE2026",
+      "discountType": "Type de réduction",
+      "discountValue": "Valeur de la réduction",
+      "typePercentage": "Pourcentage (%)",
+      "typeFixed": "Montant fixe ($)",
+      "discountPlaceholderPercent": "ex. 20%",
+      "discountPlaceholderFixed": "ex. 10 $",
+      "usageLimit": "Limite d’utilisation",
+      "usageLimitPlaceholder": "Illimité ou nombre",
+      "event": "Événement",
+      "eventPlaceholder": "Sélectionner un événement",
+      "loadingEvents": "Chargement des événements…",
+      "noEvents": "Aucun événement disponible. Créez un événement avant d’ajouter une promotion.",
+      "eventRequired": "Veuillez sélectionner un événement.",
+      "discountRequired": "Veuillez saisir une valeur de réduction valide.",
+      "expiryRequired": "Veuillez choisir une date d’expiration.",
+      "createSuccess": "Promotion créée avec succès.",
+      "createError": "Impossible de créer la promotion. Réessayez.",
+      "creating": "Création…",
+      "editNotAvailable": "La modification n’est pas encore disponible."
+    },
+    "pagination": {
+      "showing": "Affichage de 1 à 10 sur 500 résultats"
+    }
+  },
+  "payoutsAdmin": {
+    "title": "Paiements",
+    "breadcrumbManagement": "Gestion",
+    "addPayment": "Ajouter un paiement",
+    "exportCsv": "Exporter CSV",
+    "tableTitle": "Table des paiements",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "filterAll": "Tous les statuts",
+    "sortBy": "Trier par",
+    "pending": "En attente",
+    "completed": "Terminé",
+    "failed": "Échoué",
+    "cancelled": "Annulé",
+    "refunded": "Remboursé",
+    "emptyPayouts": "Aucun paiement trouvé",
+    "createFirst": "+ Créer votre premier paiement",
+    "metrics": {
+      "totalPayments": "Total des paiements",
+      "totalAmount": "Montant total",
+      "completedPayments": "Paiements terminés"
+    },
+    "statusSummary": {
+      "pending": "Paiements en attente",
+      "completed": "Paiements terminés",
+      "failed": "Paiements échoués"
+    },
+    "table": {
+      "orderId": "Commande",
+      "method": "Méthode",
+      "amount": "Montant",
+      "currency": "Devise",
+      "providerRef": "Réf. fournisseur",
+      "createdAt": "Créé le",
+      "status": "Statut",
+      "actions": "Actions",
+      "view": "Voir",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "deleteConfirm": "Supprimer le paiement pour la commande {orderId} ?",
+      "deleteSuccess": "Paiement supprimé avec succès.",
+      "deleteError": "Impossible de supprimer le paiement."
+    },
+    "tableFooter": {
+      "showingRange": "Affichage de {from} à {to} sur {total} paiements",
+      "selected": "({count} sélectionnés)"
+    },
+    "pagination": {
+      "previous": "Précédent",
+      "next": "Suivant"
+    },
+    "modal": {
+      "editTitle": "Modifier le paiement",
+      "cancel": "Annuler",
+      "create": "Créer le paiement",
+      "update": "Mettre à jour",
+      "saving": "Enregistrement…",
+      "orderId": "ID commande",
+      "orderIdPlaceholder": "ex. order-uuid",
+      "method": "Méthode de paiement",
+      "amount": "Montant",
+      "amountPlaceholder": "ex. 100",
+      "currency": "Devise",
+      "currencyPlaceholder": "ex. USD",
+      "providerRef": "Référence fournisseur",
+      "providerRefPlaceholder": "ex. provider-ref",
+      "orderIdRequired": "Veuillez saisir l’ID de la commande.",
+      "amountRequired": "Veuillez saisir un montant valide.",
+      "createSuccess": "Paiement créé avec succès.",
+      "createError": "Impossible de créer le paiement.",
+      "updateSuccess": "Paiement mis à jour avec succès.",
+      "updateError": "Impossible de mettre à jour le paiement."
+    }
+  },
+  "navigation": {
+    "brand": "Kongo Event",
+    "home": "Accueil",
+    "events": "Événements",
+    "marketplace": "Marketplace",
+    "buses": "Bus",
+    "flights": "Vols",
+    "vouchers": "Vouchers",
+    "stay": "Séjours",
+    "discover": "Découvrir",
+    "help": "Aide",
+    "organizer": "Organisateur",
+    "login": "Connexion",
+    "signup": "S'inscrire"
+  },
+  "home": {
+    "hero": {
+      "titleFirst": "Des expériences inoubliables",
+      "titleSecond": "commencent ici",
+      "subtitle": "Découvrez, réservez et vivez les événements les plus exclusifs de votre ville. Des festivals de musique aux ateliers privés.",
+      "searchPlaceholder": "Rechercher un événement...",
+      "location": "Lieu",
+      "date": "Date"
+    },
+    "featured": {
+      "title": "Événements à la une",
+      "subtitle": "Les expériences sélectionnées à ne pas manquer."
+    },
+    "trending": {
+      "title": "Tendances du moment"
+    },
+    "categories": {
+      "title": "Explorer par catégorie",
+      "subtitle": "Trouvez l'événement parfait selon votre envie.",
+      "music": "Musique",
+      "food": "Cuisine & Boissons",
+      "art": "Art",
+      "sports": "Sport",
+      "entertainment": "Divertissement",
+      "business": "Business"
+    },
+    "nearby": {
+      "title": "Événements près de vous",
+      "viewAll": "Tout voir →",
+      "getTickets": "Obtenir des billets"
+    },
+    "cities": {
+      "title": "Villes populaires",
+      "events": "Événements"
+    },
+    "newsletter": {
+      "title": "Ne manquez aucun moment",
+      "subtitle": "Recevez des recommandations d'événements et un accès anticipé aux billets directement dans votre boîte mail.",
+      "placeholder": "Entrez votre email",
+      "button": "S'abonner",
+      "terms": "En vous abonnant, vous acceptez nos conditions et notre politique de confidentialité."
+    },
+    "testimonials": {
+      "title": "Ce que dit notre communauté"
+    }
+  },
+  "footer": {
+    "brand": "Kongo Event",
+    "description": "Nous connectons les esprits curieux aux expériences live les plus extraordinaires à travers le monde.",
+    "company": {
+      "title": "Entreprise",
+      "about": "À propos",
+      "careers": "Carrières",
+      "contact": "Contact",
+      "press": "Presse",
+      "partners": "Partenaires"
+    },
+    "explore": {
+      "title": "Explorer",
+      "events": "Événements populaires",
+      "marketplace": "Marketplace",
+      "buses": "Bus",
+      "flights": "Vols",
+      "vouchers": "Vouchers",
+      "stay": "Séjours",
+      "organizers": "Organisateurs",
+      "cities": "Villes",
+      "music": "Événements musicaux",
+      "art": "Expositions d'art",
+      "tech": "Sommets tech",
+      "nightlife": "Vie nocturne"
+    },
+    "resources": {
+      "title": "Ressources",
+      "help": "Centre d'aide",
+      "terms": "Conditions d'utilisation",
+      "privacy": "Politique de confidentialité",
+      "cookies": "Paramètres des cookies"
+    },
+    "copyright": "© 2024 Kongo Event. Tous droits réservés."
+  },
+  "marketplace": {
+    "title": "Marketplace",
+    "eyebrow": "Kongo Event",
+    "loadingTitle": "Chargement du marketplace",
+    "resultsTitle": "Résultats pour \"{query}\"",
+    "searchPlaceholder": "Rechercher un produit, pack ou événement",
+    "search": "Rechercher",
+    "loadError": "Impossible de charger le marketplace.",
+    "empty": "Aucun article réel disponible pour le moment.",
+    "stock": "Stock",
+    "viewEvent": "Voir l'événement",
+    "viewItem": "Voir l'article",
+    "viewEvents": "Voir les événements",
+    "loadingItem": "Chargement de l'article...",
+    "itemNotFound": "Article marketplace introuvable."
+  },
+  "publicServices": {
+    "common": {
+      "search": "Rechercher",
+      "featured": "À la une",
+      "popularOptions": "Options populaires",
+      "loading": "Chargement des offres publiques...",
+      "demoNotice": "Du contenu de démonstration est affiché jusqu'à l'ajout d'offres actives dans l'admin.",
+      "benefits": {
+        "secure": {
+          "title": "Réservation sécurisée",
+          "text": "Pensé pour un paiement protégé et un accès compte sécurisé."
+        },
+        "partners": {
+          "title": "Partenaires vérifiés",
+          "text": "Prêt pour l'intégration avec des fournisseurs approuvés."
+        },
+        "unified": {
+          "title": "Expérience unifiée",
+          "text": "Un même compte pour billets, services, commandes et suivi."
+        }
+      }
+    },
+    "buses": {
+      "title": "Tickets de bus",
+      "eyebrow": "Transport",
+      "subtitle": "Comparez les trajets, horaires de départ et tarifs interurbains.",
+      "search": {
+        "first": "Départ",
+        "second": "Destination",
+        "third": "Date de voyage"
+      }
+    },
+    "flights": {
+      "title": "Vols",
+      "eyebrow": "Transport aérien",
+      "subtitle": "Trouvez des options de vols pour vos voyages locaux et régionaux.",
+      "search": {
+        "first": "Départ",
+        "second": "Destination",
+        "third": "Date du vol"
+      }
+    },
+    "vouchers": {
+      "title": "Vouchers",
+      "eyebrow": "Offres",
+      "subtitle": "Découvrez des offres pour la restauration, le lifestyle, le voyage et le divertissement.",
+      "search": {
+        "first": "Catégorie",
+        "second": "Ville",
+        "third": "Valide jusqu'au"
+      }
+    },
+    "stay": {
+      "title": "Séjours",
+      "eyebrow": "Hôtels",
+      "subtitle": "Explorez les hébergements proches de votre destination et de vos événements.",
+      "search": {
+        "first": "Destination",
+        "second": "Arrivée",
+        "third": "Voyageurs"
+      }
+    }
+  },
+  "discover": {
+    "title": "Découvrez des événements extraordinaires",
+    "searchPlaceholder": "Rechercher des événements, organisateurs ou mots-clés",
+    "location": "Lieu",
+    "searchButton": "Rechercher",
+    "showing": "Affichage de",
+    "events": "événements",
+    "relevance": "Pertinence",
+    "categories": "Catégories",
+    "all": "Tous",
+    "date": "Date",
+    "anytime": "À tout moment",
+    "today": "Aujourd'hui",
+    "thisWeekend": "Ce week-end",
+    "nextWeek": "Semaine prochaine",
+    "priceRange": "Fourchette de prix",
+    "free": "Gratuit",
+    "distance": "Distance",
+    "within10": "Dans un rayon de 10 miles",
+    "within25": "Dans un rayon de 25 miles",
+    "within50": "Dans un rayon de 50 miles",
+    "anywhere": "Partout",
+    "resetFilters": "Réinitialiser les filtres",
+    "loading": "Chargement des événements...",
+    "error": "Impossible de charger les événements.",
+    "empty": "Aucun événement trouvé."
+  },
+  "eventDetail": {
+    "organizedBy": "Organisé par",
+    "follow": "Suivre",
+    "gallery": "Galerie de l’événement",
+    "more": "Plus",
+    "about": "À propos de cet événement",
+    "noDescription": "Aucune description disponible pour cet événement.",
+    "category": "Catégorie",
+    "type": "Type",
+    "capacity": "Capacité",
+    "timezone": "Fuseau horaire",
+    "location": "Lieu",
+    "getDirections": "Itinéraire",
+    "priceStartingFrom": "Prix à partir de",
+    "perPerson": "par personne",
+    "dateTime": "Date et heure",
+    "venue": "Lieu",
+    "selectTickets": "Choisir les billets",
+    "available": "disponibles",
+    "buyTicketsNow": "Acheter les billets",
+    "bookingNote": "Pas de frais cachés. Annulation possible jusqu’à 48h avant.",
+    "likes": "J’aime",
+    "reviewsCount": "{count} avis",
+    "likedAdded": "Événement ajouté à vos favoris.",
+    "likedRemoved": "Événement retiré de vos favoris.",
+    "reactionError": "Impossible de mettre à jour votre réaction.",
+    "reviews": "Avis",
+    "loadingReviews": "Chargement des avis...",
+    "noReviews": "Aucun avis public pour le moment.",
+    "reviewFormTitle": "Donner votre avis",
+    "reviewTitlePlaceholder": "Titre de votre avis",
+    "reviewCommentPlaceholder": "Partagez votre expérience...",
+    "reviewRequired": "Veuillez écrire votre avis.",
+    "reviewPublished": "Merci, votre avis est publié.",
+    "reviewError": "Impossible d’envoyer votre avis.",
+    "publishing": "Publication...",
+    "publishReview": "Publier l’avis"
+  },
+  "resourcePages": {
+    "common": {
+      "origin": "Départ",
+      "destination": "Destination",
+      "operator": "Opérateur",
+      "departureAt": "Départ à",
+      "arrivalAt": "Arrivée à",
+      "departure": "Départ",
+      "price": "Prix",
+      "currency": "Devise",
+      "image": "Image",
+      "seatsAvailable": "Places disponibles",
+      "seats": "Places",
+      "active": "Actif",
+      "title": "Titre",
+      "category": "Catégorie",
+      "city": "Ville",
+      "description": "Description",
+      "discount": "Réduction",
+      "stock": "Stock",
+      "validUntil": "Valide jusqu’au",
+      "name": "Nom",
+      "country": "Pays",
+      "address": "Adresse",
+      "rating": "Note",
+      "roomsAvailable": "Chambres disponibles",
+      "rooms": "Chambres",
+      "event": "Événement",
+      "attendee": "Participant",
+      "attendeeName": "Nom du participant",
+      "attendeeEmail": "Email du participant",
+      "review": "Avis",
+      "reviewText": "Texte de l’avis",
+      "visibility": "Visibilité",
+      "helpful": "Utile",
+      "date": "Date",
+      "airline": "Compagnie",
+      "flightNumber": "Numéro de vol",
+      "flight": "Vol"
+    },
+    "busRoutes": {
+      "title": "Trajets bus",
+      "description": "Créez et gérez les trajets bus publics affichés sur le site.",
+      "create": "Ajouter un trajet"
+    },
+    "flightOffers": {
+      "title": "Offres de vols",
+      "description": "Créez et gérez les offres de vols publiques affichées sur le site.",
+      "create": "Ajouter un vol"
+    },
+    "voucherOffers": {
+      "title": "Offres vouchers",
+      "description": "Créez et gérez les offres vouchers publiques affichées sur le site.",
+      "create": "Ajouter un voucher"
+    },
+    "stayOffers": {
+      "title": "Offres séjours",
+      "description": "Créez et gérez les offres de séjour publiques affichées sur le site.",
+      "create": "Ajouter un séjour"
+    },
+    "reviews": {
+      "title": "Avis",
+      "description": "Modérez les avis réels des participants sur vos événements.",
+      "create": "Ajouter un avis"
+    }
+  }
+}

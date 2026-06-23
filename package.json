@@ -1,0 +1,44 @@
+{
+  "name": "kongo-event-pro",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@radix-ui/react-dropdown-menu": "^2.1.16",
+    "@radix-ui/react-slot": "latest",
+    "@tanstack/react-query": "^5.100.14",
+    "axios": "^1.16.1",
+    "chart.js": "^4.5.1",
+    "class-variance-authority": "latest",
+    "clsx": "latest",
+    "framer-motion": "^12.40.0",
+    "lucide-react": "latest",
+    "next": "latest",
+    "next-intl": "latest",
+    "react": "latest",
+    "react-chartjs-2": "^5.3.1",
+    "react-country-flag": "^3.1.0",
+    "react-dom": "latest",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "latest",
+    "three": "^0.184.0",
+    "tw-animate-css": "latest"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "eslint": "latest",
+    "eslint-config-next": "latest",
+    "tailwindcss": "latest",
+    "typescript": "latest"
+  },
+  "packageManager": "pnpm@10.33.0+sha512.10568bb4a6afb58c9eb3630da90cc9516417abebd3fabbe6739f0ae795728da1491e9db5a544c76ad8eb7570f5c4bb3d6c637b2cb41bfdcdb47fa823c8649319"
+}
