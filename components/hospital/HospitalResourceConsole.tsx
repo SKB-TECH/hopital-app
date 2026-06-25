@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, CreditCard, Database, Download, Edit3, Eye, FileJson, FileText, Loader2, Mail, Plus, Printer, Receipt, RefreshCcw, Search, Send, UserRound, X } from "lucide-react";
+import { CheckCircle2, CreditCard, Database, Download, Edit3, Eye, FileJson, FileText, Loader2, Plus, Printer, Receipt, RefreshCcw, Search, Send, UserRound, X } from "lucide-react";
 import DashboardNavbar from "@/components/dashboard/DashboardNavbar";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import { useSidebar } from "@/contexts/SidebarContext";
@@ -10,7 +10,6 @@ import { findHospitalModule } from "@/shared/config/hospital-modules";
 import { hospitalText, hospitalUi, localizeHospitalModule } from "@/shared/config/hospital-i18n";
 import type { HospitalResource } from "@/shared/types/hospital.types";
 import { api } from "@/shared/lib/http/api";
-import { printService, type PrintTemplate } from "@/shared/services/print.service";
 import { useMe } from "@/shared/hooks/auth.hooks";
 import { canAccessHospitalModule, getFirstAccessibleHospitalModule } from "@/shared/lib/auth/module-access";
 import type { OperationAction, OperationKind, OperationState } from "@/components/hospital/resource-console/types";
@@ -19,7 +18,8 @@ import { DepartmentDashboard } from "@/components/hospital/resource-console/Depa
 import { FieldInput } from "@/components/hospital/resource-console/FieldInput";
 import { ProfessionalError } from "@/components/hospital/resource-console/ProfessionalError";
 import { AppointmentsCalendarView } from "@/components/hospital/resource-console/AppointmentsCalendarView";
-import { ReferenceField, SelectField, TextAreaField, TextField } from "@/components/hospital/resource-console/ResourceFields";
+import { PrintDialog } from "@/components/hospital/resource-console/PrintDialog";
+import { OperationDialog } from "@/components/hospital/resource-console/OperationDialog";
 
 export default function HospitalResourceConsole() {
   const params = useParams<{ locale: string; module?: string }>();
@@ -371,192 +371,4 @@ function getRowActions(endpoint: string, row: any): OperationAction[] {
 
 function handlePrimaryView(endpoint: string, row: any, router: ReturnType<typeof useRouter>, locale: string) {
   if (endpoint === "/patients" && row?.id) router.push(`/${locale}/hospital/patients/${row.id}`);
-}
-
-function PrintDialog({ moduleEndpoint, moduleTitle, locale, row, onClose }: { moduleEndpoint: string; moduleTitle: string; locale: "fr" | "en"; row?: any; onClose: () => void }) {
-  const [templates, setTemplates] = useState<PrintTemplate[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState("generic-record");
-  const [watermark, setWatermark] = useState("CONFIDENTIEL");
-  const [emailTo, setEmailTo] = useState("");
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [posting, setPosting] = useState<"" | "preview" | "download" | "print" | "email">("");
-  const [error, setError] = useState("");
-  const moduleKey = moduleEndpoint.replace(/^\//, "");
-
-  useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-    printService.templates()
-      .then((response) => {
-        if (!mounted) return;
-        const list = response.templates ?? [];
-        setTemplates(list);
-        setSelectedTemplate(pickDefaultTemplate(list, moduleKey));
-      })
-      .catch((err) => mounted && setError(readError(err)))
-      .finally(() => mounted && setLoading(false));
-    return () => { mounted = false; };
-  }, [moduleKey]);
-
-  const relevantTemplates = useMemo(() => {
-    const category = categoryFromModule(moduleKey);
-    const filtered = templates.filter((template) => template.defaultModule === moduleKey || template.category === category || template.key === "generic-record");
-    return filtered.length ? filtered : templates;
-  }, [moduleKey, templates]);
-
-  const payload = (): any => ({
-    template: selectedTemplate,
-    module: moduleKey,
-    recordId: row?.id,
-    data: row?.id ? undefined : { module: moduleTitle, rowsCount: "Impression de liste", generatedAt: new Date().toISOString() },
-    locale,
-    watermark,
-    includeQr: true,
-    includeBarcode: true,
-  });
-
-  const run = async (action: "preview" | "download" | "print" | "email") => {
-    setPosting(action);
-    setError("");
-    try {
-      if (action === "preview") await printService.openPdf(payload(), "inline");
-      if (action === "download") await printService.openPdf(payload(), "attachment");
-      if (action === "print") await printService.print(payload());
-      if (action === "email") {
-        if (!emailTo.trim()) throw new Error("Saisissez l’adresse email du destinataire.");
-        await printService.email({ ...payload(), to: emailTo.trim(), message });
-      }
-    } catch (err: any) {
-      setError(readError(err));
-    } finally {
-      setPosting("");
-    }
-  };
-
-  return <div className="fixed inset-0 z-[90] bg-slate-950/40">
-    <div className="ml-auto h-full w-full max-w-3xl overflow-y-auto border-l border-slate-300 bg-white">
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-7 py-5">
-        <div>
-          <h2 className="text-2xl font-black text-slate-950">Documents & impression</h2>
-          <p className="mt-1 text-sm font-semibold text-slate-500">{moduleTitle}{row?.id ? ` · ${row.id}` : " · impression du module"}</p>
-        </div>
-        <button onClick={onClose} className="border border-slate-300 p-2 text-slate-600 hover:bg-slate-50"><X className="size-5" /></button>
-      </div>
-
-      <div className="space-y-6 p-7">
-        {error && <ProfessionalError message={error} />}
-        {loading ? <div className="border border-slate-200 p-8 text-center text-sm font-semibold text-slate-500"><Loader2 className="mx-auto mb-3 size-5 animate-spin text-blue-700" />Chargement des modèles...</div> : <>
-          <section className="border border-slate-200 bg-slate-50 p-5">
-            <p className="text-xs font-black uppercase tracking-wide text-blue-700">Modèle professionnel</p>
-            <select value={selectedTemplate} onChange={(e) => setSelectedTemplate(e.target.value)} className="mt-3 w-full border border-slate-300 bg-white px-3 py-3 text-sm font-black text-slate-900 outline-none focus:border-blue-700">
-              {relevantTemplates.map((template) => <option key={template.key} value={template.key}>{template.title} · {template.category}</option>)}
-            </select>
-            <p className="mt-2 text-xs font-semibold text-slate-500">{relevantTemplates.find((template) => template.key === selectedTemplate)?.description}</p>
-          </section>
-
-          <div className="grid gap-5 md:grid-cols-2">
-            <TextField label="Watermark" value={watermark} onChange={setWatermark} />
-            <TextField label="Destinataire email" value={emailTo} onChange={setEmailTo} />
-          </div>
-          <TextAreaField label="Message email" value={message} onChange={setMessage} />
-
-          <section className="border border-slate-200 bg-white p-5">
-            <h3 className="font-black text-slate-950">Contenu inclus automatiquement</h3>
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
-              {["Logo & identité hôpital", "Patient / dossier", "QR code & code-barres", "Signature numérique", "Notice confidentialité", "Pagination"].map((item) => <div key={item} className="border border-slate-100 bg-slate-50 p-3 text-xs font-black text-slate-700">{item}</div>)}
-            </div>
-          </section>
-
-          <div className="flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-5">
-            <button onClick={() => run("preview")} disabled={Boolean(posting)} className="inline-flex h-12 items-center gap-2 border border-slate-300 bg-white px-5 text-sm font-black text-slate-800 hover:bg-slate-50 disabled:opacity-50">{posting === "preview" ? <Loader2 className="size-4 animate-spin" /> : <Eye className="size-4" />}Aperçu</button>
-            <button onClick={() => run("download")} disabled={Boolean(posting)} className="inline-flex h-12 items-center gap-2 border border-slate-300 bg-white px-5 text-sm font-black text-slate-800 hover:bg-slate-50 disabled:opacity-50">{posting === "download" ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}Télécharger</button>
-            <button onClick={() => run("print")} disabled={Boolean(posting)} className="inline-flex h-12 items-center gap-2 bg-blue-700 px-5 text-sm font-black text-white hover:bg-blue-800 disabled:opacity-50">{posting === "print" ? <Loader2 className="size-4 animate-spin" /> : <Printer className="size-4" />}Imprimer</button>
-            <button onClick={() => run("email")} disabled={Boolean(posting)} className="inline-flex h-12 items-center gap-2 bg-slate-950 px-5 text-sm font-black text-white hover:bg-slate-800 disabled:opacity-50">{posting === "email" ? <Loader2 className="size-4 animate-spin" /> : <Mail className="size-4" />}Email</button>
-          </div>
-        </>}
-      </div>
-    </div>
-  </div>;
-}
-
-function OperationDialog({ operation, form, setForm, posting, locale = "fr", onClose, onSubmit }: { operation: OperationState; form: Record<string, any>; setForm: (form: Record<string, any>) => void; posting: boolean; locale?: string; onClose: () => void; onSubmit: () => void }) {
-  const title = hospitalText(operationTitle(operation.kind), locale);
-  return <div className="fixed inset-0 z-[80] bg-slate-950/40">
-    <div className="ml-auto h-full w-full max-w-2xl overflow-y-auto border-l border-slate-300 bg-white">
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-7 py-5">
-        <div><h2 className="text-2xl font-black text-slate-950">{title}</h2><p className="mt-1 text-sm font-semibold text-slate-500">Action métier sécurisée</p></div>
-        <button onClick={onClose} className="border border-slate-300 p-2 text-slate-600 hover:bg-slate-50"><X className="size-5" /></button>
-      </div>
-      <div className="space-y-5 p-7">
-        {operation.kind === "preview-invoice" || operation.kind === "generate-invoice" ? <>
-          <ReferenceField referenceKey="patientId" label="Patient" value={form.patientId} onChange={(v) => setForm({ ...form, patientId: v })} />
-          <ReferenceField referenceKey="admissionId" label="Admission" value={form.admissionId} onChange={(v) => setForm({ ...form, admissionId: v })} />
-          <TextField type="datetime-local" label="Du" value={form.from} onChange={(v) => setForm({ ...form, from: v })} />
-          <TextField type="datetime-local" label="Au" value={form.to} onChange={(v) => setForm({ ...form, to: v })} />
-          {form.preview && <pre className="max-h-80 overflow-auto border border-slate-200 bg-slate-50 p-4 text-xs">{JSON.stringify(form.preview, null, 2)}</pre>}
-        </> : null}
-        {operation.kind === "pay-invoice" ? <>
-          <TextField type="number" label="Montant" value={form.amount} onChange={(v) => setForm({ ...form, amount: Number(v) })} />
-          <SelectField label="Méthode" value={form.method} onChange={(v) => setForm({ ...form, method: v })} options={["CASH", "CARD", "MOBILE_MONEY", "BANK_TRANSFER"]} />
-          <TextField label="Référence" value={form.reference} onChange={(v) => setForm({ ...form, reference: v })} />
-        </> : null}
-        {operation.kind === "discharge" ? <TextAreaField label="Résumé de sortie" value={form.summary} onChange={(v) => setForm({ ...form, summary: v })} /> : null}
-        {operation.kind === "complete-consultation" ? <>
-          <TextAreaField label="Évaluation / diagnostic" value={form.assessment} onChange={(v) => setForm({ ...form, assessment: v })} />
-          <TextAreaField label="Plan de traitement" value={form.plan} onChange={(v) => setForm({ ...form, plan: v })} />
-          <TextAreaField label="Notes finales" value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} />
-        </> : null}
-        {operation.kind === "stock-movement" ? <>
-          <ReferenceField referenceKey="stockItemId" label="Article stock" value={form.stockItemId} onChange={(v) => setForm({ ...form, stockItemId: v })} />
-          <SelectField label="Type" value={form.type} onChange={(v) => setForm({ ...form, type: v })} options={["RECEIPT", "ISSUE", "TRANSFER", "ADJUSTMENT"]} />
-          <TextField type="number" label="Quantité" value={form.quantity} onChange={(v) => setForm({ ...form, quantity: Number(v) })} />
-          <TextField label="Référence" value={form.reference} onChange={(v) => setForm({ ...form, reference: v })} />
-        </> : null}
-        {operation.kind === "change-status" ? <>
-          <div className="border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-black uppercase tracking-wide text-slate-500">Statut actuel</p>
-            <p className="mt-1 text-lg font-black text-slate-950">{operation.row?.status ?? "-"}</p>
-          </div>
-          <SelectField label="Nouveau statut" value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={nextStatuses(operation.endpoint ?? "", operation.row?.status)} />
-          {operation.endpoint === "/nursing/medications" && form.status === "ADMINISTERED" ? <TextField type="datetime-local" label="Administré le" value={form.administeredAt} onChange={(v) => setForm({ ...form, administeredAt: v })} /> : null}
-          <TextAreaField label="Notes / justification" value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} />
-        </> : null}
-        {operation.kind === "validate-lab" ? <p className="border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">Confirmer la validation biologique de ce résultat. Cette action engage le validateur.</p> : null}
-        <div className="flex justify-end gap-3 border-t border-slate-200 pt-5">
-          <button onClick={onClose} className="h-12 border border-slate-300 bg-white px-5 text-sm font-black text-slate-800 hover:bg-slate-50">Annuler</button>
-          <button disabled={posting} onClick={onSubmit} className="inline-flex h-12 items-center justify-center gap-2 bg-blue-700 px-6 text-sm font-black text-white hover:bg-blue-800 disabled:opacity-50">{posting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}Confirmer</button>
-        </div>
-      </div>
-    </div>
-  </div>;
-}
-
-function categoryFromModule(moduleKey: string) {
-  if (moduleKey.startsWith("patients")) return "patient";
-  if (moduleKey.startsWith("consultations") || moduleKey.startsWith("prescriptions")) return "consultation";
-  if (moduleKey.startsWith("laboratory")) return "laboratory";
-  if (moduleKey.startsWith("imaging")) return "radiology";
-  if (moduleKey.startsWith("admissions") || moduleKey.startsWith("nursing")) return "hospitalization";
-  if (moduleKey.startsWith("surgery") || moduleKey.startsWith("surgeries")) return "surgery";
-  if (moduleKey.startsWith("maternity") || moduleKey.startsWith("pregnancies") || moduleKey.startsWith("prenatal") || moduleKey.startsWith("deliveries")) return "maternity";
-  if (moduleKey.startsWith("pediatrics")) return "pediatrics";
-  if (moduleKey.startsWith("pharmacy")) return "pharmacy";
-  if (moduleKey.startsWith("billing")) return "billing";
-  if (moduleKey.startsWith("accounting")) return "accounting";
-  if (moduleKey.startsWith("insurance")) return "insurance";
-  if (moduleKey.startsWith("ambulances")) return "ambulance";
-  if (moduleKey.startsWith("emergencies")) return "emergency";
-  if (moduleKey.startsWith("reports")) return "reports";
-  return "generic";
-}
-
-function pickDefaultTemplate(templates: PrintTemplate[], moduleKey: string) {
-  return templates.find((template) => template.defaultModule === moduleKey)?.key
-    ?? templates.find((template) => template.category === categoryFromModule(moduleKey))?.key
-    ?? "generic-record";
-}
-
-function operationTitle(kind: OperationKind) {
-  return ({ "preview-invoice": "Aperçu de facture", "generate-invoice": "Générer une facture", "pay-invoice": "Encaissement", "validate-lab": "Validation laboratoire", discharge: "Sortie hospitalisation", "stock-movement": "Mouvement de stock", "complete-consultation": "Terminer la consultation", "change-status": "Changer le statut", "print-invoice": "Impression", "patient-record": "Dossier patient" } as Record<OperationKind, string>)[kind];
 }
