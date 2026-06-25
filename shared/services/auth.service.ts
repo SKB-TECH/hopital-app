@@ -24,7 +24,11 @@ export const authService = {
     try { await api.post("/auth/logout", {}); }
     finally { tokenStore.clear(); if (typeof window !== "undefined") localStorage.removeItem("auth_user"); }
   },
-  async me(): Promise<any> { return { authenticated: Boolean(tokenStore.get()) }; },
+  async me(): Promise<any> {
+    if (!tokenStore.get()) return null;
+    const res = await api.get("/auth/me");
+    return res.data;
+  },
   async register(_payload?: any): Promise<never> { throw new Error("La création des comptes se fait par Administration > Utilisateurs."); },
   async registerOrganizer(_payload?: any): Promise<never> { throw new Error("Module événementiel désactivé pour l’application hôpital."); },
   async forgotPassword(_payload?: any): Promise<{ message: string }> { return { message: "Réinitialisation à connecter au service mail hôpital." }; },

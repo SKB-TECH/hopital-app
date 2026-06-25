@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Activity, AlertCircle, CheckCircle2, CreditCard, Database, Download, Edit3, Eye, FileJson, FileText, Loader2, Plus, Printer, Receipt, RefreshCcw, Search, Send, UserRound, X } from "lucide-react";
+import { Activity, AlertCircle, CheckCircle2, CreditCard, Database, Download, Edit3, Eye, FileJson, FileText, Loader2, Mail, Plus, Printer, Receipt, RefreshCcw, Search, Send, UserRound, X } from "lucide-react";
 import DashboardNavbar from "@/components/dashboard/DashboardNavbar";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import { useSidebar } from "@/contexts/SidebarContext";
@@ -10,6 +10,7 @@ import { findHospitalModule, hospitalReferences } from "@/shared/config/hospital
 import type { HospitalField, HospitalResource } from "@/shared/types/hospital.types";
 import { api } from "@/shared/lib/http/api";
 import Autocomplete, { type AutocompleteOption } from "@/components/ui/autocomplete";
+import { printService, type PrintTemplate } from "@/shared/services/print.service";
 
 export default function HospitalResourceConsole() {
   const params = useParams<{ locale: string; module?: string }>();
@@ -33,6 +34,7 @@ export default function HospitalResourceConsole() {
   const [editingRow, setEditingRow] = useState<any | null>(null);
   const [operation, setOperation] = useState<OperationState | null>(null);
   const [operationForm, setOperationForm] = useState<Record<string, any>>({});
+  const [printDialog, setPrintDialog] = useState<{ row?: any } | null>(null);
 
   const load = async () => {
     if (!selected) return;
@@ -193,7 +195,7 @@ export default function HospitalResourceConsole() {
                       {selected.canCreate !== false && <button onClick={openCreate} className="inline-flex h-11 items-center gap-2 bg-blue-700 px-4 text-sm font-black text-white hover:bg-blue-800"><Plus className="size-4" />Nouveau</button>}
                       {moduleActions.map((action) => <button key={action.kind} onClick={() => openOperation(action.kind)} className="inline-flex h-11 items-center gap-2 border border-blue-700 bg-white px-4 text-sm font-black text-blue-800 hover:bg-blue-50"><action.icon className="size-4" />{action.label}</button>)}
                       <button onClick={load} className="inline-flex h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-800 hover:bg-slate-50"><RefreshCcw className="size-4" />Actualiser</button>
-                      <button onClick={() => window.print()} className="inline-flex h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-800 hover:bg-slate-50"><Printer className="size-4" />Imprimer</button>
+                      <button onClick={() => setPrintDialog({})} className="inline-flex h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-800 hover:bg-slate-50"><Printer className="size-4" />Documents</button>
                       <button className="inline-flex h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-800 hover:bg-slate-50"><Download className="size-4" />Exporter</button>
                     </div>
                   </div>
@@ -209,7 +211,7 @@ export default function HospitalResourceConsole() {
                     </thead>
                     <tbody>
                       {loading ? <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center text-sm font-semibold text-slate-500"><Loader2 className="mx-auto mb-3 size-6 animate-spin text-blue-700" />Chargement des données...</td></tr> :
-                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs truncate px-5 py-4 text-sm font-semibold text-slate-700">{formatValue(row[column.key])}</td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => handlePrimaryView(selected.endpoint, row, router, locale)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title="Voir"><Eye className="size-4" /></button>{selected.canUpdate !== false && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{getRowActions(selected.endpoint, row).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? window.open(`/api/proxy/api/v1/billing/invoices/${row.id}/pdf`, "_blank") : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : openOperation(action.kind, row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title={action.label}><action.icon className="size-4" /></button>)}</div></td></tr>) :
+                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs truncate px-5 py-4 text-sm font-semibold text-slate-700">{formatValue(row[column.key])}</td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => handlePrimaryView(selected.endpoint, row, router, locale)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title="Voir"><Eye className="size-4" /></button>{selected.canUpdate !== false && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}<button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Documents"><Printer className="size-4" /></button>{getRowActions(selected.endpoint, row).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : openOperation(action.kind, row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title={action.label}><action.icon className="size-4" /></button>)}</div></td></tr>) :
                       <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center"><Database className="mx-auto mb-3 size-8 text-slate-300" /><p className="font-black text-slate-800">Aucune donnée disponible</p><p className="mt-1 text-sm text-slate-500">Cliquez sur “Nouveau” pour créer un enregistrement ou vérifiez vos droits d’accès.</p></td></tr>}
                     </tbody>
                   </table>
@@ -226,6 +228,16 @@ export default function HospitalResourceConsole() {
               posting={posting}
               onClose={() => setOperation(null)}
               onSubmit={submitOperation}
+            />
+          )}
+
+          {printDialog && (
+            <PrintDialog
+              moduleEndpoint={selected.endpoint}
+              moduleTitle={selected.title}
+              locale={locale as "fr" | "en"}
+              row={printDialog.row}
+              onClose={() => setPrintDialog(null)}
             />
           )}
 
@@ -302,6 +314,113 @@ function defaultOperationForm(kind: OperationKind, row?: any) {
   if (kind === "complete-consultation") return { assessment: row?.assessment ?? "", plan: row?.plan ?? "", notes: row?.notes ?? "" };
   if (kind === "stock-movement") return { stockItemId: row?.id ?? "", type: "RECEIPT", quantity: 1, reference: "" };
   return {};
+}
+
+function PrintDialog({ moduleEndpoint, moduleTitle, locale, row, onClose }: { moduleEndpoint: string; moduleTitle: string; locale: "fr" | "en"; row?: any; onClose: () => void }) {
+  const [templates, setTemplates] = useState<PrintTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState("generic-record");
+  const [watermark, setWatermark] = useState("CONFIDENTIEL");
+  const [emailTo, setEmailTo] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [posting, setPosting] = useState<"" | "preview" | "download" | "print" | "email">("");
+  const [error, setError] = useState("");
+  const moduleKey = moduleEndpoint.replace(/^\//, "");
+
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    printService.templates()
+      .then((response) => {
+        if (!mounted) return;
+        const list = response.templates ?? [];
+        setTemplates(list);
+        setSelectedTemplate(pickDefaultTemplate(list, moduleKey));
+      })
+      .catch((err) => mounted && setError(readError(err)))
+      .finally(() => mounted && setLoading(false));
+    return () => { mounted = false; };
+  }, [moduleKey]);
+
+  const relevantTemplates = useMemo(() => {
+    const category = categoryFromModule(moduleKey);
+    const filtered = templates.filter((template) => template.defaultModule === moduleKey || template.category === category || template.key === "generic-record");
+    return filtered.length ? filtered : templates;
+  }, [moduleKey, templates]);
+
+  const payload = (): any => ({
+    template: selectedTemplate,
+    module: moduleKey,
+    recordId: row?.id,
+    data: row?.id ? undefined : { module: moduleTitle, rowsCount: "Impression de liste", generatedAt: new Date().toISOString() },
+    locale,
+    watermark,
+    includeQr: true,
+    includeBarcode: true,
+  });
+
+  const run = async (action: "preview" | "download" | "print" | "email") => {
+    setPosting(action);
+    setError("");
+    try {
+      if (action === "preview") await printService.openPdf(payload(), "inline");
+      if (action === "download") await printService.openPdf(payload(), "attachment");
+      if (action === "print") await printService.print(payload());
+      if (action === "email") {
+        if (!emailTo.trim()) throw new Error("Saisissez l’adresse email du destinataire.");
+        await printService.email({ ...payload(), to: emailTo.trim(), message });
+      }
+    } catch (err: any) {
+      setError(readError(err));
+    } finally {
+      setPosting("");
+    }
+  };
+
+  return <div className="fixed inset-0 z-[90] bg-slate-950/40">
+    <div className="ml-auto h-full w-full max-w-3xl overflow-y-auto border-l border-slate-300 bg-white">
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-7 py-5">
+        <div>
+          <h2 className="text-2xl font-black text-slate-950">Documents & impression</h2>
+          <p className="mt-1 text-sm font-semibold text-slate-500">{moduleTitle}{row?.id ? ` · ${row.id}` : " · impression du module"}</p>
+        </div>
+        <button onClick={onClose} className="border border-slate-300 p-2 text-slate-600 hover:bg-slate-50"><X className="size-5" /></button>
+      </div>
+
+      <div className="space-y-6 p-7">
+        {error && <ProfessionalError message={error} />}
+        {loading ? <div className="border border-slate-200 p-8 text-center text-sm font-semibold text-slate-500"><Loader2 className="mx-auto mb-3 size-5 animate-spin text-blue-700" />Chargement des modèles...</div> : <>
+          <section className="border border-slate-200 bg-slate-50 p-5">
+            <p className="text-xs font-black uppercase tracking-wide text-blue-700">Modèle professionnel</p>
+            <select value={selectedTemplate} onChange={(e) => setSelectedTemplate(e.target.value)} className="mt-3 w-full border border-slate-300 bg-white px-3 py-3 text-sm font-black text-slate-900 outline-none focus:border-blue-700">
+              {relevantTemplates.map((template) => <option key={template.key} value={template.key}>{template.title} · {template.category}</option>)}
+            </select>
+            <p className="mt-2 text-xs font-semibold text-slate-500">{relevantTemplates.find((template) => template.key === selectedTemplate)?.description}</p>
+          </section>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <TextField label="Watermark" value={watermark} onChange={setWatermark} />
+            <TextField label="Destinataire email" value={emailTo} onChange={setEmailTo} />
+          </div>
+          <TextAreaField label="Message email" value={message} onChange={setMessage} />
+
+          <section className="border border-slate-200 bg-white p-5">
+            <h3 className="font-black text-slate-950">Contenu inclus automatiquement</h3>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {["Logo & identité hôpital", "Patient / dossier", "QR code & code-barres", "Signature numérique", "Notice confidentialité", "Pagination"].map((item) => <div key={item} className="border border-slate-100 bg-slate-50 p-3 text-xs font-black text-slate-700">{item}</div>)}
+            </div>
+          </section>
+
+          <div className="flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-5">
+            <button onClick={() => run("preview")} disabled={Boolean(posting)} className="inline-flex h-12 items-center gap-2 border border-slate-300 bg-white px-5 text-sm font-black text-slate-800 hover:bg-slate-50 disabled:opacity-50">{posting === "preview" ? <Loader2 className="size-4 animate-spin" /> : <Eye className="size-4" />}Aperçu</button>
+            <button onClick={() => run("download")} disabled={Boolean(posting)} className="inline-flex h-12 items-center gap-2 border border-slate-300 bg-white px-5 text-sm font-black text-slate-800 hover:bg-slate-50 disabled:opacity-50">{posting === "download" ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}Télécharger</button>
+            <button onClick={() => run("print")} disabled={Boolean(posting)} className="inline-flex h-12 items-center gap-2 bg-blue-700 px-5 text-sm font-black text-white hover:bg-blue-800 disabled:opacity-50">{posting === "print" ? <Loader2 className="size-4 animate-spin" /> : <Printer className="size-4" />}Imprimer</button>
+            <button onClick={() => run("email")} disabled={Boolean(posting)} className="inline-flex h-12 items-center gap-2 bg-slate-950 px-5 text-sm font-black text-white hover:bg-slate-800 disabled:opacity-50">{posting === "email" ? <Loader2 className="size-4 animate-spin" /> : <Mail className="size-4" />}Email</button>
+          </div>
+        </>}
+      </div>
+    </div>
+  </div>;
 }
 
 function OperationDialog({ operation, form, setForm, posting, onClose, onSubmit }: { operation: OperationState; form: Record<string, any>; setForm: (form: Record<string, any>) => void; posting: boolean; onClose: () => void; onSubmit: () => void }) {
@@ -426,6 +545,31 @@ function formatDashboardNumber(value: any) { const numeric = Number(value); if (
 function isAlertMetric(key: string, value: any) { const numeric = Number(value ?? 0); if (!Number.isFinite(numeric) || numeric <= 0) return false; return /(critical|alert|pending|waiting|overdue|expired|expiring|low|outOfStock|outstanding|unpaid|emergency|missed|due)/i.test(key); }
 
 function humanize(key: string) { return key.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase()); }
+
+function categoryFromModule(moduleKey: string) {
+  if (moduleKey.startsWith("patients")) return "patient";
+  if (moduleKey.startsWith("consultations") || moduleKey.startsWith("prescriptions")) return "consultation";
+  if (moduleKey.startsWith("laboratory")) return "laboratory";
+  if (moduleKey.startsWith("imaging")) return "radiology";
+  if (moduleKey.startsWith("admissions") || moduleKey.startsWith("nursing")) return "hospitalization";
+  if (moduleKey.startsWith("surgery") || moduleKey.startsWith("surgeries")) return "surgery";
+  if (moduleKey.startsWith("maternity") || moduleKey.startsWith("pregnancies") || moduleKey.startsWith("prenatal") || moduleKey.startsWith("deliveries")) return "maternity";
+  if (moduleKey.startsWith("pediatrics")) return "pediatrics";
+  if (moduleKey.startsWith("pharmacy")) return "pharmacy";
+  if (moduleKey.startsWith("billing")) return "billing";
+  if (moduleKey.startsWith("accounting")) return "accounting";
+  if (moduleKey.startsWith("insurance")) return "insurance";
+  if (moduleKey.startsWith("ambulances")) return "ambulance";
+  if (moduleKey.startsWith("emergencies")) return "emergency";
+  if (moduleKey.startsWith("reports")) return "reports";
+  return "generic";
+}
+
+function pickDefaultTemplate(templates: PrintTemplate[], moduleKey: string) {
+  return templates.find((template) => template.defaultModule === moduleKey)?.key
+    ?? templates.find((template) => template.category === categoryFromModule(moduleKey))?.key
+    ?? "generic-record";
+}
 
 function operationTitle(kind: OperationKind) {
   return ({ "preview-invoice": "Aperçu de facture", "generate-invoice": "Générer une facture", "pay-invoice": "Encaissement", "validate-lab": "Validation laboratoire", discharge: "Sortie hospitalisation", "stock-movement": "Mouvement de stock", "complete-consultation": "Terminer la consultation", "print-invoice": "Impression", "patient-record": "Dossier patient" } as Record<OperationKind, string>)[kind];
