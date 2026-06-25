@@ -8,6 +8,7 @@ import {
   Bed,
   BriefcaseBusiness,
   CalendarClock,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
@@ -30,6 +31,7 @@ import {
   Warehouse,
 } from "lucide-react";
 import { useParams, usePathname } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { HOSPITAL_GROUPS } from "@/shared/config/hospital-modules";
 import { hospitalText, hospitalUi, localizeHospitalModule } from "@/shared/config/hospital-i18n";
@@ -68,15 +70,20 @@ const icons: Record<string, any> = {
 export default function DashboardSidebar() {
   const { isCollapsed, isMobileOpen, toggleSidebar, closeMobileSidebar } = useSidebar();
   const [searchTerm, setSearchTerm] = useState("");
+  const [openModules, setOpenModules] = useState<Record<string, boolean>>({});
   const params = useParams<{ locale?: string }>();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const locale = params.locale || "fr";
+  const activeResource = searchParams.get("resource");
   const { data: user, isLoading } = useMe();
   const accessibleModules = getAccessibleHospitalModules(user).map((module) => localizeHospitalModule(module, locale));
 
   const filtered = accessibleModules.filter((module) =>
-    `${module.title} ${module.shortTitle ?? ""} ${module.description}`.toLowerCase().includes(searchTerm.toLowerCase())
+    `${module.title} ${module.shortTitle ?? ""} ${module.description} ${module.resources.map((resource) => resource.title).join(" ")}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const toggleModule = (key: string) => setOpenModules((current) => ({ ...current, [key]: !current[key] }));
 
   const sidebarContent = (
       <div className="flex h-full flex-col">
@@ -120,19 +127,51 @@ export default function DashboardSidebar() {
                     const Icon = icons[module.key] || Hospital;
                     const href = `/${locale}/hospital/${module.key}`;
                     const active = pathname?.includes(`/hospital/${module.key}`);
+                    const hasResources = module.resources.length > 1;
+                    const expanded = !isCollapsed && hasResources && (Boolean(openModules[module.key]) || Boolean(active) || Boolean(searchTerm));
                     return (
-                      <Link
-                        key={module.key}
-                        href={href}
-                        title={module.title}
-                        onClick={closeMobileSidebar}
-                        className={`flex items-center gap-4 border-l-4 px-4 py-3 text-sm font-medium transition ${active ? "border-blue-700 bg-blue-50 text-blue-800" : "border-transparent text-slate-700 hover:bg-slate-50"} ${isCollapsed ? "justify-center" : ""}`}
-                      >
-                        <Icon className="size-6 shrink-0" />
-                        {!isCollapsed && (
-                          <span className="min-w-0 flex-1 truncate">{module.shortTitle || module.title}</span>
+                      <div key={module.key}>
+                        {hasResources && !isCollapsed ? (
+                          <button
+                            type="button"
+                            title={module.title}
+                            onClick={() => toggleModule(module.key)}
+                            className={`flex w-full items-center gap-4 border-l-4 px-4 py-3 text-left text-sm font-medium transition ${active ? "border-blue-700 bg-blue-50 text-blue-800" : "border-transparent text-slate-700 hover:bg-slate-50"}`}
+                          >
+                            <Icon className="size-6 shrink-0" />
+                            <span className="min-w-0 flex-1 truncate">{module.shortTitle || module.title}</span>
+                            <ChevronDown className={`size-4 shrink-0 transition ${expanded ? "rotate-180" : ""}`} />
+                          </button>
+                        ) : (
+                          <Link
+                            href={href}
+                            title={module.title}
+                            onClick={closeMobileSidebar}
+                            className={`flex items-center gap-4 border-l-4 px-4 py-3 text-sm font-medium transition ${active ? "border-blue-700 bg-blue-50 text-blue-800" : "border-transparent text-slate-700 hover:bg-slate-50"} ${isCollapsed ? "justify-center" : ""}`}
+                          >
+                            <Icon className="size-6 shrink-0" />
+                            {!isCollapsed && <span className="min-w-0 flex-1 truncate">{module.shortTitle || module.title}</span>}
+                          </Link>
                         )}
-                      </Link>
+
+                        {expanded && (
+                          <div className="mb-2 ml-10 border-l border-slate-200 py-1">
+                            {module.resources.map((resource) => {
+                              const resourceActive = active && ((activeResource || module.resources[0]?.key) === resource.key);
+                              return (
+                                <Link
+                                  key={resource.key}
+                                  href={`${href}?resource=${resource.key}`}
+                                  onClick={closeMobileSidebar}
+                                  className={`block border-l-4 px-3 py-2 text-xs font-normal transition ${resourceActive ? "border-blue-700 bg-blue-50 text-blue-800" : "border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}
+                                >
+                                  <span className="line-clamp-2">{resource.title}</span>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>

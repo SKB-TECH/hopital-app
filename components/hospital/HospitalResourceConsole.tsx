@@ -8,7 +8,6 @@ import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { findHospitalModule } from "@/shared/config/hospital-modules";
 import { hospitalText, hospitalUi, localizeHospitalModule } from "@/shared/config/hospital-i18n";
-import type { HospitalResource } from "@/shared/types/hospital.types";
 import { api } from "@/shared/lib/http/api";
 import { useMe } from "@/shared/hooks/auth.hooks";
 import { canAccessHospitalModule, getFirstAccessibleHospitalModule } from "@/shared/lib/auth/module-access";
@@ -121,10 +120,6 @@ export default function HospitalResourceConsole() {
     }
   };
 
-  const switchResource = (resource: HospitalResource) => {
-    router.push(`/${locale}/hospital/${module.key}?resource=${resource.key}`);
-  };
-
   const openOperation = (kind: OperationKind, row?: any) => {
     setOperation({ kind, row, endpoint: selected.endpoint });
     setOperationForm(defaultOperationForm(kind, row, selected.endpoint));
@@ -229,30 +224,7 @@ export default function HospitalResourceConsole() {
         <main className="p-5 lg:p-8">
           {error && <ProfessionalError message={error} />}
 
-          <div className="grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
-            <aside className="border border-slate-200 bg-white">
-              <div className="border-b border-slate-200 px-5 py-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-700">{hospitalUi(locale, "submodules")}</p>
-                <h2 className="mt-1 text-base font-semibold text-slate-950">{module.shortTitle || module.title}</h2>
-                <p className="mt-1 text-xs font-normal text-slate-500">{hospitalUi(locale, "selectBusinessFunction")}</p>
-              </div>
-              <nav className="p-3">
-                {module.resources.map((resource) => {
-                  const active = resource.key === selected.key;
-                  return (
-                    <button
-                      key={resource.key}
-                      onClick={() => switchResource(resource)}
-                      className={`mb-1.5 flex w-full items-center border-l-4 px-4 py-2.5 text-left transition ${active ? "border-blue-700 bg-blue-50 text-blue-800" : "border-transparent text-slate-700 hover:bg-slate-50"}`}
-                    >
-                      <span className="block text-sm font-medium leading-snug">{resource.title}</span>
-                    </button>
-                  );
-                })}
-              </nav>
-            </aside>
-
-            <section className="space-y-6">
+          <div className="space-y-6">
               <section className="overflow-hidden border border-slate-200 bg-white">
                 <div className="border-b border-slate-200 px-6 py-5">
                   <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
@@ -286,7 +258,6 @@ export default function HospitalResourceConsole() {
                   </table>
                 </div>}
               </section>
-            </section>
           </div>
 
           {operation && (
