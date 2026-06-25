@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authService } from "../services/auth.service";
 import type {
     ForgotPasswordPayload,
-    LoginPayload,
+    HospitalLoginPayload,
     RefreshTokenPayload,
     RegisterOrganizerPayload,
     RegisterPayload,
@@ -26,7 +26,7 @@ export function useRegisterOrganizer() {
 
 export function useLogin() {
     return useMutation({
-        mutationFn: (payload: LoginPayload) => authService.login(payload),
+        mutationFn: (payload: HospitalLoginPayload) => authService.login(payload),
     });
 }
 

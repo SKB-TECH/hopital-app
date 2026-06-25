@@ -21,6 +21,11 @@ export type LoginPayload = {
     password: string;
 };
 
+export type HospitalLoginPayload = {
+    email: string;
+    password: string;
+};
+
 export type RegisterPayload = {
     email: string;
     phone: string;

@@ -51,7 +51,7 @@ export default function LoginPage() {
 
         mutate(
             {
-                identifier: identifier.trim(),
+                email: identifier.trim(),
                 password,
             },
             {

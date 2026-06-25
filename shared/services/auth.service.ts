@@ -1,6 +1,6 @@
 import { api } from "@/shared/lib/http/api";
 import { tokenStore } from "@/shared/lib/tokenStore";
-import type { LoginPayload, RefreshTokenPayload } from "../types/auth.types";
+import type { HospitalLoginPayload, RefreshTokenPayload } from "../types/auth.types";
 
 type HospitalAuthResponse = { accessToken: string; refreshToken: string; user?: unknown };
 function saveAuthTokens(data: HospitalAuthResponse) {
@@ -9,7 +9,7 @@ function saveAuthTokens(data: HospitalAuthResponse) {
 }
 
 export const authService = {
-  async login(payload: LoginPayload): Promise<HospitalAuthResponse> {
+  async login(payload: HospitalLoginPayload): Promise<HospitalAuthResponse> {
     const res = await api.post("/auth/login", payload, { skipAuth: true } as any);
     saveAuthTokens(res.data);
     return res.data;
