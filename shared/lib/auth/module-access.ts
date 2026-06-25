@@ -7,7 +7,13 @@ export type HospitalRole =
   | "DIRECTOR"
   | "MEDICAL_DIRECTOR"
   | "DOCTOR"
+  | "GENERAL_PRACTITIONER"
+  | "GYNECOLOGIST"
+  | "OBSTETRICIAN"
+  | "PEDIATRICIAN"
+  | "SURGEON"
   | "NURSE"
+  | "MIDWIFE"
   | "RECEPTIONIST"
   | "LAB_TECHNICIAN"
   | "BIOLOGIST"
@@ -18,6 +24,7 @@ export type HospitalRole =
   | "HR"
   | "STOREKEEPER"
   | "AUDITOR"
+  | "MEDICAL_RECORDS_OFFICER"
   | "PATIENT";
 
 const ALL_MODULES = HOSPITAL_MODULES.map((module) => module.key);
@@ -28,7 +35,13 @@ export const ROLE_MODULE_ACCESS: Record<HospitalRole, string[]> = {
   DIRECTOR: ["reports", "patients", "admissions", "billing", "accounting", "hr", "inventory", "procurement"],
   MEDICAL_DIRECTOR: ["reports", "patients", "emr", "consultations", "appointments", "emergencies", "admissions", "nursing", "surgery", "icu", "laboratory", "imaging", "pharmacy", "blood-bank", "maternity", "pediatrics"],
   DOCTOR: ["patients", "emr", "consultations", "appointments", "emergencies", "admissions", "nursing", "surgery", "icu", "laboratory", "imaging", "pharmacy", "blood-bank", "maternity", "pediatrics"],
+  GENERAL_PRACTITIONER: ["patients", "emr", "consultations", "appointments", "emergencies", "admissions", "nursing", "icu", "laboratory", "imaging", "pharmacy"],
+  GYNECOLOGIST: ["patients", "emr", "consultations", "appointments", "emergencies", "admissions", "nursing", "laboratory", "imaging", "pharmacy", "blood-bank", "maternity"],
+  OBSTETRICIAN: ["patients", "emr", "consultations", "appointments", "emergencies", "admissions", "nursing", "laboratory", "imaging", "pharmacy", "blood-bank", "maternity", "pediatrics"],
+  PEDIATRICIAN: ["patients", "emr", "consultations", "appointments", "emergencies", "admissions", "nursing", "icu", "laboratory", "imaging", "pharmacy", "pediatrics"],
+  SURGEON: ["patients", "emr", "consultations", "appointments", "emergencies", "admissions", "nursing", "surgery", "icu", "laboratory", "imaging", "pharmacy", "blood-bank"],
   NURSE: ["patients", "appointments", "emergencies", "admissions", "nursing", "icu", "maternity", "pediatrics", "pharmacy"],
+  MIDWIFE: ["patients", "appointments", "emergencies", "admissions", "nursing", "maternity", "pediatrics", "pharmacy"],
   RECEPTIONIST: ["patients", "reception", "appointments", "admissions", "insurance"],
   LAB_TECHNICIAN: ["patients", "laboratory"],
   BIOLOGIST: ["patients", "laboratory"],
@@ -39,6 +52,7 @@ export const ROLE_MODULE_ACCESS: Record<HospitalRole, string[]> = {
   HR: ["hr", "reports"],
   STOREKEEPER: ["inventory", "procurement", "pharmacy"],
   AUDITOR: ["reports", "billing", "accounting", "inventory", "administration"],
+  MEDICAL_RECORDS_OFFICER: ["patients", "emr", "reports"],
   PATIENT: [],
 };
 
