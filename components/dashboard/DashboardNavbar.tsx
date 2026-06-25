@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Bell, ChevronDown, CircleUserRound, LogOut, Menu, X } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import LanguageSwitcher from "@/shared/language-switcher";
 import { useLogout, useMe } from "@/shared/hooks/auth.hooks";
@@ -11,8 +11,8 @@ import { notificationsService } from "@/shared/services/notifications.service";
 import { useSidebar } from "@/contexts/SidebarContext";
 
 export default function DashboardNavbar() {
-    const t = useTranslations("dashboard");
     const locale = useLocale();
+    const isEn = locale === "en";
     const router = useRouter();
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
@@ -31,11 +31,11 @@ export default function DashboardNavbar() {
         }
     }, [isError, isLoading, locale, router, user]);
 
-    const fullName = user?.fullName || [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email || "Utilisateur";
+    const fullName = user?.fullName || [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email || (isEn ? "User" : "Utilisateur");
     const role =
         Array.isArray(user?.roles) && user.roles.length > 0
             ? String((user.roles[0] as any)?.name || (user.roles[0] as any)?.label || user.roles[0])
-            : t("roleHospital");
+            : (isEn ? "Hospital role" : "Rôle hospitalier");
     const roles = Array.isArray(user?.roles) ? user.roles.map((item: any) => String(item?.name || item?.label || item)).join(" · ") : "";
 
     const handleLogout = () => {
@@ -71,10 +71,10 @@ export default function DashboardNavbar() {
                             <div className="absolute right-20 top-16 z-50 w-[360px] border border-slate-300 bg-white">
                                 <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
                                     <div>
-                                        <p className="text-sm font-black text-slate-950">Notifications</p>
-                                        <p className="text-xs font-semibold text-slate-500">{Number(unreadCount)} non lue(s)</p>
+                                        <p className="text-sm font-black text-slate-950">{isEn ? "Notifications" : "Notifications"}</p>
+                                        <p className="text-xs font-semibold text-slate-500">{Number(unreadCount)} {isEn ? "unread" : "non lue(s)"}</p>
                                     </div>
-                                    <button onClick={() => markAllRead.mutate()} className="text-xs font-black text-blue-700 hover:underline">Tout marquer lu</button>
+                                    <button onClick={() => markAllRead.mutate()} className="text-xs font-black text-blue-700 hover:underline">{isEn ? "Mark all read" : "Tout marquer lu"}</button>
                                 </div>
                                 <div className="max-h-[420px] overflow-y-auto">
                                     {notifications.length ? notifications.map((item: any) => (
@@ -83,12 +83,12 @@ export default function DashboardNavbar() {
                                                 <div>
                                                     <p className="text-sm font-black text-slate-900">{item.subject || "Notification"}</p>
                                                     <p className="mt-1 line-clamp-2 text-xs font-medium text-slate-500">{stripHtml(item.body)}</p>
-                                                    <p className="mt-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">{item.channel} · {formatDate(item.createdAt)}</p>
+                                                    <p className="mt-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">{item.channel} · {formatDate(item.createdAt, locale)}</p>
                                                 </div>
                                                 {item.status !== "READ" && <span className="mt-1 size-2 shrink-0 bg-blue-700" />}
                                             </div>
                                         </div>
-                                    )) : <p className="p-5 text-sm font-semibold text-slate-500">Aucune notification.</p>}
+                                    )) : <p className="p-5 text-sm font-semibold text-slate-500">{isEn ? "No notification." : "Aucune notification."}</p>}
                                 </div>
                             </div>
                         )}
@@ -109,7 +109,7 @@ export default function DashboardNavbar() {
 
                             <div className="hidden sm:block">
                                 <p className="text-left text-sm font-semibold text-slate-900">
-                                    {isLoading ? "Chargement..." : fullName}
+                                    {isLoading ? (isEn ? "Loading..." : "Chargement...") : fullName}
                                 </p>
                                 <p className="text-left text-xs text-slate-500">
                                     {isLoading ? "" : role}
@@ -131,7 +131,7 @@ export default function DashboardNavbar() {
                                     className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
                                 >
                                     <LogOut className="size-4" />
-                                    {logout.isPending ? "Déconnexion..." : "Déconnexion"}
+                                    {logout.isPending ? (isEn ? "Signing out..." : "Déconnexion...") : (isEn ? "Sign out" : "Déconnexion")}
                                 </button>
                             </div>
                         )}
@@ -148,7 +148,7 @@ function stripHtml(value?: string) {
     return String(value || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function formatDate(value?: string) {
+function formatDate(value?: string, locale = "fr") {
     if (!value) return "";
-    return new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+    return new Intl.DateTimeFormat(locale === "en" ? "en-US" : "fr-FR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 }
