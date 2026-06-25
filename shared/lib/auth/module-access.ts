@@ -29,6 +29,19 @@ export type HospitalRole =
 
 const ALL_MODULES = HOSPITAL_MODULES.map((module) => module.key);
 
+const ROLE_ALIASES: Record<string, HospitalRole> = {
+  CHIRURGIEN: "SURGEON",
+  CHIRURGIENNE: "SURGEON",
+  CHIRURGIE: "SURGEON",
+  SURGERY: "SURGEON",
+  SURGICAL: "SURGEON",
+  MEDECIN: "DOCTOR",
+  MÉDECIN: "DOCTOR",
+  INFIRMIER: "NURSE",
+  INFIRMIERE: "NURSE",
+  INFIRMIÈRE: "NURSE",
+};
+
 export const ROLE_MODULE_ACCESS: Record<HospitalRole, string[]> = {
   SUPER_ADMIN: ALL_MODULES,
   HOSPITAL_ADMIN: ALL_MODULES,
@@ -59,8 +72,13 @@ export const ROLE_MODULE_ACCESS: Record<HospitalRole, string[]> = {
 export function getUserRoles(user: any): HospitalRole[] {
   const roles = Array.isArray(user?.roles) ? user.roles : [];
   return roles
-    .map((role: any) => String(role?.name ?? role?.label ?? role).toUpperCase())
+    .map((role: any) => normalizeRoleName(role?.name ?? role?.label ?? role))
     .filter((role: string): role is HospitalRole => role in ROLE_MODULE_ACCESS);
+}
+
+function normalizeRoleName(value: any) {
+  const role = String(value ?? "").trim().toUpperCase();
+  return ROLE_ALIASES[role] ?? role;
 }
 
 export function canAccessHospitalModule(user: any, moduleKey?: string) {

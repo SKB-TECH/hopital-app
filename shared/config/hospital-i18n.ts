@@ -27,6 +27,8 @@ const en: Record<string, string> = {
   "Soins Infirmiers": "Nursing Care",
   "Surveillance, constantes, soins, médicaments, tâches et transmissions.": "Monitoring, vitals, care, medication, tasks and handovers.",
   "Bloc Opératoire": "Operating Room",
+  "Chirurgie / Bloc Opératoire": "Surgery / Operating Room",
+  "Chirurgie": "Surgery",
   "Demandes chirurgicales, salles, intervention, récupération et compte rendu.": "Surgery requests, rooms, procedures, recovery and reports.",
   "Réanimation / ICU": "Intensive Care / ICU",
   "Surveillance intensive.": "Intensive monitoring.",
