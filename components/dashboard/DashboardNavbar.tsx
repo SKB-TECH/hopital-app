@@ -8,15 +8,16 @@ import LanguageSwitcher from "@/shared/language-switcher";
 import { useLogout, useMe } from "@/shared/hooks/auth.hooks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notificationsService } from "@/shared/services/notifications.service";
+import { useSidebar } from "@/contexts/SidebarContext";
 
 export default function DashboardNavbar() {
     const t = useTranslations("dashboard");
     const locale = useLocale();
     const router = useRouter();
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
     const queryClient = useQueryClient();
+    const { isMobileOpen, openMobileSidebar, closeMobileSidebar } = useSidebar();
 
     const { data: user, isLoading, isError } = useMe();
     const logout = useLogout();
@@ -52,13 +53,13 @@ export default function DashboardNavbar() {
             <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
                 <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
                     <button
-                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                        className="lg:hidden p-2 rounded hover:bg-slate-100"
+                        onClick={() => isMobileOpen ? closeMobileSidebar() : openMobileSidebar()}
+                        className="lg:hidden p-3 hover:bg-slate-100"
                     >
-                        {isMobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+                        {isMobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
                     </button>
 
-                    <h1 className="text-xl font-bold text-slate-900 lg:hidden">Afia Hospital</h1>
+                    <h1 className="text-base font-semibold text-slate-900 sm:text-xl lg:hidden">Afia-Smart</h1>
 
                     <div className="flex items-center gap-4 ml-auto">
                         <button onClick={() => setNotificationsOpen((value) => !value)} className="relative p-2 rounded hover:bg-slate-100">
@@ -139,25 +140,6 @@ export default function DashboardNavbar() {
                     </div>
                 </div>
             </header>
-
-            {isMobileMenuOpen && (
-                <div className="fixed inset-0 z-30 lg:hidden">
-                    <div
-                        className="absolute inset-0 bg-black/50"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                    />
-                    <div className="absolute left-0 top-0 bottom-0 w-64 bg-white shadow-xl">
-                        <div className="p-4 border-b border-slate-100">
-                            <div className="flex items-center gap-2">
-                                <div className="p-2 rounded bg-blue-600 text-white">
-                                    <CircleUserRound className="size-5" />
-                                </div>
-                                <span className="font-bold text-lg">Afia Hospital</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
         </>
     );
 }

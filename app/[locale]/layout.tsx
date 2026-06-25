@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Poppins, Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getMessages } from "next-intl/server";
@@ -9,6 +9,7 @@ import { SidebarProvider } from "@/contexts/SidebarContext";
 import "../globals.css";
 import {ReactQueryProvider} from "@/providers";
 import {Toaster} from "sonner";
+import PWARegister from "@/components/PWARegister";
 
 const poppins = Poppins({
   variable: "--font-sans",
@@ -31,6 +32,12 @@ export const metadata: Metadata = {
   },
   description: siteConfig.description,
   applicationName: siteConfig.name,
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "Afia-Smart",
+    statusBarStyle: "default",
+  },
   keywords: [
     "Afia"
   ],
@@ -51,6 +58,14 @@ export const metadata: Metadata = {
     description: siteConfig.description,
     images: [siteConfig.logo],
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+  themeColor: "#1d4ed8",
 };
 
 export function generateStaticParams() {
@@ -84,6 +99,7 @@ export default async function LocaleLayout({
           <div className="flex min-h-screen flex-col">
             <main className="flex-1">
               <ReactQueryProvider>
+                <PWARegister />
                 {children}
               </ReactQueryProvider>
               <Toaster

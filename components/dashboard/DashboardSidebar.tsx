@@ -65,7 +65,7 @@ const icons: Record<string, any> = {
 };
 
 export default function DashboardSidebar() {
-  const { isCollapsed, toggleSidebar } = useSidebar();
+  const { isCollapsed, isMobileOpen, toggleSidebar, closeMobileSidebar } = useSidebar();
   const [searchTerm, setSearchTerm] = useState("");
   const params = useParams<{ locale?: string }>();
   const pathname = usePathname();
@@ -77,8 +77,7 @@ export default function DashboardSidebar() {
     `${module.title} ${module.shortTitle ?? ""} ${module.description}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  return (
-    <aside className={`fixed left-0 top-0 z-50 h-full border-r border-slate-200 bg-white transition-all duration-300 ${isCollapsed ? "w-[84px]" : "w-[340px]"}`}>
+  const sidebarContent = (
       <div className="flex h-full flex-col">
         <div className="flex h-24 items-center justify-between border-b border-slate-200 px-6">
           <Link href={`/${locale}/overview`} className="flex items-center gap-4">
@@ -105,7 +104,7 @@ export default function DashboardSidebar() {
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 pb-6 pt-4">
-          <Link href={`/${locale}/overview`} className={`mb-5 flex items-center gap-4 border-l-4 px-4 py-3 text-sm font-medium ${pathname?.includes('/overview') ? "border-blue-700 bg-blue-50 text-blue-800" : "border-transparent text-slate-700 hover:bg-slate-50"}`}>
+          <Link onClick={closeMobileSidebar} href={`/${locale}/overview`} className={`mb-5 flex items-center gap-4 border-l-4 px-4 py-3 text-sm font-medium ${pathname?.includes('/overview') ? "border-blue-700 bg-blue-50 text-blue-800" : "border-transparent text-slate-700 hover:bg-slate-50"}`}>
             <BarChart3 className="size-6 shrink-0" />{!isCollapsed && <span>Vue globale</span>}
           </Link>
 
@@ -125,6 +124,7 @@ export default function DashboardSidebar() {
                         key={module.key}
                         href={href}
                         title={module.title}
+                        onClick={closeMobileSidebar}
                         className={`flex items-center gap-4 border-l-4 px-4 py-3 text-sm font-medium transition ${active ? "border-blue-700 bg-blue-50 text-blue-800" : "border-transparent text-slate-700 hover:bg-slate-50"} ${isCollapsed ? "justify-center" : ""}`}
                       >
                         <Icon className="size-6 shrink-0" />
@@ -147,6 +147,22 @@ export default function DashboardSidebar() {
           )}
         </div>
       </div>
-    </aside>
+  );
+
+  return (
+    <>
+      <aside className={`fixed left-0 top-0 z-50 hidden h-full border-r border-slate-200 bg-white transition-all duration-300 lg:block ${isCollapsed ? "w-[84px]" : "w-[340px]"}`}>
+        {sidebarContent}
+      </aside>
+
+      {isMobileOpen && (
+        <div className="fixed inset-0 z-[75] lg:hidden">
+          <button aria-label="Fermer le menu" className="absolute inset-0 bg-slate-950/50" onClick={closeMobileSidebar} />
+          <aside className="absolute bottom-0 left-0 top-0 w-[86vw] max-w-[340px] border-r border-slate-200 bg-white">
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

@@ -119,8 +119,8 @@ export default function HospitalResourceConsole() {
   };
 
   const openOperation = (kind: OperationKind, row?: any) => {
-    setOperation({ kind, row });
-    setOperationForm(defaultOperationForm(kind, row));
+    setOperation({ kind, row, endpoint: selected.endpoint });
+    setOperationForm(defaultOperationForm(kind, row, selected.endpoint));
   };
 
   const submitOperation = async () => {
@@ -152,6 +152,9 @@ export default function HospitalResourceConsole() {
       }
       if (operation.kind === "stock-movement") {
         await api.post("/inventory/items/movements", cleanObject(operationForm));
+      }
+      if (operation.kind === "change-status" && operation.row?.id && operation.endpoint) {
+        await api.patch(`${operation.endpoint}/${operation.row.id}`, cleanObject(operationForm));
       }
       setOperation(null);
       await load();
@@ -332,8 +335,8 @@ export default function HospitalResourceConsole() {
 }
 
 
-type OperationKind = "preview-invoice" | "generate-invoice" | "pay-invoice" | "validate-lab" | "discharge" | "stock-movement" | "complete-consultation" | "print-invoice" | "patient-record";
-type OperationState = { kind: OperationKind; row?: any };
+type OperationKind = "preview-invoice" | "generate-invoice" | "pay-invoice" | "validate-lab" | "discharge" | "stock-movement" | "complete-consultation" | "change-status" | "print-invoice" | "patient-record";
+type OperationState = { kind: OperationKind; row?: any; endpoint?: string };
 
 type OperationAction = { kind: OperationKind; label: string; icon: any };
 
@@ -356,6 +359,7 @@ function getRowActions(endpoint: string, row: any): OperationAction[] {
   if (endpoint === "/laboratory/results" && !row?.validatedAt) actions.push({ kind: "validate-lab", label: "Valider résultat", icon: CheckCircle2 });
   if (endpoint === "/consultations" && row?.status !== "COMPLETED") actions.push({ kind: "complete-consultation", label: "Terminer consultation", icon: CheckCircle2 });
   if (endpoint === "/admissions" && row?.status !== "DISCHARGED") actions.push({ kind: "discharge", label: "Sortie patient", icon: FileText });
+  if (row?.status && nextStatuses(endpoint, row.status).length) actions.push({ kind: "change-status", label: "Changer statut", icon: CheckCircle2 });
   return actions;
 }
 
@@ -363,12 +367,13 @@ function handlePrimaryView(endpoint: string, row: any, router: ReturnType<typeof
   if (endpoint === "/patients" && row?.id) router.push(`/${locale}/hospital/patients/${row.id}`);
 }
 
-function defaultOperationForm(kind: OperationKind, row?: any) {
+function defaultOperationForm(kind: OperationKind, row?: any, endpoint = "") {
   if (kind === "preview-invoice" || kind === "generate-invoice") return { patientId: row?.patientId ?? "", admissionId: row?.admissionId ?? "", from: "", to: "" };
   if (kind === "pay-invoice") return { amount: row?.balanceDue ?? "", method: "CASH", reference: "" };
   if (kind === "discharge") return { summary: "" };
   if (kind === "complete-consultation") return { assessment: row?.assessment ?? "", plan: row?.plan ?? "", notes: row?.notes ?? "" };
   if (kind === "stock-movement") return { stockItemId: row?.id ?? "", type: "RECEIPT", quantity: 1, reference: "" };
+  if (kind === "change-status") return { status: nextStatuses(endpoint, row?.status)[0] ?? "", administeredAt: "", notes: "" };
   return {};
 }
 
@@ -679,6 +684,15 @@ function OperationDialog({ operation, form, setForm, posting, onClose, onSubmit 
           <SelectField label="Type" value={form.type} onChange={(v) => setForm({ ...form, type: v })} options={["RECEIPT", "ISSUE", "TRANSFER", "ADJUSTMENT"]} />
           <TextField type="number" label="Quantité" value={form.quantity} onChange={(v) => setForm({ ...form, quantity: Number(v) })} />
           <TextField label="Référence" value={form.reference} onChange={(v) => setForm({ ...form, reference: v })} />
+        </> : null}
+        {operation.kind === "change-status" ? <>
+          <div className="border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-black uppercase tracking-wide text-slate-500">Statut actuel</p>
+            <p className="mt-1 text-lg font-black text-slate-950">{operation.row?.status ?? "-"}</p>
+          </div>
+          <SelectField label="Nouveau statut" value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={nextStatuses(operation.endpoint ?? "", operation.row?.status)} />
+          {operation.endpoint === "/nursing/medications" && form.status === "ADMINISTERED" ? <TextField type="datetime-local" label="Administré le" value={form.administeredAt} onChange={(v) => setForm({ ...form, administeredAt: v })} /> : null}
+          <TextAreaField label="Notes / justification" value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} />
         </> : null}
         {operation.kind === "validate-lab" ? <p className="border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">Confirmer la validation biologique de ce résultat. Cette action engage le validateur.</p> : null}
         <div className="flex justify-end gap-3 border-t border-slate-200 pt-5">
