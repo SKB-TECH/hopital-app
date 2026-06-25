@@ -154,7 +154,10 @@ export default function HospitalResourceConsole() {
         await api.post("/inventory/items/movements", cleanObject(operationForm));
       }
       if (operation.kind === "change-status" && operation.row?.id && operation.endpoint) {
-        await api.patch(`${operation.endpoint}/${operation.row.id}`, cleanObject(operationForm));
+        const payload: Record<string, any> = { status: operationForm.status };
+        if (operation.endpoint === "/nursing/medications" && operationForm.administeredAt) payload.administeredAt = operationForm.administeredAt;
+        if (operation.row && Object.prototype.hasOwnProperty.call(operation.row, "notes") && operationForm.notes) payload.notes = operationForm.notes;
+        await api.patch(`${operation.endpoint}/${operation.row.id}`, payload);
       }
       setOperation(null);
       await load();
@@ -810,7 +813,7 @@ function pickDefaultTemplate(templates: PrintTemplate[], moduleKey: string) {
 }
 
 function operationTitle(kind: OperationKind) {
-  return ({ "preview-invoice": "Aperçu de facture", "generate-invoice": "Générer une facture", "pay-invoice": "Encaissement", "validate-lab": "Validation laboratoire", discharge: "Sortie hospitalisation", "stock-movement": "Mouvement de stock", "complete-consultation": "Terminer la consultation", "print-invoice": "Impression", "patient-record": "Dossier patient" } as Record<OperationKind, string>)[kind];
+  return ({ "preview-invoice": "Aperçu de facture", "generate-invoice": "Générer une facture", "pay-invoice": "Encaissement", "validate-lab": "Validation laboratoire", discharge: "Sortie hospitalisation", "stock-movement": "Mouvement de stock", "complete-consultation": "Terminer la consultation", "change-status": "Changer le statut", "print-invoice": "Impression", "patient-record": "Dossier patient" } as Record<OperationKind, string>)[kind];
 }
 
 function validateOperation(kind: OperationKind, form: Record<string, any>) {
@@ -821,6 +824,41 @@ function validateOperation(kind: OperationKind, form: Record<string, any>) {
   if (kind === "stock-movement" && (!Number.isFinite(Number(form.quantity)) || Number(form.quantity) <= 0)) throw new Error("La quantité du mouvement de stock doit être supérieure à 0.");
   if (kind === "discharge" && !String(form.summary ?? "").trim()) throw new Error("Le résumé de sortie est obligatoire.");
   if (kind === "complete-consultation" && (!String(form.assessment ?? "").trim() || !String(form.plan ?? "").trim())) throw new Error("Le diagnostic et le plan de traitement sont obligatoires.");
+  if (kind === "change-status" && !String(form.status ?? "").trim()) throw new Error("Sélectionnez le nouveau statut.");
+  if (kind === "change-status" && form.status === "ADMINISTERED" && "administeredAt" in form && !String(form.administeredAt ?? "").trim()) throw new Error("La date d’administration est obligatoire.");
+}
+
+function nextStatuses(endpoint: string, current?: string) {
+  const key = endpoint.replace(/^\//, "") === "surgery" ? "surgeries" : endpoint.replace(/^\//, "");
+  const transitions: Record<string, Record<string, string[]>> = {
+    "laboratory/orders": { ORDERED: ["COLLECTED", "IN_PROGRESS", "CANCELLED"], COLLECTED: ["IN_PROGRESS", "VALIDATED", "CANCELLED"], IN_PROGRESS: ["VALIDATED", "CANCELLED"] },
+    "laboratory/samples": { PENDING: ["COLLECTED", "RECEIVED", "REJECTED"], COLLECTED: ["RECEIVED", "REJECTED"], RECEIVED: ["IN_ANALYSIS", "REJECTED"], IN_ANALYSIS: ["DONE", "REJECTED"] },
+    "imaging/orders": { ORDERED: ["IN_PROGRESS", "VALIDATED", "CANCELLED"], IN_PROGRESS: ["VALIDATED", "CANCELLED"] },
+    "nursing/tasks": { PENDING: ["DONE", "MISSED", "CANCELLED"] },
+    "nursing/medications": { SCHEDULED: ["ADMINISTERED", "MISSED", "REFUSED", "CANCELLED"] },
+    "nursing/handovers": { DRAFT: ["SIGNED", "ARCHIVED"], SIGNED: ["ARCHIVED"] },
+    "icu/care-plans": { ACTIVE: ["COMPLETED", "CANCELLED"] },
+    "icu/transfers": { REQUESTED: ["APPROVED", "CANCELLED", "DECEASED"], APPROVED: ["TRANSFERRED", "CANCELLED", "DECEASED"] },
+    surgeries: { SCHEDULED: ["IN_PROGRESS", "COMPLETED", "CANCELLED"], IN_PROGRESS: ["COMPLETED", "CANCELLED"] },
+    "surgery/requests": { REQUESTED: ["APPROVED", "SCHEDULED", "CANCELLED"], APPROVED: ["SCHEDULED", "CANCELLED"], SCHEDULED: ["COMPLETED", "CANCELLED"] },
+    "surgery/recoveries": { RECOVERY: ["STABLE", "TRANSFERRED", "COMPLICATION"], STABLE: ["TRANSFERRED"], COMPLICATION: ["STABLE", "TRANSFERRED"] },
+    "blood-bank/products": { AVAILABLE: ["RESERVED", "ISSUED", "EXPIRED", "DISCARDED"], RESERVED: ["AVAILABLE", "ISSUED", "DISCARDED"] },
+    "blood-bank/collections": { COLLECTED: ["VALIDATED", "REJECTED"] },
+    "blood-bank/requests": { REQUESTED: ["APPROVED", "CANCELLED"], APPROVED: ["RESERVED", "ISSUED", "CANCELLED"], RESERVED: ["ISSUED", "CANCELLED"] },
+    "blood-bank/crossmatches": { PENDING: ["COMPATIBLE", "INCOMPATIBLE"] },
+    "blood-bank/transfusions": { ORDERED: ["ADMINISTERED", "REACTION", "CANCELLED"], ADMINISTERED: ["REACTION"] },
+    pregnancies: { ACTIVE: ["DELIVERED", "CANCELLED", "CLOSED"], DELIVERED: ["CLOSED"] },
+    "insurance/claims": { SUBMITTED: ["APPROVED", "REJECTED", "PAID"], APPROVED: ["PAID", "REJECTED"] },
+    "procurement/orders": { DRAFT: ["SENT", "CANCELLED"], SENT: ["RECEIVED", "CANCELLED"] },
+    "hr/employees": { PROBATION: ["ACTIVE", "SUSPENDED", "TERMINATED", "RESIGNED"], ACTIVE: ["ON_LEAVE", "SUSPENDED", "RETIRED", "TERMINATED", "RESIGNED"], ON_LEAVE: ["ACTIVE", "SUSPENDED"], SUSPENDED: ["ACTIVE", "TERMINATED", "RESIGNED"] },
+    "hr/contracts": { DRAFT: ["ACTIVE", "TERMINATED", "EXPIRED"], ACTIVE: ["RENEWED", "TERMINATED", "EXPIRED"], RENEWED: ["ACTIVE", "TERMINATED", "EXPIRED"] },
+    "hr/leave-requests": { REQUESTED: ["SUPERVISOR_APPROVED", "REJECTED", "CANCELLED"], SUPERVISOR_APPROVED: ["HR_APPROVED", "REJECTED"], HR_APPROVED: ["ACTIVE", "CANCELLED"], ACTIVE: ["COMPLETED", "CANCELLED"] },
+    "hr/payroll-periods": { OPEN: ["PROCESSING", "LOCKED", "CANCELLED"], PROCESSING: ["OPEN", "LOCKED", "CANCELLED"] },
+    "hr/payroll-runs": { DRAFT: ["VALIDATED", "CANCELLED"], VALIDATED: ["LOCKED", "CANCELLED"] },
+    "hr/payslips": { DRAFT: ["PUBLISHED", "CANCELLED"], PUBLISHED: ["PAID"] },
+    "hr/documents": { PENDING: ["APPROVED", "REJECTED"], APPROVED: ["ARCHIVED"], REJECTED: ["PENDING"] },
+  };
+  return transitions[key]?.[String(current ?? "")] ?? [];
 }
 
 function TextField({ label, value, onChange, type = "text" }: { label: string; value: any; onChange: (value: any) => void; type?: string }) {
