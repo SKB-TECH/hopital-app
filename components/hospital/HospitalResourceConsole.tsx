@@ -13,6 +13,7 @@ import Autocomplete, { type AutocompleteOption } from "@/components/ui/autocompl
 import { printService, type PrintTemplate } from "@/shared/services/print.service";
 import { useMe } from "@/shared/hooks/auth.hooks";
 import { canAccessHospitalModule, getFirstAccessibleHospitalModule } from "@/shared/lib/auth/module-access";
+import RichTextEditor from "@/components/forms/RichTextEditor";
 
 export default function HospitalResourceConsole() {
   const params = useParams<{ locale: string; module?: string }>();
@@ -893,14 +894,15 @@ function FieldInput({ field, value, onChange }: { field: HospitalField; value: a
         <datalist id={datalistId}>{(field.options ?? []).map((option) => <option key={option.value} value={option.value} />)}</datalist>
       </> :
       field.type === "select" ? <select value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} className={base}><option value="">-</option>{(field.options ?? []).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select> :
-      field.type === "textarea" || field.type === "json" ? <textarea value={typeof value === "string" ? value : JSON.stringify(value ?? {}, null, 2)} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder} className={`${base} h-28 font-mono text-xs`} /> :
+      field.type === "json" ? <RichTextEditor value={jsonValueToEditor(value)} onChange={onChange} minHeight="min-h-32" /> :
+      field.type === "textarea" ? <textarea value={typeof value === "string" ? value : JSON.stringify(value ?? {}, null, 2)} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder} className={`${base} h-28 text-sm`} /> :
       field.type === "checkbox" ? <input type="checkbox" checked={Boolean(value)} onChange={(e) => onChange(e.target.checked)} /> :
       <input type={field.type === "number" ? "number" : field.type === "date" ? "date" : field.type === "datetime" ? "datetime-local" : field.name === "password" ? "password" : "text"} value={value ?? ""} onChange={(e) => onChange(field.type === "number" ? Number(e.target.value) : e.target.value)} placeholder={field.name === "password" ? "Minimum 10 caractères" : field.placeholder} className={base} />}
   </label>;
 }
 function relationLabel(row: Record<string, any>, keys: string[]) { return keys.map((key) => formatValue(row[key])).filter((value) => value && value !== "-").join(" · ") || row.id || "-"; }
 function normalizeRows(data: any): any[] { if (Array.isArray(data)) return data; if (Array.isArray(data?.data)) return data.data; if (Array.isArray(data?.items)) return data.items; return data && typeof data === "object" ? [data] : []; }
-function defaultForm(fields: HospitalField[], row?: Record<string, any>) { return Object.fromEntries(fields.map((field) => [field.name, row?.[field.name] ?? (field.type === "json" ? (field.placeholder ?? "{}") : field.type === "number" ? 0 : field.type === "checkbox" ? false : field.type === "multiselect" ? [] : field.name === "active" ? "true" : "")])); }
+function defaultForm(fields: HospitalField[], row?: Record<string, any>) { return Object.fromEntries(fields.map((field) => [field.name, row?.[field.name] ?? (field.type === "json" ? "" : field.type === "number" ? 0 : field.type === "checkbox" ? false : field.type === "multiselect" ? [] : field.name === "active" ? "true" : "")])); }
 function parseJsonPayload(value: string) {
   try {
     return JSON.parse(value || "{}");
@@ -930,7 +932,7 @@ function cleanPayload(form: Record<string, any>, fields: HospitalField[]) {
       try {
         out[field.name] = JSON.parse(value || "{}");
       } catch {
-        throw new Error(`${field.label} contient un JSON invalide`);
+        out[field.name] = { content: value, format: "html" };
       }
       if (field.required && ((Array.isArray(out[field.name]) && out[field.name].length === 0) || (!Array.isArray(out[field.name]) && typeof out[field.name] === "object" && Object.keys(out[field.name] ?? {}).length === 0))) throw new Error(`${field.label} est obligatoire`);
       continue;
@@ -941,3 +943,12 @@ function cleanPayload(form: Record<string, any>, fields: HospitalField[]) {
 }
 function formatValue(value: any) { if (value === null || value === undefined || value === "") return "-"; if (typeof value === "object") return JSON.stringify(value); return String(value); }
 function readError(err: any) { const msg = err?.response?.data?.message ?? err?.response?.data?.detail ?? err?.message; return Array.isArray(msg) ? msg.join(", ") : String(msg || "Erreur inconnue"); }
+function jsonValueToEditor(value: any) {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "object" && typeof value.content === "string") return value.content;
+  return `<pre>${escapeHtml(JSON.stringify(value, null, 2))}</pre>`;
+}
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char] ?? char));
+}
