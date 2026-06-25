@@ -31,8 +31,10 @@ import {
 } from "lucide-react";
 import { useParams, usePathname } from "next/navigation";
 import { useSidebar } from "@/contexts/SidebarContext";
-import { HOSPITAL_GROUPS, HOSPITAL_MODULES } from "@/shared/config/hospital-modules";
+import { HOSPITAL_GROUPS } from "@/shared/config/hospital-modules";
 import Image from "next/image";
+import { useMe } from "@/shared/hooks/auth.hooks";
+import { getAccessibleHospitalModules } from "@/shared/lib/auth/module-access";
 
 const icons: Record<string, any> = {
   patients: UserRound,
@@ -68,8 +70,10 @@ export default function DashboardSidebar() {
   const params = useParams<{ locale?: string }>();
   const pathname = usePathname();
   const locale = params.locale || "fr";
+  const { data: user, isLoading } = useMe();
+  const accessibleModules = getAccessibleHospitalModules(user);
 
-  const filtered = HOSPITAL_MODULES.filter((module) =>
+  const filtered = accessibleModules.filter((module) =>
     `${module.title} ${module.shortTitle ?? ""} ${module.description}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -134,6 +138,13 @@ export default function DashboardSidebar() {
               </div>
             );
           })}
+
+          {!isLoading && !filtered.length && !isCollapsed && (
+            <div className="mx-4 border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm font-black text-amber-900">Aucun module assigné</p>
+              <p className="mt-1 text-xs font-semibold text-amber-800">Demandez à l’administrateur de vérifier vos rôles.</p>
+            </div>
+          )}
         </div>
       </div>
     </aside>
