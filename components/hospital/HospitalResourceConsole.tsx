@@ -91,7 +91,11 @@ export default function HospitalResourceConsole() {
     setPosting(true);
     setError("");
     try {
-      const payload = mode === "json" ? parseJsonPayload(rawJson) : cleanPayload(form, selected.fields);
+      const effectiveFields = editingRow?.id && selected.endpoint === "/users" ? selected.fields.filter((field) => field.name !== "password") : selected.fields;
+      const payload = mode === "json" ? parseJsonPayload(rawJson) : cleanPayload(form, effectiveFields);
+      if (editingRow?.id && selected.endpoint === "/users") {
+        delete payload.password;
+      }
       if (editingRow?.id && selected.canUpdate !== false) {
         await api.patch(`${selected.endpoint}/${editingRow.id}`, payload);
       } else {
@@ -214,9 +218,9 @@ export default function HospitalResourceConsole() {
           <div className="grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
             <aside className="border border-slate-200 bg-white">
               <div className="border-b border-slate-200 px-5 py-4">
-                <p className="text-[11px] font-black uppercase tracking-[0.14em] text-blue-700">Sous-modules</p>
-                <h2 className="mt-1 text-lg font-black text-slate-950">{module.shortTitle || module.title}</h2>
-                <p className="mt-1 text-xs font-medium text-slate-500">Sélectionnez une fonction métier.</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-700">Sous-modules</p>
+                <h2 className="mt-1 text-base font-semibold text-slate-950">{module.shortTitle || module.title}</h2>
+                <p className="mt-1 text-xs font-normal text-slate-500">Sélectionnez une fonction métier.</p>
               </div>
               <nav className="p-3">
                 {module.resources.map((resource) => {
@@ -225,9 +229,9 @@ export default function HospitalResourceConsole() {
                     <button
                       key={resource.key}
                       onClick={() => switchResource(resource)}
-                      className={`mb-1.5 flex w-full items-center border-l-4 px-4 py-3 text-left transition ${active ? "border-blue-700 bg-blue-50 text-blue-800" : "border-transparent text-slate-700 hover:bg-slate-50"}`}
+                      className={`mb-1.5 flex w-full items-center border-l-4 px-4 py-2.5 text-left transition ${active ? "border-blue-700 bg-blue-50 text-blue-800" : "border-transparent text-slate-700 hover:bg-slate-50"}`}
                     >
-                      <span className="block text-sm font-extrabold leading-snug">{resource.title}</span>
+                      <span className="block text-sm font-medium leading-snug">{resource.title}</span>
                     </button>
                   );
                 })}
@@ -869,11 +873,34 @@ function FieldInput({ field, value, onChange }: { field: HospitalField; value: a
     return () => { mounted = false; };
   }, [field.reference?.endpoint]);
 
-  return <label className="block"><span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">{field.label}{field.required ? " *" : ""}</span>{field.reference ? <Autocomplete value={String(value ?? "")} options={options} isLoading={loading} placeholder={field.placeholder || `Sélectionner ${field.label.toLowerCase()}`} searchPlaceholder={`Rechercher ${field.label.toLowerCase()}`} emptyText="Aucun résultat" onSelect={(option) => onChange(option.id)} showIdFallback={false} /> : field.type === "select" ? <select value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} className={base}><option value="">-</option>{(field.options ?? []).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : field.type === "textarea" || field.type === "json" ? <textarea value={typeof value === "string" ? value : JSON.stringify(value ?? {}, null, 2)} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder} className={`${base} h-28 font-mono text-xs`} /> : field.type === "checkbox" ? <input type="checkbox" checked={Boolean(value)} onChange={(e) => onChange(e.target.checked)} /> : <input type={field.type === "number" ? "number" : field.type === "date" ? "date" : field.type === "datetime" ? "datetime-local" : "text"} value={value ?? ""} onChange={(e) => onChange(field.type === "number" ? Number(e.target.value) : e.target.value)} placeholder={field.placeholder} className={base} />}</label>;
+  const datalistId = `list-${field.name}`;
+  const selectedValues = Array.isArray(value) ? value : typeof value === "string" && value ? [value] : [];
+
+  return <label className={field.type === "multiselect" ? "block md:col-span-2" : "block"}>
+    <span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">{field.label}{field.required ? " *" : ""}</span>
+    {field.reference ? <Autocomplete value={String(value ?? "")} options={options} isLoading={loading} placeholder={field.placeholder || `Sélectionner ${field.label.toLowerCase()}`} searchPlaceholder={`Rechercher ${field.label.toLowerCase()}`} emptyText="Aucun résultat" onSelect={(option) => onChange(option.id)} showIdFallback={false} /> :
+      field.type === "multiselect" ? <div className="grid gap-2 border border-slate-200 bg-slate-50 p-3 md:grid-cols-2">
+        {(field.options ?? []).map((option) => {
+          const checked = selectedValues.includes(option.value);
+          return <label key={option.value} className={`flex items-center gap-2 border bg-white px-3 py-2 text-xs font-black ${checked ? "border-blue-700 text-blue-800" : "border-slate-200 text-slate-700"}`}>
+            <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked ? [...selectedValues, option.value] : selectedValues.filter((item) => item !== option.value))} />
+            {option.label}
+          </label>;
+        })}
+      </div> :
+      field.type === "select" && field.allowCustom ? <>
+        <input list={datalistId} value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} placeholder="Sélectionner ou créer..." className={base} />
+        <datalist id={datalistId}>{(field.options ?? []).map((option) => <option key={option.value} value={option.value} />)}</datalist>
+      </> :
+      field.type === "select" ? <select value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} className={base}><option value="">-</option>{(field.options ?? []).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select> :
+      field.type === "textarea" || field.type === "json" ? <textarea value={typeof value === "string" ? value : JSON.stringify(value ?? {}, null, 2)} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder} className={`${base} h-28 font-mono text-xs`} /> :
+      field.type === "checkbox" ? <input type="checkbox" checked={Boolean(value)} onChange={(e) => onChange(e.target.checked)} /> :
+      <input type={field.type === "number" ? "number" : field.type === "date" ? "date" : field.type === "datetime" ? "datetime-local" : field.name === "password" ? "password" : "text"} value={value ?? ""} onChange={(e) => onChange(field.type === "number" ? Number(e.target.value) : e.target.value)} placeholder={field.name === "password" ? "Minimum 10 caractères" : field.placeholder} className={base} />}
+  </label>;
 }
 function relationLabel(row: Record<string, any>, keys: string[]) { return keys.map((key) => formatValue(row[key])).filter((value) => value && value !== "-").join(" · ") || row.id || "-"; }
 function normalizeRows(data: any): any[] { if (Array.isArray(data)) return data; if (Array.isArray(data?.data)) return data.data; if (Array.isArray(data?.items)) return data.items; return data && typeof data === "object" ? [data] : []; }
-function defaultForm(fields: HospitalField[], row?: Record<string, any>) { return Object.fromEntries(fields.map((field) => [field.name, row?.[field.name] ?? (field.type === "json" ? (field.placeholder ?? "{}") : field.type === "number" ? 0 : field.type === "checkbox" ? false : "")])); }
+function defaultForm(fields: HospitalField[], row?: Record<string, any>) { return Object.fromEntries(fields.map((field) => [field.name, row?.[field.name] ?? (field.type === "json" ? (field.placeholder ?? "{}") : field.type === "number" ? 0 : field.type === "checkbox" ? false : field.type === "multiselect" ? [] : field.name === "active" ? "true" : "")])); }
 function parseJsonPayload(value: string) {
   try {
     return JSON.parse(value || "{}");
@@ -886,7 +913,13 @@ function cleanPayload(form: Record<string, any>, fields: HospitalField[]) {
   for (const field of fields) {
     const value = form[field.name];
     if (field.required && (value === "" || value === undefined || value === null || value === "{}" || value === "[]")) throw new Error(`${field.label} est obligatoire`);
+    if (field.required && field.type === "multiselect" && (!Array.isArray(value) || value.length === 0)) throw new Error(`${field.label} est obligatoire`);
     if (value === "" || value === undefined || value === null) continue;
+    if (field.type === "multiselect") {
+      out[field.name] = Array.isArray(value) ? value : String(value).split(",").map((item) => item.trim()).filter(Boolean);
+      continue;
+    }
+    if (field.name === "password" && String(value).length < 10) throw new Error("Le mot de passe doit contenir au moins 10 caractères.");
     if (field.type === "number") {
       const numeric = Number(value);
       if (!Number.isFinite(numeric)) throw new Error(`${field.label} doit être un nombre valide`);

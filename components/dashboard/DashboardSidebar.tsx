@@ -97,7 +97,7 @@ export default function DashboardSidebar() {
           {!isCollapsed ? (
             <label className="flex h-12 items-center gap-3 border border-slate-200 px-4 focus-within:border-blue-700">
               <Search className="size-5 text-slate-400" />
-              <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Rechercher un module" className="w-full bg-transparent text-sm font-semibold outline-none" />
+              <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Rechercher un module" className="w-full bg-transparent text-sm font-normal outline-none" />
             </label>
           ) : (
             <Search className="mx-auto size-5 text-slate-400" />
@@ -105,7 +105,7 @@ export default function DashboardSidebar() {
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 pb-6 pt-4">
-          <Link href={`/${locale}/overview`} className={`mb-5 flex items-center gap-4 border-l-4 px-4 py-3.5 text-base font-black ${pathname?.includes('/overview') ? "border-blue-700 bg-blue-50 text-blue-800" : "border-transparent text-slate-700 hover:bg-slate-50"}`}>
+          <Link href={`/${locale}/overview`} className={`mb-5 flex items-center gap-4 border-l-4 px-4 py-3 text-sm font-medium ${pathname?.includes('/overview') ? "border-blue-700 bg-blue-50 text-blue-800" : "border-transparent text-slate-700 hover:bg-slate-50"}`}>
             <BarChart3 className="size-6 shrink-0" />{!isCollapsed && <span>Vue globale</span>}
           </Link>
 
@@ -114,7 +114,7 @@ export default function DashboardSidebar() {
             if (!modules.length) return null;
             return (
               <div key={group.key} className="mb-7">
-                {!isCollapsed && <p className="mb-3 px-4 text-xs font-black uppercase tracking-[0.16em] text-slate-400">{group.title}</p>}
+                {!isCollapsed && <p className="mb-3 px-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">{group.title}</p>}
                 <div className="space-y-1">
                   {modules.map((module) => {
                     const Icon = icons[module.key] || Hospital;
@@ -125,7 +125,7 @@ export default function DashboardSidebar() {
                         key={module.key}
                         href={href}
                         title={module.title}
-                        className={`flex items-center gap-4 border-l-4 px-4 py-3.5 text-[15px] font-bold transition ${active ? "border-blue-700 bg-blue-50 text-blue-800" : "border-transparent text-slate-700 hover:bg-slate-50"} ${isCollapsed ? "justify-center" : ""}`}
+                        className={`flex items-center gap-4 border-l-4 px-4 py-3 text-sm font-medium transition ${active ? "border-blue-700 bg-blue-50 text-blue-800" : "border-transparent text-slate-700 hover:bg-slate-50"} ${isCollapsed ? "justify-center" : ""}`}
                       >
                         <Icon className="size-6 shrink-0" />
                         {!isCollapsed && (
@@ -141,8 +141,8 @@ export default function DashboardSidebar() {
 
           {!isLoading && !filtered.length && !isCollapsed && (
             <div className="mx-4 border border-amber-200 bg-amber-50 p-4">
-              <p className="text-sm font-black text-amber-900">Aucun module assigné</p>
-              <p className="mt-1 text-xs font-semibold text-amber-800">Demandez à l’administrateur de vérifier vos rôles.</p>
+              <p className="text-sm font-semibold text-amber-900">Aucun module assigné</p>
+              <p className="mt-1 text-xs font-normal text-amber-800">Demandez à l’administrateur de vérifier vos rôles.</p>
             </div>
           )}
         </div>
