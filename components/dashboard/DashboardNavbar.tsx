@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, CircleUserRound, Menu, Star, X } from "lucide-react";
+import { Bell, ChevronDown, CircleUserRound, LogOut, Menu, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import LanguageSwitcher from "@/shared/language-switcher";
-import { useMe } from "@/shared/hooks/auth.hooks";
+import { useLogout, useMe } from "@/shared/hooks/auth.hooks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notificationsService } from "@/shared/services/notifications.service";
 
@@ -15,9 +15,11 @@ export default function DashboardNavbar() {
     const router = useRouter();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [notificationsOpen, setNotificationsOpen] = useState(false);
+    const [profileOpen, setProfileOpen] = useState(false);
     const queryClient = useQueryClient();
 
     const { data: user, isLoading, isError } = useMe();
+    const logout = useLogout();
     const { data: notifications = [] } = useQuery({ queryKey: ["notifications", "list"], queryFn: notificationsService.list, enabled: Boolean(user) });
     const { data: unreadCount = 0 } = useQuery({ queryKey: ["notifications", "unread-count"], queryFn: notificationsService.unreadCount, enabled: Boolean(user), refetchInterval: 60_000 });
     const markAllRead = useMutation({ mutationFn: notificationsService.markAllRead, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["notifications"] }); } });
@@ -33,6 +35,17 @@ export default function DashboardNavbar() {
         Array.isArray(user?.roles) && user.roles.length > 0
             ? String((user.roles[0] as any)?.name || (user.roles[0] as any)?.label || user.roles[0])
             : t("roleHospital");
+    const roles = Array.isArray(user?.roles) ? user.roles.map((item: any) => String(item?.name || item?.label || item)).join(" · ") : "";
+
+    const handleLogout = () => {
+        setProfileOpen(false);
+        logout.mutate(undefined, {
+            onSettled: () => {
+                queryClient.clear();
+                router.replace(`/${locale}`);
+            },
+        });
+    };
 
     return (
         <>
@@ -79,7 +92,7 @@ export default function DashboardNavbar() {
                             </div>
                         )}
 
-                        <div className="flex items-center gap-3">
+                        <button onClick={() => setProfileOpen((value) => !value)} className="relative flex items-center gap-3 border border-transparent px-2 py-1.5 hover:border-slate-200 hover:bg-slate-50">
                             <div className="w-8 h-8 rounded bg-blue-100 flex items-center justify-center overflow-hidden">
                                 {user?.avatarUrl ? (
                                     // eslint-disable-next-line @next/next/no-img-element
@@ -94,14 +107,33 @@ export default function DashboardNavbar() {
                             </div>
 
                             <div className="hidden sm:block">
-                                <p className="text-sm font-semibold text-slate-900">
+                                <p className="text-left text-sm font-semibold text-slate-900">
                                     {isLoading ? "Chargement..." : fullName}
                                 </p>
-                                <p className="text-xs text-slate-500">
+                                <p className="text-left text-xs text-slate-500">
                                     {isLoading ? "" : role}
                                 </p>
                             </div>
-                        </div>
+                            <ChevronDown className="hidden size-4 text-slate-400 sm:block" />
+                        </button>
+
+                        {profileOpen && (
+                            <div className="absolute right-6 top-16 z-50 w-[300px] border border-slate-300 bg-white">
+                                <div className="border-b border-slate-200 px-4 py-4">
+                                    <p className="text-sm font-semibold text-slate-950">{fullName}</p>
+                                    <p className="mt-1 break-all text-xs text-slate-500">{user?.email}</p>
+                                    {roles && <p className="mt-2 text-[11px] font-medium uppercase tracking-wide text-blue-700">{roles}</p>}
+                                </div>
+                                <button
+                                    onClick={handleLogout}
+                                    disabled={logout.isPending}
+                                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+                                >
+                                    <LogOut className="size-4" />
+                                    {logout.isPending ? "Déconnexion..." : "Déconnexion"}
+                                </button>
+                            </div>
+                        )}
 
                         <LanguageSwitcher />
                     </div>
