@@ -8,7 +8,7 @@ import RichTextEditor from "@/components/forms/RichTextEditor";
 import { formatValue, normalizeRows, relationLabel } from "./utils";
 import { ModulePermissionsEditor } from "./ModulePermissionsEditor";
 
-export function FieldInput({ field, value, onChange, locale = "fr" }: { field: HospitalField; value: any; onChange: (value: any) => void; locale?: string }) {
+export function FieldInput({ field, value, onChange, locale = "fr", form }: { field: HospitalField; value: any; onChange: (value: any) => void; locale?: string; form?: Record<string, any> }) {
   const base = "w-full border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-semibold outline-none focus:border-blue-700 focus:bg-white";
   const [options, setOptions] = useState<AutocompleteOption[]>([]);
   const [loading, setLoading] = useState(false);
@@ -38,7 +38,7 @@ export function FieldInput({ field, value, onChange, locale = "fr" }: { field: H
     <label className={field.type === "multiselect" || field.type === "module-permissions" ? "block md:col-span-2" : "block"}>
       <span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">{field.label}{field.required ? " *" : ""}</span>
       {field.type === "module-permissions" ? (
-        <ModulePermissionsEditor value={value} onChange={onChange} locale={locale} />
+        <ModulePermissionsEditor value={value} roles={form?.roles} onChange={onChange} locale={locale} />
       ) : field.reference ? (
         <Autocomplete value={String(value ?? "")} options={options} isLoading={loading} placeholder={field.placeholder || `${locale === "en" ? "Select" : "Sélectionner"} ${field.label.toLowerCase()}`} searchPlaceholder={`${locale === "en" ? "Search" : "Rechercher"} ${field.label.toLowerCase()}`} emptyText={locale === "en" ? "No result" : "Aucun résultat"} onSelect={(option) => onChange(option.id)} showIdFallback={false} />
       ) : field.type === "multiselect" ? (

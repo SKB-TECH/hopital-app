@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { HOSPITAL_GROUPS, HOSPITAL_MODULES } from "@/shared/config/hospital-modules";
 import { hospitalText, localizeHospitalModule } from "@/shared/config/hospital-i18n";
-import type { ModulePermissionAction, ModulePermissionAssignment, ModulePermissionScope } from "@/shared/lib/auth/module-access";
+import { ROLE_MODULE_ACCESS, type HospitalRole, type ModulePermissionAction, type ModulePermissionAssignment, type ModulePermissionScope } from "@/shared/lib/auth/module-access";
 
 const ACTIONS: ModulePermissionAction[] = ["VIEW", "CREATE", "UPDATE", "VALIDATE", "DELETE", "PRINT", "EXPORT", "ADMIN"];
 const SCOPES: ModulePermissionScope[] = ["OWN", "TEAM", "DEPARTMENT", "FACILITY", "ORGANIZATION"];
@@ -26,10 +26,18 @@ const SCOPE_LABELS: Record<ModulePermissionScope, string> = {
   ORGANIZATION: "Organisation",
 };
 
-export function ModulePermissionsEditor({ value, onChange, locale = "fr" }: { value: any; onChange: (value: ModulePermissionAssignment[]) => void; locale?: string }) {
+export function ModulePermissionsEditor({ value, roles, onChange, locale = "fr" }: { value: any; roles?: any; onChange: (value: ModulePermissionAssignment[]) => void; locale?: string }) {
   const assignments = useMemo(() => normalize(value), [value]);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ clinical: true, operations: true, diagnostics: true, finance: true, admin: true });
-  const localized = useMemo(() => HOSPITAL_MODULES.map((module) => localizeHospitalModule(module, locale)), [locale]);
+  const selectedRoles = useMemo(() => normalizeRoles(roles), [roles]);
+  const allowedModuleKeys = useMemo(() => allowedModulesForRoles(selectedRoles), [selectedRoles]);
+  const localized = useMemo(() => HOSPITAL_MODULES.filter((module) => allowedModuleKeys.has(module.key)).map((module) => localizeHospitalModule(module, locale)), [allowedModuleKeys, locale]);
+
+  useEffect(() => {
+    if (!selectedRoles.length) return;
+    const next = assignments.filter((assignment) => allowedModuleKeys.has(assignment.moduleKey));
+    if (next.length !== assignments.length) onChange(next);
+  }, [allowedModuleKeys, assignments, onChange, selectedRoles.length]);
 
   const setAssignment = (assignment: ModulePermissionAssignment) => {
     const next = assignments.filter((item) => keyOf(item) !== keyOf(assignment));
@@ -59,10 +67,14 @@ export function ModulePermissionsEditor({ value, onChange, locale = "fr" }: { va
       <div className="w-full overflow-hidden border border-slate-200 bg-white">
         <div className="border-b border-slate-200 bg-slate-50 px-3 py-3 sm:px-4">
           <p className="text-sm font-black text-slate-900">Permissions par module</p>
-          <p className="mt-1 text-xs font-medium text-slate-500">Sélectionnez les sous-modules, les actions autorisées et le niveau de portée.</p>
+          <p className="mt-1 text-xs font-medium text-slate-500">{selectedRoles.length ? "Les modules affichés correspondent aux rôles sélectionnés." : "Choisissez d’abord un ou plusieurs rôles utilisateur."}</p>
         </div>
 
-        <div className="divide-y divide-slate-200">
+        {!selectedRoles.length ? (
+          <div className="p-5 text-sm font-semibold text-slate-500">Sélectionnez un rôle, par exemple Réceptionniste, Médecin, Caissier ou Pharmacien, pour afficher uniquement ses modules.</div>
+        ) : !localized.length ? (
+          <div className="p-5 text-sm font-semibold text-amber-800">Aucun module métier n’est prévu pour ce rôle.</div>
+        ) : <div className="divide-y divide-slate-200">
           {HOSPITAL_GROUPS.map((group) => {
             const modules = localized.filter((module) => module.group === group.key);
             const open = openGroups[group.key] ?? false;
@@ -125,7 +137,7 @@ export function ModulePermissionsEditor({ value, onChange, locale = "fr" }: { va
               </div>
             );
           })}
-        </div>
+        </div>}
       </div>
     </div>
   );
@@ -153,4 +165,18 @@ function keyOf(assignment: ModulePermissionAssignment) {
 
 function sortAssignments(assignments: ModulePermissionAssignment[]) {
   return [...assignments].sort((a, b) => keyOf(a).localeCompare(keyOf(b)));
+}
+
+function normalizeRoles(value: any): HospitalRole[] {
+  const roles = Array.isArray(value) ? value : typeof value === "string" && value ? value.split(",") : [];
+  return roles
+    .map((role: any) => String(role ?? "").trim().toUpperCase())
+    .filter((role: string): role is HospitalRole => role in ROLE_MODULE_ACCESS);
+}
+
+function allowedModulesForRoles(roles: HospitalRole[]) {
+  const modules = roles.includes("SUPER_ADMIN") || roles.includes("HOSPITAL_ADMIN")
+    ? HOSPITAL_MODULES.map((module) => module.key)
+    : roles.flatMap((role) => ROLE_MODULE_ACCESS[role] ?? []);
+  return new Set(modules);
 }
