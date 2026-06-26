@@ -70,7 +70,7 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
       ) : field.type === "checkbox" ? (
         <input type="checkbox" checked={Boolean(value)} onChange={(event) => onChange(event.target.checked)} />
       ) : (
-        <input type={field.type === "number" ? "number" : field.type === "date" ? "date" : field.type === "datetime" ? "datetime-local" : field.name === "password" ? "password" : "text"} value={value ?? ""} onChange={(event) => onChange(field.type === "number" ? Number(event.target.value) : event.target.value)} placeholder={field.name === "password" ? (locale === "en" ? "Minimum 10 characters" : "Minimum 10 caractères") : field.placeholder} className={base} />
+        <input type={field.type === "number" ? "number" : field.type === "date" ? "date" : field.type === "datetime" ? "datetime-local" : field.name === "password" || field.name.toLowerCase().includes("pin") ? "password" : "text"} value={value ?? ""} onChange={(event) => onChange(field.type === "number" ? Number(event.target.value) : event.target.value)} placeholder={field.name === "password" ? (locale === "en" ? "Minimum 10 characters" : "Minimum 10 caractères") : field.name.toLowerCase().includes("pin") ? "4 à 8 chiffres" : field.placeholder} className={base} />
       )}
     </label>
   );
