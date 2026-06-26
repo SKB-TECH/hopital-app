@@ -13,7 +13,7 @@ export function normalizeRows(data: any): any[] {
 }
 
 export function defaultForm(fields: HospitalField[], row?: Record<string, any>) {
-  return Object.fromEntries(fields.map((field) => [field.name, row?.[field.name] ?? (field.type === "json" ? "" : field.type === "number" ? 0 : field.type === "checkbox" ? false : field.type === "multiselect" ? [] : field.name === "active" ? "true" : "")]));
+  return Object.fromEntries(fields.map((field) => [field.name, row?.[field.name] ?? (field.type === "module-permissions" ? [] : field.type === "json" ? "" : field.type === "number" ? 0 : field.type === "checkbox" ? false : field.type === "multiselect" ? [] : field.name === "active" ? "true" : "")]));
 }
 
 export function parseJsonPayload(value: string) {
@@ -33,6 +33,10 @@ export function cleanPayload(form: Record<string, any>, fields: HospitalField[])
     if (value === "" || value === undefined || value === null) continue;
     if (field.type === "multiselect") {
       out[field.name] = Array.isArray(value) ? value : String(value).split(",").map((item) => item.trim()).filter(Boolean);
+      continue;
+    }
+    if (field.type === "module-permissions") {
+      out[field.name] = Array.isArray(value) ? value : [];
       continue;
     }
     if (field.name === "password" && String(value).length < 10) throw new Error("Le mot de passe doit contenir au moins 10 caractères.");

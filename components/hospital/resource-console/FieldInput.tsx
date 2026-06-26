@@ -6,6 +6,7 @@ import { api } from "@/shared/lib/http/api";
 import Autocomplete, { type AutocompleteOption } from "@/components/ui/autocomplete";
 import RichTextEditor from "@/components/forms/RichTextEditor";
 import { formatValue, normalizeRows, relationLabel } from "./utils";
+import { ModulePermissionsEditor } from "./ModulePermissionsEditor";
 
 export function FieldInput({ field, value, onChange, locale = "fr" }: { field: HospitalField; value: any; onChange: (value: any) => void; locale?: string }) {
   const base = "w-full border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-semibold outline-none focus:border-blue-700 focus:bg-white";
@@ -36,7 +37,9 @@ export function FieldInput({ field, value, onChange, locale = "fr" }: { field: H
   return (
     <label className={field.type === "multiselect" ? "block md:col-span-2" : "block"}>
       <span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">{field.label}{field.required ? " *" : ""}</span>
-      {field.reference ? (
+      {field.type === "module-permissions" ? (
+        <ModulePermissionsEditor value={value} onChange={onChange} locale={locale} />
+      ) : field.reference ? (
         <Autocomplete value={String(value ?? "")} options={options} isLoading={loading} placeholder={field.placeholder || `${locale === "en" ? "Select" : "Sélectionner"} ${field.label.toLowerCase()}`} searchPlaceholder={`${locale === "en" ? "Search" : "Rechercher"} ${field.label.toLowerCase()}`} emptyText={locale === "en" ? "No result" : "Aucun résultat"} onSelect={(option) => onChange(option.id)} showIdFallback={false} />
       ) : field.type === "multiselect" ? (
         <div className="grid gap-2 border border-slate-200 bg-slate-50 p-3 md:grid-cols-2">
