@@ -21,7 +21,7 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
       .then((response) => {
         if (!mounted) return;
         setOptions(normalizeRows(response.data).map((row) => ({
-          id: row.id,
+          id: String(row[field.reference?.valueKey ?? "id"] ?? row.id ?? ""),
           label: relationLabel(row, field.reference?.labelKeys ?? []),
           description: relationLabel(row, field.reference?.descriptionKeys ?? []),
         })).filter((option) => option.id));

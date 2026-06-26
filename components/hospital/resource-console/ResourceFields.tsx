@@ -45,7 +45,7 @@ export function ReferenceField({ referenceKey, label, value, onChange }: { refer
     let mounted = true;
     setLoading(true);
     api.get(reference.endpoint)
-      .then((response) => mounted && setOptions(normalizeRows(response.data).map((row) => ({ id: row.id, label: relationLabel(row, reference.labelKeys), description: relationLabel(row, reference.descriptionKeys ?? []) })).filter((option) => option.id)))
+      .then((response) => mounted && setOptions(normalizeRows(response.data).map((row) => ({ id: String(row[reference.valueKey ?? "id"] ?? row.id ?? ""), label: relationLabel(row, reference.labelKeys), description: relationLabel(row, reference.descriptionKeys ?? []) })).filter((option) => option.id)))
       .catch(() => mounted && setOptions([]))
       .finally(() => mounted && setLoading(false));
     return () => { mounted = false; };
