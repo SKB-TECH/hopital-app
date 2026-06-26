@@ -35,7 +35,7 @@ export function FieldInput({ field, value, onChange, locale = "fr" }: { field: H
   const selectedValues = Array.isArray(value) ? value : typeof value === "string" && value ? [value] : [];
 
   return (
-    <label className={field.type === "multiselect" ? "block md:col-span-2" : "block"}>
+    <label className={field.type === "multiselect" || field.type === "module-permissions" ? "block md:col-span-2" : "block"}>
       <span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">{field.label}{field.required ? " *" : ""}</span>
       {field.type === "module-permissions" ? (
         <ModulePermissionsEditor value={value} onChange={onChange} locale={locale} />

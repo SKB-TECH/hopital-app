@@ -301,7 +301,7 @@ export default function HospitalResourceConsole() {
 
           {formOpen && (
             <div className="fixed inset-0 z-[70] bg-slate-950/40">
-              <div className="ml-auto h-full w-full max-w-3xl overflow-y-auto border-l border-slate-300 bg-white">
+              <div className="ml-auto h-full w-full overflow-y-auto border-l border-slate-300 bg-white xl:max-w-6xl">
                 <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-7 py-5">
                   <div>
                     <h2 className="text-2xl font-black text-slate-950">{editingRow ? hospitalUi(locale, "edit") : hospitalUi(locale, "newRecord")}</h2>

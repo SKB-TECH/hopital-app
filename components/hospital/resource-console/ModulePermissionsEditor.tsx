@@ -55,9 +55,9 @@ export function ModulePermissionsEditor({ value, onChange, locale = "fr" }: { va
   };
 
   return (
-    <div className="md:col-span-2">
-      <div className="border border-slate-200 bg-white">
-        <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+    <div className="w-full">
+      <div className="w-full overflow-hidden border border-slate-200 bg-white">
+        <div className="border-b border-slate-200 bg-slate-50 px-3 py-3 sm:px-4">
           <p className="text-sm font-black text-slate-900">Permissions par module</p>
           <p className="mt-1 text-xs font-medium text-slate-500">Sélectionnez les sous-modules, les actions autorisées et le niveau de portée.</p>
         </div>
@@ -68,18 +68,18 @@ export function ModulePermissionsEditor({ value, onChange, locale = "fr" }: { va
             const open = openGroups[group.key] ?? false;
             return (
               <div key={group.key}>
-                <button type="button" onClick={() => setOpenGroups((current) => ({ ...current, [group.key]: !open }))} className="flex w-full items-center justify-between px-4 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500 hover:bg-slate-50">
+                <button type="button" onClick={() => setOpenGroups((current) => ({ ...current, [group.key]: !open }))} className="flex w-full items-center justify-between px-3 py-3 text-left text-xs font-black uppercase tracking-wide text-slate-500 hover:bg-slate-50 sm:px-4">
                   {hospitalText(group.title, locale)}
                   <ChevronDown className={`size-4 transition ${open ? "rotate-180" : ""}`} />
                 </button>
                 {open && (
-                  <div className="space-y-3 px-4 pb-4">
+                  <div className="space-y-3 px-3 pb-4 sm:px-4">
                     {modules.map((module) => (
                       <div key={module.key} className="border border-slate-200">
-                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-3 py-2">
-                          <div>
-                            <p className="text-sm font-black text-slate-900">{module.title}</p>
-                            <p className="text-xs font-medium text-slate-500">{module.description}</p>
+                        <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 px-3 py-3 md:flex-row md:items-center md:justify-between">
+                          <div className="min-w-0">
+                            <p className="text-sm font-black leading-tight text-slate-900">{module.title}</p>
+                            <p className="mt-1 line-clamp-2 text-xs font-medium leading-snug text-slate-500">{module.description}</p>
                           </div>
                           <button type="button" onClick={() => toggleAllForResource(module.key, null)} className="border border-blue-700 px-3 py-2 text-xs font-black text-blue-800 hover:bg-blue-50">Tout module</button>
                         </div>
@@ -87,29 +87,33 @@ export function ModulePermissionsEditor({ value, onChange, locale = "fr" }: { va
                           {module.resources.map((resource) => {
                             const assignment = findAssignment(assignments, module.key, resource.key);
                             return (
-                              <div key={resource.key} className="grid gap-3 px-3 py-3 xl:grid-cols-[220px_1fr_170px]">
-                                <div>
-                                  <p className="text-sm font-black text-slate-800">{resource.title}</p>
-                                  <p className="line-clamp-2 text-xs text-slate-500">{resource.description}</p>
-                                  <button type="button" onClick={() => toggleAllForResource(module.key, resource.key)} className="mt-2 text-xs font-black text-blue-800 underline">{assignment?.permissions?.length ? "Retirer" : "Accès standard"}</button>
+                              <div key={resource.key} className="space-y-3 px-3 py-3">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                  <div className="min-w-0">
+                                  <p className="text-sm font-black leading-tight text-slate-800">{resource.title}</p>
+                                  <p className="mt-1 line-clamp-2 text-xs leading-snug text-slate-500">{resource.description}</p>
+                                  </div>
+                                  <button type="button" onClick={() => toggleAllForResource(module.key, resource.key)} className="w-fit shrink-0 border border-blue-700 px-2.5 py-1.5 text-[11px] font-black text-blue-800 hover:bg-blue-50 sm:px-3 sm:py-2 sm:text-xs">{assignment?.permissions?.length ? "Retirer" : "Accès standard"}</button>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                                  {ACTIONS.map((action) => {
-                                    const checked = assignment?.permissions?.includes(action) ?? false;
-                                    return (
-                                      <label key={action} className={`flex items-center gap-2 border px-2 py-2 text-xs font-black ${checked ? "border-blue-700 bg-blue-50 text-blue-800" : "border-slate-200 bg-white text-slate-600"}`}>
-                                        <input type="checkbox" checked={checked} onChange={() => togglePermission(module.key, resource.key, action)} />
-                                        {ACTION_LABELS[action]}
-                                      </label>
-                                    );
-                                  })}
+                                <div className="grid gap-3 xl:grid-cols-[1fr_180px] xl:items-start">
+                                  <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:flex xl:flex-wrap">
+                                    {ACTIONS.map((action) => {
+                                      const checked = assignment?.permissions?.includes(action) ?? false;
+                                      return (
+                                        <label key={action} className={`inline-flex min-h-9 min-w-0 items-center gap-2 border px-2 py-1.5 text-[11px] font-black sm:px-2.5 sm:py-2 sm:text-xs xl:min-w-[96px] ${checked ? "border-blue-700 bg-blue-50 text-blue-800" : "border-slate-200 bg-white text-slate-600"}`}>
+                                          <input className="shrink-0" type="checkbox" checked={checked} onChange={() => togglePermission(module.key, resource.key, action)} />
+                                          <span className="truncate">{ACTION_LABELS[action]}</span>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                  <label className="block">
+                                    <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-400">Portée</span>
+                                    <select value={assignment?.scope ?? "OWN"} onChange={(event) => setScope(module.key, resource.key, event.target.value as ModulePermissionScope)} className="h-10 w-full border border-slate-200 bg-white px-2 text-xs font-black text-slate-700 outline-none focus:border-blue-700">
+                                      {SCOPES.map((scope) => <option key={scope} value={scope}>{SCOPE_LABELS[scope]}</option>)}
+                                    </select>
+                                  </label>
                                 </div>
-                                <label>
-                                  <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-400">Portée</span>
-                                  <select value={assignment?.scope ?? "OWN"} onChange={(event) => setScope(module.key, resource.key, event.target.value as ModulePermissionScope)} className="w-full border border-slate-200 bg-white px-2 py-2 text-xs font-black text-slate-700 outline-none focus:border-blue-700">
-                                    {SCOPES.map((scope) => <option key={scope} value={scope}>{SCOPE_LABELS[scope]}</option>)}
-                                  </select>
-                                </label>
                               </div>
                             );
                           })}
