@@ -1,64 +1,145 @@
-# Kongo Event Pro
+# Afia-Smart Hospital Frontend
 
-Setup complet pour Kongo Event avec :
+Frontend Next.js du système hospitalier Afia-Smart.
 
-- Next.js App Router
-- TypeScript
-- Tailwind CSS v4
-- shadcn/ui style
-- next-intl multilangue : FR, EN, LN
-- Logo intégré
-- Couleurs configurées selon le logo
-- Pages de base : accueil, événements, à propos, contact, login
-- Composants : Header, Footer, Hero, Features, EventsPreview
-- UI components : Button, Card, Input, Textarea, Badge
-
-## Installation
+## Démarrage local
 
 ```bash
-yarn install
-yarn dev
+pnpm install
+pnpm dev
 ```
 
-Puis ouvre :
+Application :
 
 ```txt
 http://localhost:3000/fr
 ```
 
-## Commandes utiles
+## Variables d’environnement
 
-```bash
-yarn typecheck
-yarn build
+```env
+NEXT_PUBLIC_APP_NAME=Afia-Smart
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_API_URL=/api/proxy/api/v1
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
+HOSPITAL_API_URL=http://localhost:3000
 ```
 
-## Ajouter un composant shadcn
+En production :
 
-```bash
-npx shadcn@latest add dialog dropdown-menu sheet
+```env
+NEXT_PUBLIC_API_URL=/api/proxy/api/v1
+NEXT_PUBLIC_API_BASE_URL=https://votre-api.com
+HOSPITAL_API_URL=https://votre-api.com
+NEXT_PUBLIC_APP_NAME=Afia-Smart
 ```
 
-## Structure
+Le front appelle l’API via :
 
 ```txt
-app/
-  [locale]/
-    page.tsx
-    layout.tsx
-    events/
-    about/
-    contact/
-    auth/login/
-components/
-  layout/
-  sections/
-  shared/
-  ui/
-i18n/
-messages/
-config/
-lib/
-public/images/
+/api/proxy/api/v1/*
 ```
-# hopital-app
+
+Le proxy Next.js transmet ensuite vers :
+
+```txt
+NEXT_PUBLIC_API_BASE_URL
+```
+
+ou :
+
+```txt
+HOSPITAL_API_URL
+```
+
+## Connexion
+
+Compte seed par défaut :
+
+```txt
+admin@hospital.local
+ChangeMe123!
+```
+
+À changer immédiatement en production.
+
+## Modules
+
+Le menu affiche uniquement les modules autorisés pour l’utilisateur connecté.
+
+Les permissions sont gérées ici :
+
+```txt
+Administration & Sécurité
+→ Utilisateurs
+→ Nouveau / Modifier
+→ Permissions modules
+```
+
+L’éditeur de permissions filtre automatiquement les modules selon les rôles sélectionnés.
+
+Exemple :
+
+```txt
+RECEPTIONIST
+→ Patients
+→ Réception
+→ Rendez-vous
+→ Hospitalisation
+→ Assurance
+```
+
+## Configuration SMS métier
+
+```txt
+Administration & Sécurité
+→ Plan vaccination SMS
+→ Règles CPN SMS
+→ Conseils postpartum SMS
+```
+
+Si rien n’est configuré, le backend utilise son plan automatique par défaut.
+
+## Build
+
+```bash
+pnpm build
+pnpm start
+```
+
+## Dépannage
+
+Si l’interface affiche :
+
+```txt
+Connexion au serveur indisponible
+```
+
+regarder le détail affiché :
+
+```txt
+HTTP 500 · GET · /route — Internal server error
+```
+
+Puis vérifier côté API :
+
+```bash
+pnpm migration:run
+```
+
+et les variables :
+
+```env
+NEXT_PUBLIC_API_BASE_URL
+HOSPITAL_API_URL
+DATABASE_URL
+REDIS_URL
+```
+
+## Documentation complète
+
+Le guide complet API + front + Railway + SMS + permissions est dans :
+
+```txt
+/Users/macbookair/work/hospital/README.md
+```

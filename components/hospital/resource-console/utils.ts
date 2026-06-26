@@ -68,7 +68,12 @@ export function formatValue(value: any) {
 
 export function readError(err: any) {
   const msg = err?.response?.data?.message ?? err?.response?.data?.detail ?? err?.message;
-  return Array.isArray(msg) ? msg.join(", ") : String(msg || "Erreur inconnue");
+  const message = Array.isArray(msg) ? msg.join(", ") : String(msg || "Erreur inconnue");
+  const status = err?.response?.status;
+  const method = err?.config?.method ? String(err.config.method).toUpperCase() : "";
+  const url = err?.config?.url ? String(err.config.url) : "";
+  const context = [status ? `HTTP ${status}` : "", method, url].filter(Boolean).join(" · ");
+  return context ? `${context} — ${message}` : message;
 }
 
 export function relationLabel(row: Record<string, any>, keys: string[]) {
