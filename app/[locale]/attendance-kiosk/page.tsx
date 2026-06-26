@@ -72,7 +72,7 @@ export default function AttendanceKioskPage() {
     setLoading(true);
     setError("");
     try {
-      const response = await api.get("/hr/employees", { params: { limit: 500 } });
+      const response = await api.get("/hr/employees", { params: { limit: 100 } });
       setEmployees(normalizeRows(response.data).filter((employee) => !employee.status || employee.status === "ACTIVE" || employee.status === "PROBATION"));
     } catch (err: any) {
       setEmployees([]);
