@@ -63,7 +63,13 @@ export default function HospitalResourceConsole() {
     setError("");
     try {
       const response = await api.get(selected.endpoint, { params: selected.endpoint === "/appointments" ? { limit: 100 } : undefined });
-      setRows(normalizeRows(response.data));
+      const dataRows = normalizeRows(response.data);
+      if (selected.endpoint === "/hr/attendance-events") {
+        const employeesResponse = await api.get("/hr/employees", { params: { limit: 100 } });
+        setRows(buildAttendanceRegister(dataRows, normalizeRows(employeesResponse.data)));
+      } else {
+        setRows(dataRows);
+      }
     } catch (err: any) {
       setRows([]);
       setError(readError(err));
@@ -367,4 +373,60 @@ function canRunOperation(kind: OperationKind, canCreate: boolean, canUpdate: boo
 
 function handlePrimaryView(endpoint: string, row: any, router: ReturnType<typeof useRouter>, locale: string) {
   if (endpoint === "/patients" && row?.id) router.push(`/${locale}/hospital/patients/${row.id}`);
+}
+
+function buildAttendanceRegister(events: any[], employees: any[]) {
+  const employeesById = new Map(employees.map((employee) => [String(employee.id), employee]));
+  const groups = new Map<string, any>();
+
+  for (const event of events) {
+    const employeeId = String(event.employeeId ?? event.employee?.id ?? "");
+    if (!employeeId) continue;
+    const eventDate = new Date(event.eventAt ?? event.createdAt);
+    if (Number.isNaN(eventDate.getTime())) continue;
+    const day = eventDate.toISOString().slice(0, 10);
+    const key = `${employeeId}:${day}`;
+    const employee = employeesById.get(employeeId) ?? event.employee ?? {};
+    const fullName = [employee.firstName, employee.lastName].filter(Boolean).join(" ") || event.fullName || employee.employeeNumber || employeeId;
+    const current = groups.get(key) ?? {
+      id: employee.employeeNumber || employee.badgeNumber || employeeId,
+      employeeId,
+      fullName,
+      day,
+      checkInAt: null as Date | null,
+      checkOutAt: null as Date | null,
+    };
+
+    if (event.type === "CHECK_IN" || event.type === "LATE") {
+      if (!current.checkInAt || eventDate.getTime() < current.checkInAt.getTime()) current.checkInAt = eventDate;
+    }
+    if (event.type === "CHECK_OUT" || event.type === "EARLY_DEPARTURE") {
+      if (!current.checkOutAt || eventDate.getTime() > current.checkOutAt.getTime()) current.checkOutAt = eventDate;
+    }
+    groups.set(key, current);
+  }
+
+  return Array.from(groups.values())
+    .sort((a, b) => `${b.day}${b.fullName}`.localeCompare(`${a.day}${a.fullName}`))
+    .map((row) => ({
+      id: row.id,
+      fullName: row.fullName,
+      checkIn: formatAttendanceTime(row.checkInAt),
+      checkOut: formatAttendanceTime(row.checkOutAt),
+      workedDuration: formatWorkedDuration(row.checkInAt, row.checkOutAt),
+    }));
+}
+
+function formatAttendanceTime(value?: Date | null) {
+  if (!value) return "-";
+  return value.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatWorkedDuration(checkIn?: Date | null, checkOut?: Date | null) {
+  if (!checkIn || !checkOut) return "-";
+  const minutes = Math.max(0, Math.round((checkOut.getTime() - checkIn.getTime()) / 60000));
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (!hours) return `${rest} min`;
+  return `${hours} h ${String(rest).padStart(2, "0")} min`;
 }
