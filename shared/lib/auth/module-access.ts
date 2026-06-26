@@ -27,6 +27,19 @@ export type HospitalRole =
   | "MEDICAL_RECORDS_OFFICER"
   | "PATIENT";
 
+export type ModulePermissionAction = "VIEW" | "CREATE" | "UPDATE" | "VALIDATE" | "DELETE" | "PRINT" | "EXPORT" | "ADMIN";
+export type ModulePermissionScope = "OWN" | "TEAM" | "DEPARTMENT" | "FACILITY" | "ORGANIZATION";
+
+export type ModulePermissionAssignment = {
+  moduleKey: string;
+  resourceKey?: string | null;
+  permissions: ModulePermissionAction[];
+  scope?: ModulePermissionScope;
+  facilityId?: string | null;
+  departmentId?: string | null;
+  active?: boolean;
+};
+
 const ALL_MODULES = HOSPITAL_MODULES.map((module) => module.key);
 
 const ROLE_ALIASES: Record<string, HospitalRole> = {
@@ -84,17 +97,79 @@ function normalizeRoleName(value: any) {
 export function canAccessHospitalModule(user: any, moduleKey?: string) {
   if (!moduleKey) return false;
   const roles = getUserRoles(user);
+  if (roles.includes("SUPER_ADMIN") || roles.includes("HOSPITAL_ADMIN")) return true;
+  const explicit = getModuleAssignments(user).filter((assignment) => assignment.moduleKey === moduleKey && assignment.active !== false);
+  if (explicit.length) {
+    return explicit.some((assignment) => assignment.permissions.includes("VIEW") || assignment.permissions.includes("ADMIN"));
+  }
   if (!roles.length) return false;
   return roles.some((role) => ROLE_MODULE_ACCESS[role]?.includes(moduleKey));
 }
 
 export function getAccessibleHospitalModules(user: any): HospitalModule[] {
   const roles = getUserRoles(user);
-  if (!roles.length) return [];
+  if (roles.includes("SUPER_ADMIN") || roles.includes("HOSPITAL_ADMIN")) return HOSPITAL_MODULES;
+  const assignments = getModuleAssignments(user);
+  if (!roles.length && !assignments.length) return [];
   const allowed = new Set(roles.flatMap((role) => ROLE_MODULE_ACCESS[role] ?? []));
-  return HOSPITAL_MODULES.filter((module) => allowed.has(module.key));
+  return HOSPITAL_MODULES.filter((module) => {
+    const explicit = assignments.filter((assignment) => assignment.moduleKey === module.key && assignment.active !== false);
+    if (explicit.length) return explicit.some((assignment) => assignment.permissions.includes("VIEW") || assignment.permissions.includes("ADMIN"));
+    return allowed.has(module.key);
+  });
 }
 
 export function getFirstAccessibleHospitalModule(user: any) {
   return getAccessibleHospitalModules(user)[0] ?? null;
+}
+
+export function getModuleAssignments(user: any): ModulePermissionAssignment[] {
+  const raw = user?.modulePermissions ?? user?.module_permissions ?? [];
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item: any) => ({
+      moduleKey: String(item?.moduleKey ?? item?.module_key ?? "").trim(),
+      resourceKey: item?.resourceKey ?? item?.resource_key ?? null,
+      permissions: normalizePermissionActions(item?.permissions),
+      scope: item?.scope,
+      facilityId: item?.facilityId ?? item?.facility_id ?? null,
+      departmentId: item?.departmentId ?? item?.department_id ?? null,
+      active: item?.active !== false,
+    }))
+    .filter((assignment) => assignment.moduleKey && assignment.permissions.length);
+}
+
+export function hasHospitalModulePermission(user: any, moduleKey?: string, resourceKey?: string | null, action: ModulePermissionAction = "VIEW") {
+  if (!moduleKey) return false;
+  const roles = getUserRoles(user);
+  if (roles.includes("SUPER_ADMIN") || roles.includes("HOSPITAL_ADMIN")) return true;
+
+  const moduleAssignments = getModuleAssignments(user).filter((assignment) => assignment.moduleKey === moduleKey && assignment.active !== false);
+  if (moduleAssignments.length) {
+    const exact = moduleAssignments.filter((assignment) => (assignment.resourceKey ?? null) === (resourceKey ?? null));
+    const wildcard = moduleAssignments.filter((assignment) => !assignment.resourceKey);
+    return [...exact, ...wildcard].some((assignment) => assignment.permissions.includes("ADMIN") || assignment.permissions.includes(action));
+  }
+
+  const hasRoleAccess = roles.some((role) => ROLE_MODULE_ACCESS[role]?.includes(moduleKey));
+  if (!hasRoleAccess) return false;
+  if (action === "DELETE") return roles.some((role) => ["DIRECTOR", "MEDICAL_DIRECTOR", "SUPER_ADMIN", "HOSPITAL_ADMIN"].includes(role));
+  if (action === "ADMIN") return false;
+  return true;
+}
+
+export function canAccessHospitalResource(user: any, moduleKey?: string, resourceKey?: string | null) {
+  return hasHospitalModulePermission(user, moduleKey, resourceKey, "VIEW");
+}
+
+export function getAccessibleHospitalResources(user: any, module: HospitalModule) {
+  return module.resources.filter((resource) => canAccessHospitalResource(user, module.key, resource.key));
+}
+
+function normalizePermissionActions(value: any): ModulePermissionAction[] {
+  const values = Array.isArray(value) ? value : typeof value === "string" ? value.split(",") : [];
+  const allowed: ModulePermissionAction[] = ["VIEW", "CREATE", "UPDATE", "VALIDATE", "DELETE", "PRINT", "EXPORT", "ADMIN"];
+  return values
+    .map((item: any) => String(item ?? "").trim().toUpperCase())
+    .filter((item: string): item is ModulePermissionAction => allowed.includes(item as ModulePermissionAction));
 }

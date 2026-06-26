@@ -324,6 +324,7 @@ const en: Record<string, string> = {
   "Seuil réappro": "Reorder level",
   "Mot de passe temporaire": "Temporary password",
   "Rôles utilisateur": "User roles",
+  "Permissions modules": "Module permissions",
   "Actif": "Active",
   "Soignant": "Caregiver",
   "Responsabilité": "Responsibility",

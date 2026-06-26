@@ -37,7 +37,7 @@ import { HOSPITAL_GROUPS } from "@/shared/config/hospital-modules";
 import { hospitalText, hospitalUi, localizeHospitalModule } from "@/shared/config/hospital-i18n";
 import Image from "next/image";
 import { useMe } from "@/shared/hooks/auth.hooks";
-import { getAccessibleHospitalModules } from "@/shared/lib/auth/module-access";
+import { getAccessibleHospitalModules, getAccessibleHospitalResources } from "@/shared/lib/auth/module-access";
 
 const icons: Record<string, any> = {
   patients: UserRound,
@@ -80,7 +80,7 @@ export default function DashboardSidebar() {
   const accessibleModules = getAccessibleHospitalModules(user).map((module) => localizeHospitalModule(module, locale));
 
   const filtered = accessibleModules.filter((module) =>
-    `${module.title} ${module.shortTitle ?? ""} ${module.description} ${module.resources.map((resource) => resource.title).join(" ")}`.toLowerCase().includes(searchTerm.toLowerCase())
+    `${module.title} ${module.shortTitle ?? ""} ${module.description} ${getAccessibleHospitalResources(user, module).map((resource) => resource.title).join(" ")}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const toggleModule = (key: string) => setOpenModules((current) => ({ ...current, [key]: !current[key] }));
@@ -127,7 +127,8 @@ export default function DashboardSidebar() {
                     const Icon = icons[module.key] || Hospital;
                     const href = `/${locale}/hospital/${module.key}`;
                     const active = pathname?.includes(`/hospital/${module.key}`);
-                    const hasResources = module.resources.length > 1;
+                    const resources = getAccessibleHospitalResources(user, module);
+                    const hasResources = resources.length > 1;
                     const expanded = !isCollapsed && hasResources && (Boolean(openModules[module.key]) || Boolean(active) || Boolean(searchTerm));
                     return (
                       <div key={module.key}>
@@ -156,8 +157,8 @@ export default function DashboardSidebar() {
 
                         {expanded && (
                           <div className="mb-2 ml-10 border-l border-slate-200 py-1">
-                            {module.resources.map((resource) => {
-                              const resourceActive = active && ((activeResource || module.resources[0]?.key) === resource.key);
+                            {resources.map((resource) => {
+                              const resourceActive = active && ((activeResource || resources[0]?.key) === resource.key);
                               return (
                                 <Link
                                   key={resource.key}

@@ -10,7 +10,7 @@ import { findHospitalModule } from "@/shared/config/hospital-modules";
 import { hospitalText, hospitalUi, localizeHospitalModule } from "@/shared/config/hospital-i18n";
 import { api } from "@/shared/lib/http/api";
 import { useMe } from "@/shared/hooks/auth.hooks";
-import { canAccessHospitalModule, getFirstAccessibleHospitalModule } from "@/shared/lib/auth/module-access";
+import { canAccessHospitalModule, canAccessHospitalResource, getAccessibleHospitalResources, getFirstAccessibleHospitalModule, hasHospitalModulePermission } from "@/shared/lib/auth/module-access";
 import type { OperationAction, OperationKind, OperationState } from "@/components/hospital/resource-console/types";
 import { cleanObject, cleanPayload, defaultForm, defaultOperationForm, formatValue, normalizeRows, parseJsonPayload, readError, validateOperation, nextStatuses } from "@/components/hospital/resource-console/utils";
 import { DepartmentDashboard } from "@/components/hospital/resource-console/DepartmentDashboard";
@@ -29,9 +29,15 @@ export default function HospitalResourceConsole() {
   const baseModule = findHospitalModule(params.module);
   const module = useMemo(() => localizeHospitalModule(baseModule, locale), [baseModule, locale]);
   const { data: user, isLoading: userLoading } = useMe();
-  const selectedKey = searchParams.get("resource") || module.resources[0]?.key;
-  const selected = module.resources.find((item) => item.key === selectedKey) || module.resources[0];
+  const accessibleResources = useMemo(() => (user ? getAccessibleHospitalResources(user, module) : module.resources), [module, user]);
+  const selectedKey = searchParams.get("resource") || accessibleResources[0]?.key || module.resources[0]?.key;
+  const selected = accessibleResources.find((item) => item.key === selectedKey) || accessibleResources[0] || module.resources[0];
   const canAccessModule = canAccessHospitalModule(user, module.key);
+  const canAccessSelected = canAccessHospitalResource(user, module.key, selected?.key);
+  const canCreateSelected = selected?.canCreate !== false && hasHospitalModulePermission(user, module.key, selected?.key, "CREATE");
+  const canUpdateSelected = selected?.canUpdate !== false && hasHospitalModulePermission(user, module.key, selected?.key, "UPDATE");
+  const canPrintSelected = hasHospitalModulePermission(user, module.key, selected?.key, "PRINT");
+  const canExportSelected = hasHospitalModulePermission(user, module.key, selected?.key, "EXPORT");
 
   const [rows, setRows] = useState<any[]>([]);
   const [query, setQuery] = useState("");
@@ -49,7 +55,7 @@ export default function HospitalResourceConsole() {
 
   const load = async () => {
     if (!selected) return;
-    if (userLoading || !user || !canAccessModule) {
+    if (userLoading || !user || !canAccessModule || !canAccessSelected) {
       setLoading(false);
       return;
     }
@@ -70,7 +76,7 @@ export default function HospitalResourceConsole() {
     setForm(defaultForm(selected?.fields ?? []));
     setRawJson("{}");
     load();
-  }, [selected?.endpoint, userLoading, user?.id, canAccessModule]);
+  }, [selected?.endpoint, userLoading, user?.id, canAccessModule, canAccessSelected]);
 
   const filtered = useMemo(() => {
     const term = query.toLowerCase();
@@ -78,6 +84,7 @@ export default function HospitalResourceConsole() {
   }, [query, rows]);
 
   const openCreate = () => {
+    if (!canCreateSelected) return;
     setEditingRow(null);
     setForm(defaultForm(selected?.fields ?? []));
     setRawJson("{}");
@@ -86,6 +93,7 @@ export default function HospitalResourceConsole() {
   };
 
   const openEdit = (row: any) => {
+    if (!canUpdateSelected) return;
     setEditingRow(row);
     setForm(defaultForm(selected?.fields ?? [], row));
     setRawJson(JSON.stringify(row ?? {}, null, 2));
@@ -94,7 +102,9 @@ export default function HospitalResourceConsole() {
   };
 
   const submit = async () => {
-    if (!selected || selected.canCreate === false) return;
+    if (!selected) return;
+    if (editingRow?.id && !canUpdateSelected) return;
+    if (!editingRow?.id && !canCreateSelected) return;
     setPosting(true);
     setError("");
     try {
@@ -103,7 +113,7 @@ export default function HospitalResourceConsole() {
       if (editingRow?.id && selected.endpoint === "/users") {
         delete payload.password;
       }
-      if (editingRow?.id && selected.canUpdate !== false) {
+      if (editingRow?.id && canUpdateSelected) {
         await api.patch(`${selected.endpoint}/${editingRow.id}`, payload);
       } else {
         await api.post(selected.endpoint, payload);
@@ -121,6 +131,7 @@ export default function HospitalResourceConsole() {
   };
 
   const openOperation = (kind: OperationKind, row?: any) => {
+    if (!canRunOperation(kind, canCreateSelected, canUpdateSelected, canPrintSelected)) return;
     setOperation({ kind, row, endpoint: selected.endpoint });
     setOperationForm(defaultOperationForm(kind, row, selected.endpoint));
   };
@@ -170,7 +181,7 @@ export default function HospitalResourceConsole() {
     }
   };
 
-  const moduleActions = getModuleActions(selected.endpoint);
+  const moduleActions = getModuleActions(selected.endpoint).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected));
   const isDashboard = selected.key === "dashboard";
   const isAppointmentsCalendar = selected.endpoint === "/appointments";
 
@@ -181,6 +192,12 @@ export default function HospitalResourceConsole() {
       router.replace(fallback ? `/${locale}/hospital/${fallback.key}` : `/${locale}/overview`);
     }
   }, [canAccessModule, locale, router, user, userLoading]);
+
+  useEffect(() => {
+    if (userLoading || !user || !canAccessModule || canAccessSelected) return;
+    const fallback = accessibleResources[0];
+    if (fallback) router.replace(`/${locale}/hospital/${module.key}?resource=${fallback.key}`);
+  }, [accessibleResources, canAccessModule, canAccessSelected, locale, module.key, router, user, userLoading]);
 
   if (userLoading || !user) {
     return (
@@ -233,11 +250,11 @@ export default function HospitalResourceConsole() {
                       <p className="mt-1 text-sm font-medium text-slate-500">{selected.description}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {selected.canCreate !== false && <button onClick={openCreate} className="inline-flex h-11 items-center gap-2 bg-blue-700 px-4 text-sm font-black text-white hover:bg-blue-800"><Plus className="size-4" />{hospitalUi(locale, "new")}</button>}
+                      {canCreateSelected && <button onClick={openCreate} className="inline-flex h-11 items-center gap-2 bg-blue-700 px-4 text-sm font-black text-white hover:bg-blue-800"><Plus className="size-4" />{hospitalUi(locale, "new")}</button>}
                       {moduleActions.map((action) => <button key={action.kind} onClick={() => openOperation(action.kind)} className="inline-flex h-11 items-center gap-2 border border-blue-700 bg-white px-4 text-sm font-black text-blue-800 hover:bg-blue-50"><action.icon className="size-4" />{hospitalText(action.label, locale)}</button>)}
                       <button onClick={load} className="inline-flex h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-800 hover:bg-slate-50"><RefreshCcw className="size-4" />{hospitalUi(locale, "refresh")}</button>
-                      <button onClick={() => setPrintDialog({})} className="inline-flex h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-800 hover:bg-slate-50"><Printer className="size-4" />{hospitalUi(locale, "documents")}</button>
-                      <button className="inline-flex h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-800 hover:bg-slate-50"><Download className="size-4" />{hospitalUi(locale, "export")}</button>
+                      {canPrintSelected && <button onClick={() => setPrintDialog({})} className="inline-flex h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-800 hover:bg-slate-50"><Printer className="size-4" />{hospitalUi(locale, "documents")}</button>}
+                      {canExportSelected && <button className="inline-flex h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-800 hover:bg-slate-50"><Download className="size-4" />{hospitalUi(locale, "export")}</button>}
                     </div>
                   </div>
                   {!isDashboard && <label className="mt-5 flex h-12 max-w-xl items-center gap-3 border border-slate-200 bg-slate-50 px-4 focus-within:border-blue-700 focus-within:bg-white">
@@ -245,14 +262,14 @@ export default function HospitalResourceConsole() {
                     <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={hospitalUi(locale, "search")} className="w-full bg-transparent text-sm font-semibold outline-none" />
                   </label>}
                 </div>
-                {isDashboard ? <DepartmentDashboard loading={loading} data={rows[0] ?? {}} columns={selected.columns} locale={locale} /> : isAppointmentsCalendar ? <AppointmentsCalendarView rows={filtered} loading={loading} onRefresh={load} onCreate={openCreate} locale={locale} /> : <div className="overflow-x-auto">
+                {!canAccessSelected ? <div className="p-8 text-sm font-semibold text-amber-800">{hospitalUi(locale, "moduleNotAssigned")}</div> : isDashboard ? <DepartmentDashboard loading={loading} data={rows[0] ?? {}} columns={selected.columns} locale={locale} /> : isAppointmentsCalendar ? <AppointmentsCalendarView rows={filtered} loading={loading} onRefresh={load} onCreate={openCreate} locale={locale} /> : <div className="overflow-x-auto">
                   <table className="w-full min-w-[960px]">
                     <thead className="bg-slate-50">
                       <tr>{selected.columns.map((column) => <th key={column.key} className="border-b border-slate-200 px-5 py-4 text-left text-xs font-black uppercase tracking-wide text-slate-500">{column.label}</th>)}<th className="border-b border-slate-200 px-5 py-4 text-right text-xs font-black uppercase tracking-wide text-slate-500">{hospitalUi(locale, "actions")}</th></tr>
                     </thead>
                     <tbody>
                       {loading ? <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center text-sm font-semibold text-slate-500"><Loader2 className="mx-auto mb-3 size-6 animate-spin text-blue-700" />{hospitalUi(locale, "loadingData")}</td></tr> :
-                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs truncate px-5 py-4 text-sm font-semibold text-slate-700">{formatValue(row[column.key])}</td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => handlePrimaryView(selected.endpoint, row, router, locale)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title="Voir"><Eye className="size-4" /></button>{selected.canUpdate !== false && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}<button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Documents"><Printer className="size-4" /></button>{getRowActions(selected.endpoint, row).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : openOperation(action.kind, row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title={action.label}><action.icon className="size-4" /></button>)}</div></td></tr>) :
+                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs truncate px-5 py-4 text-sm font-semibold text-slate-700">{formatValue(row[column.key])}</td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => handlePrimaryView(selected.endpoint, row, router, locale)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title="Voir"><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Documents"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : openOperation(action.kind, row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title={action.label}><action.icon className="size-4" /></button>)}</div></td></tr>) :
                       <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center"><Database className="mx-auto mb-3 size-8 text-slate-300" /><p className="font-black text-slate-800">{hospitalUi(locale, "noData")}</p><p className="mt-1 text-sm text-slate-500">{hospitalUi(locale, "noDataHint")}</p></td></tr>}
                     </tbody>
                   </table>
@@ -298,11 +315,11 @@ export default function HospitalResourceConsole() {
                     <button onClick={() => setMode("json")} className={`border px-3 py-2 ${mode === "json" ? "border-slate-900 bg-white text-slate-950" : "border-transparent text-slate-500"}`}><FileJson className="mr-1 inline size-4" /> {hospitalUi(locale, "advanced")}</button>
                   </div>
 
-                  {selected.canCreate === false ? <p className="bg-slate-50 p-4 text-sm text-slate-500">{hospitalUi(locale, "readOnlyResource")}</p> : mode === "form" ? <div className="grid gap-5 md:grid-cols-2">{selected.fields.map((field) => <FieldInput key={field.name} locale={locale} field={field} value={form[field.name]} onChange={(value) => setForm((current) => ({ ...current, [field.name]: value }))} />)}</div> : <textarea value={rawJson} onChange={(event) => setRawJson(event.target.value)} className="h-[520px] w-full border border-slate-200 bg-slate-50 p-3 font-mono text-xs outline-none focus:border-blue-700 focus:bg-white" />}
+                  {(!editingRow && !canCreateSelected) || (editingRow && !canUpdateSelected) ? <p className="bg-slate-50 p-4 text-sm text-slate-500">{hospitalUi(locale, "readOnlyResource")}</p> : mode === "form" ? <div className="grid gap-5 md:grid-cols-2">{selected.fields.map((field) => <FieldInput key={field.name} locale={locale} field={field} value={form[field.name]} onChange={(value) => setForm((current) => ({ ...current, [field.name]: value }))} />)}</div> : <textarea value={rawJson} onChange={(event) => setRawJson(event.target.value)} className="h-[520px] w-full border border-slate-200 bg-slate-50 p-3 font-mono text-xs outline-none focus:border-blue-700 focus:bg-white" />}
 
                   <div className="mt-8 flex justify-end gap-3 border-t border-slate-200 pt-5">
                     <button onClick={() => setFormOpen(false)} className="h-12 border border-slate-300 bg-white px-5 text-sm font-black text-slate-800 hover:bg-slate-50">{hospitalUi(locale, "cancel")}</button>
-                    <button disabled={posting || selected.canCreate === false} onClick={submit} className="inline-flex h-12 items-center justify-center gap-2 bg-blue-700 px-6 text-sm font-black text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50">
+                    <button disabled={posting || (!editingRow && !canCreateSelected) || (Boolean(editingRow) && !canUpdateSelected)} onClick={submit} className="inline-flex h-12 items-center justify-center gap-2 bg-blue-700 px-6 text-sm font-black text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50">
                       {posting ? <Loader2 className="size-4 animate-spin" /> : <><Send className="size-4" /></>} {hospitalUi(locale, "save")}
                     </button>
                   </div>
@@ -338,6 +355,13 @@ function getRowActions(endpoint: string, row: any): OperationAction[] {
   if (endpoint === "/admissions" && row?.status !== "DISCHARGED") actions.push({ kind: "discharge", label: "Sortie patient", icon: FileText });
   if (row?.status && nextStatuses(endpoint, row.status).length) actions.push({ kind: "change-status", label: "Changer statut", icon: CheckCircle2 });
   return actions;
+}
+
+function canRunOperation(kind: OperationKind, canCreate: boolean, canUpdate: boolean, canPrint: boolean) {
+  if (kind === "print-invoice") return canPrint;
+  if (kind === "preview-invoice" || kind === "generate-invoice" || kind === "stock-movement") return canCreate;
+  if (kind === "patient-record") return true;
+  return canUpdate;
 }
 
 function handlePrimaryView(endpoint: string, row: any, router: ReturnType<typeof useRouter>, locale: string) {
