@@ -36,7 +36,7 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
   const selectedValues = Array.isArray(value) ? value : typeof value === "string" && value ? [value] : [];
 
   return (
-    <label className={field.type === "multiselect" || field.type === "module-permissions" || field.type === "price-list-items" ? "block md:col-span-2" : "block"}>
+    <label className={field.type === "multiselect" || field.type === "module-permissions" || field.type === "price-list-items" || field.type === "purchase-order-items" ? "block md:col-span-2" : "block"}>
       <span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">{field.label}{field.required ? " *" : ""}</span>
       {field.type === "module-permissions" ? (
         <ModulePermissionsEditor value={value} roles={form?.roles} onChange={onChange} locale={locale} />
@@ -44,6 +44,8 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
         <input value={value ? formatValue(value) : locale === "en" ? "Generated automatically" : "Généré automatiquement"} readOnly className={autoBase} />
       ) : field.type === "price-list-items" ? (
         <PriceListItemsField value={value} onChange={onChange} locale={locale} />
+      ) : field.type === "purchase-order-items" ? (
+        <PurchaseOrderItemsField value={value} onChange={onChange} locale={locale} />
       ) : field.reference ? (
         <Autocomplete value={String(value ?? "")} options={options} isLoading={loading} placeholder={field.placeholder || `${locale === "en" ? "Select" : "Sélectionner"} ${field.label.toLowerCase()}`} searchPlaceholder={`${locale === "en" ? "Search" : "Rechercher"} ${field.label.toLowerCase()}`} emptyText={locale === "en" ? "No result" : "Aucun résultat"} onSelect={(option) => onChange(option.id)} showIdFallback={false} />
       ) : field.type === "multiselect" ? (
@@ -78,6 +80,41 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
         <input type={field.type === "number" ? "number" : field.type === "date" ? "date" : field.type === "datetime" ? "datetime-local" : field.name === "password" || field.name.toLowerCase().includes("pin") ? "password" : "text"} value={value ?? ""} onChange={(event) => onChange(field.type === "number" ? Number(event.target.value) : event.target.value)} placeholder={field.name === "password" ? (locale === "en" ? "Minimum 10 characters" : "Minimum 10 caractères") : field.name.toLowerCase().includes("pin") ? "4 à 8 chiffres" : field.placeholder} className={base} />
       )}
     </label>
+  );
+}
+
+function PurchaseOrderItemsField({ value, onChange, locale }: { value: any; onChange: (value: any) => void; locale: string }) {
+  const rows = Array.isArray(value) ? value : [];
+  const updateRow = (index: number, patch: Record<string, any>) => onChange(rows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row));
+  const addRow = () => onChange([...rows, { description: "", quantity: 1, unitPrice: "" }]);
+  const removeRow = (index: number) => onChange(rows.filter((_, rowIndex) => rowIndex !== index));
+  const total = rows.reduce((sum, row) => sum + Number(row.quantity ?? 0) * Number(row.unitPrice ?? 0), 0);
+
+  return (
+    <div>
+      <div className="overflow-hidden border border-slate-200 bg-white">
+        <div className="grid grid-cols-[minmax(220px,1.5fr)_110px_130px_120px_44px] gap-2 bg-slate-50 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-slate-500">
+          <span>Article</span><span>Quantité</span><span>Prix unitaire</span><span>Total</span><span />
+        </div>
+        <div className="divide-y divide-slate-100">
+          {rows.map((row, index) => {
+            const lineTotal = Number(row.quantity ?? 0) * Number(row.unitPrice ?? 0);
+            return (
+              <div key={index} className="grid grid-cols-[minmax(220px,1.5fr)_110px_130px_120px_44px] gap-2 p-3">
+                <input value={row.description ?? ""} onChange={(event) => updateRow(index, { description: event.target.value })} placeholder="Nom de l’article" className="border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold outline-none focus:border-blue-700 focus:bg-white" />
+                <input type="number" min="1" step="1" value={row.quantity ?? ""} onChange={(event) => updateRow(index, { quantity: event.target.value })} className="border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold outline-none focus:border-blue-700 focus:bg-white" />
+                <input type="number" min="0" step="0.01" value={row.unitPrice ?? ""} onChange={(event) => updateRow(index, { unitPrice: event.target.value })} placeholder="0" className="border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold outline-none focus:border-blue-700 focus:bg-white" />
+                <div className="flex items-center border border-slate-100 bg-slate-50 px-3 text-sm font-black text-slate-700">{Number.isFinite(lineTotal) ? lineTotal.toLocaleString(locale === "en" ? "en-US" : "fr-FR", { maximumFractionDigits: 2 }) : "0"}</div>
+                <button type="button" onClick={() => removeRow(index)} className="border border-slate-200 text-sm font-black text-slate-500 hover:bg-rose-50 hover:text-rose-700">×</button>
+              </div>
+            );
+          })}
+          {!rows.length ? <p className="p-4 text-sm font-semibold text-slate-500">{locale === "en" ? "Add order items." : "Ajoutez les articles de la commande."}</p> : null}
+        </div>
+        <div className="flex justify-end border-t border-slate-100 bg-slate-50 px-4 py-3 text-sm font-black text-slate-800">Total: {total.toLocaleString(locale === "en" ? "en-US" : "fr-FR", { maximumFractionDigits: 2 })}</div>
+      </div>
+      <button type="button" onClick={addRow} className="mt-3 border border-blue-700 bg-white px-4 py-2 text-sm font-black text-blue-800 hover:bg-blue-50">Ajouter un article</button>
+    </div>
   );
 }
 

@@ -17,7 +17,7 @@ export function defaultForm(fields: HospitalField[], row?: Record<string, any>) 
 }
 
 function defaultFieldValue(field: HospitalField) {
-  if (field.type === "module-permissions" || field.type === "price-list-items") return [];
+  if (field.type === "module-permissions" || field.type === "price-list-items" || field.type === "purchase-order-items") return [];
   if (field.type === "json") return "";
   if (field.type === "number") return 0;
   if (field.type === "checkbox") return false;
@@ -54,6 +54,12 @@ export function cleanPayload(form: Record<string, any>, fields: HospitalField[])
     if (field.type === "price-list-items") {
       const items = Array.isArray(value) ? value.filter((item) => item?.serviceId && Number.isFinite(Number(item?.unitPrice)) && Number(item.unitPrice) >= 0).map((item) => ({ serviceId: item.serviceId, unitPrice: Number(item.unitPrice), ...(item.insurancePrice === "" || item.insurancePrice === undefined || item.insurancePrice === null ? {} : { insurancePrice: Number(item.insurancePrice) }) })) : [];
       if (field.required && !items.length) throw new Error("Ajoutez au moins une prestation avec son montant.");
+      out[field.name] = items;
+      continue;
+    }
+    if (field.type === "purchase-order-items") {
+      const items = Array.isArray(value) ? value.filter((item) => String(item?.description ?? "").trim() && Number.isFinite(Number(item?.quantity)) && Number(item.quantity) > 0 && Number.isFinite(Number(item?.unitPrice)) && Number(item.unitPrice) >= 0).map((item) => ({ description: String(item.description).trim(), quantity: Number(item.quantity), unitPrice: Number(item.unitPrice) })) : [];
+      if (field.required && !items.length) throw new Error("Ajoutez au moins un article avec quantité et prix unitaire.");
       out[field.name] = items;
       continue;
     }
