@@ -58,6 +58,7 @@ const date = (name: string, label: string, required = false): HospitalField => (
 const dt = (name: string, label: string, required = false): HospitalField => ({ name, label, type: "datetime", required });
 const json = (name = "payload", label = "Données JSON", placeholder = '{"key":"value"}'): HospitalField => ({ name, label, type: "json", placeholder });
 const modulePermissions = (name = "modulePermissions", label = "Permissions modules"): HospitalField => ({ name, label, type: "module-permissions" });
+const priceListItems = (name = "items", label = "Lignes tarifaires"): HospitalField => ({ name, label, type: "price-list-items", required: true });
 const HOSPITAL_LABELS: Record<string, string> = {
   id: "Référence",
   createdAt: "Créé le",
@@ -99,13 +100,19 @@ const HOSPITAL_LABELS: Record<string, string> = {
   component_type: "Composant",
   newPatientsToday: "Nouveaux patients aujourd’hui",
   patients: "Patients",
+  appointmentsToday: "Rendez-vous aujourd’hui",
+  currentAdmissions: "Admissions en cours",
+  openConsultations: "Consultations ouvertes",
+  openInvoices: "Factures ouvertes",
   activePatients: "Patients actifs",
   arrivalsToday: "Arrivées aujourd’hui",
+  admissionsToday: "Admissions aujourd’hui",
+  emergencyWaiting: "Urgences en attente",
+  averageWaitingMinutes: "Attente moyenne",
   queueWaiting: "File d’attente",
   patientsByGender: "Patients par genre",
   patientsByAgeGroup: "Patients par âge",
   frequentPatients: "Patients fréquents",
-  appointmentsToday: "Rendez-vous aujourd’hui",
   upcomingAppointments: "Rendez-vous à venir",
   missedAppointments: "Rendez-vous manqués",
   cancellationRate: "Taux d’annulation",
@@ -120,7 +127,6 @@ const HOSPITAL_LABELS: Record<string, string> = {
   waitingPatients: "Patients en attente",
   averageDurationMinutes: "Durée moyenne",
   doctorProductivity: "Productivité médecins",
-  currentAdmissions: "Admissions en cours",
   totalBeds: "Total lits",
   occupiedBeds: "Lits occupés",
   bedOccupancyRate: "Taux d’occupation des lits",
@@ -406,7 +412,7 @@ export const HOSPITAL_MODULES: HospitalModule[] = [
     resource("development", "Développement enfant", "/pediatrics/development", [id("patientId", "Enfant"), dt("assessedAt", "Date évaluation", true), num("ageMonths", "Âge mois", true), json("milestones", "Étapes développement", '{"motor":"","language":"","social":"","cognitive":""}'), json("alerts", "Alertes"), area("notes", "Notes")], cols("id", "patientId", "ageMonths", "assessedAt")),
   ] },
   { key: "insurance", title: "Assurance & Mutuelles", description: "Prises en charge, réclamations.", group: "finance", resources: [resource("providers", "Assureurs", "/insurance/providers", [text("name", "Nom", true), text("code", "Code")], cols("id", "name", "code")), resource("claims", "Réclamations", "/insurance/claims", [id("patientId", "Patient"), id("invoiceId", "Facture"), id("providerId", "Assureur"), text("policyNumber", "N° police", true), num("amount", "Montant", true)], cols("id", "patientId", "providerId", "status", "amount"))] },
-  { key: "billing", title: "Facturation & Caisse", description: "Factures, paiements, PDF.", group: "finance", resources: [dashboard("dashboard", "Tableau de bord caisse", "/billing/dashboard", ["revenueToday", "revenueThisMonth", "outstandingInvoices", "paidInvoicesThisMonth", "insuranceClaims", "cashierPerformance"], "Revenus, impayés, claims assurance et performance caisse."), resource("invoices", "Factures", "/billing/invoices", [id("patientId", "Patient"), dt("periodFrom", "Début"), dt("periodTo", "Fin"), select("payerType", "Payeur", PAYER_TYPES), ref("insuranceProviderId", "Assureur"), area("notes", "Notes")], cols("id", "invoiceNumber", "patientId", "status", "total", "balanceDue"), { canCreate: false, canUpdate: false }), resource("services", "Prestations", "/pricing/services", [auto("code", "Code prestation"), text("name", "Nom", true), select("category", "Catégorie", BILLING_CATEGORIES, true), select("unit", "Unité", ["ACT", "NIGHT", "ITEM", "HOUR", "DAY"], true), select("sourceModule", "Module source", BILLING_SOURCES), select("sourceEvent", "Évènement source", BILLING_EVENTS)], cols("id", "code", "name", "category")), resource("price-lists", "Grilles tarifaires", "/pricing/price-lists", [text("name", "Nom", true), date("validFrom", "Début", true), date("validTo", "Fin"), json("items", "Lignes de prix")], cols("id", "name", "status", "validFrom", "validTo"))] },
+  { key: "billing", title: "Facturation & Caisse", description: "Factures, paiements, PDF.", group: "finance", resources: [dashboard("dashboard", "Tableau de bord caisse", "/billing/dashboard", ["revenueToday", "revenueThisMonth", "outstandingInvoices", "paidInvoicesThisMonth", "insuranceClaims", "cashierPerformance"], "Revenus, impayés, claims assurance et performance caisse."), resource("invoices", "Factures", "/billing/invoices", [id("patientId", "Patient"), dt("periodFrom", "Début"), dt("periodTo", "Fin"), select("payerType", "Payeur", PAYER_TYPES), ref("insuranceProviderId", "Assureur"), area("notes", "Notes")], cols("id", "invoiceNumber", "patientId", "status", "total", "balanceDue"), { canCreate: false, canUpdate: false }), resource("services", "Prestations", "/pricing/services", [auto("code", "Code prestation"), text("name", "Nom", true), select("category", "Catégorie", BILLING_CATEGORIES, true), select("unit", "Unité", ["ACT", "NIGHT", "ITEM", "HOUR", "DAY"], true), select("sourceModule", "Module source", BILLING_SOURCES), select("sourceEvent", "Évènement source", BILLING_EVENTS)], cols("id", "code", "name", "category")), resource("price-lists", "Grilles tarifaires", "/pricing/price-lists", [text("name", "Nom", true), ref("facilityId", "Site concerné"), select("currency", "Devise", CURRENCIES, true), date("validFrom", "Valable à partir du", true), date("validTo", "Valable jusqu’au"), priceListItems()], cols("id", "name", "currency", "status", "validFrom", "validTo"))] },
   { key: "accounting", title: "Comptabilité", description: "Journal, grand livre, budget.", group: "finance", resources: [resource("entries", "Écritures", "/accounting/entries", [date("date", "Date"), text("description", "Libellé"), json("lines", "Lignes")], cols("id", "date", "description", "createdAt"))] },
   { key: "hr", title: "Ressources Humaines", shortTitle: "HRMS", description: "Personnel, contrats, recrutement, gardes, présence, congés, paie, licences et conformité.", group: "admin", resources: [
     dashboard("dashboard", "Tableau de bord RH", "/hr/dashboard", ["totalEmployees", "activeEmployees", "staffByDepartment", "staffByProfession", "attendanceRate", "pendingLeaveApprovals", "payrollCost", "expiringContracts"], "Pilotage RH hospitalier, conformité et coûts."),

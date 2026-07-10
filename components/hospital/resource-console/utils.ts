@@ -13,7 +13,18 @@ export function normalizeRows(data: any): any[] {
 }
 
 export function defaultForm(fields: HospitalField[], row?: Record<string, any>) {
-  return Object.fromEntries(fields.map((field) => [field.name, row?.[field.name] ?? (field.type === "module-permissions" ? [] : field.type === "json" ? "" : field.type === "number" ? 0 : field.type === "checkbox" ? false : field.type === "multiselect" ? [] : field.name === "active" ? "true" : "")]));
+  return Object.fromEntries(fields.map((field) => [field.name, row?.[field.name] ?? defaultFieldValue(field)]));
+}
+
+function defaultFieldValue(field: HospitalField) {
+  if (field.type === "module-permissions" || field.type === "price-list-items") return [];
+  if (field.type === "json") return "";
+  if (field.type === "number") return 0;
+  if (field.type === "checkbox") return false;
+  if (field.type === "multiselect") return [];
+  if (field.name === "active") return "true";
+  if (field.name === "currency") return "RWF";
+  return "";
 }
 
 export function parseJsonPayload(value: string) {
@@ -38,6 +49,12 @@ export function cleanPayload(form: Record<string, any>, fields: HospitalField[])
     }
     if (field.type === "module-permissions") {
       out[field.name] = Array.isArray(value) ? value : [];
+      continue;
+    }
+    if (field.type === "price-list-items") {
+      const items = Array.isArray(value) ? value.filter((item) => item?.serviceId && Number.isFinite(Number(item?.unitPrice)) && Number(item.unitPrice) >= 0).map((item) => ({ serviceId: item.serviceId, unitPrice: Number(item.unitPrice), ...(item.insurancePrice === "" || item.insurancePrice === undefined || item.insurancePrice === null ? {} : { insurancePrice: Number(item.insurancePrice) }) })) : [];
+      if (field.required && !items.length) throw new Error("Ajoutez au moins une prestation avec son montant.");
+      out[field.name] = items;
       continue;
     }
     if (field.name === "password" && String(value).length < 10) throw new Error("Le mot de passe doit contenir au moins 10 caractères.");

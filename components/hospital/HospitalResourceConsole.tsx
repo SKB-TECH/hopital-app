@@ -191,7 +191,7 @@ export default function HospitalResourceConsole() {
   };
 
   const moduleActions = getModuleActions(selected.endpoint).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected));
-  const isDashboard = selected.key === "dashboard";
+  const isDashboard = selected.key === "dashboard" || (selected.canCreate === false && selected.fields.length === 0);
   const isAppointmentsCalendar = selected.endpoint === "/appointments";
 
   useEffect(() => {
