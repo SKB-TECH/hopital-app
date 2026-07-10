@@ -17,7 +17,7 @@ export function defaultForm(fields: HospitalField[], row?: Record<string, any>) 
 }
 
 function defaultFieldValue(field: HospitalField) {
-  if (field.type === "module-permissions" || field.type === "price-list-items" || field.type === "purchase-order-items" || field.type === "dispensation-items") return [];
+  if (field.type === "module-permissions" || field.type === "price-list-items" || field.type === "purchase-order-items" || field.type === "dispensation-items" || field.type === "prescription-items") return [];
   if (field.type === "json") return "";
   if (field.type === "number") return 0;
   if (field.type === "checkbox") return false;
@@ -69,6 +69,21 @@ export function cleanPayload(form: Record<string, any>, fields: HospitalField[])
       out[field.name] = items;
       continue;
     }
+    if (field.type === "prescription-items") {
+      const items = Array.isArray(value) ? value
+        .filter((item) => String(item?.medicine ?? "").trim() && String(item?.dosage ?? "").trim() && String(item?.frequency ?? "").trim() && String(item?.duration ?? "").trim())
+        .map((item) => ({
+          ...(item.medicineId ? { medicineId: item.medicineId } : {}),
+          medicine: String(item.medicine).trim(),
+          dosage: String(item.dosage).trim(),
+          frequency: String(item.frequency).trim(),
+          duration: String(item.duration).trim(),
+          ...(String(item.instructions ?? "").trim() ? { instructions: String(item.instructions).trim() } : {}),
+        })) : [];
+      if (field.required && !items.length) throw new Error("Ajoutez au moins un médicament avec dose, fréquence et durée.");
+      out[field.name] = items;
+      continue;
+    }
     if (field.name === "password" && String(value).length < 10) throw new Error("Le mot de passe doit contenir au moins 10 caractères.");
     if (field.type === "number") {
       const numeric = Number(value);
@@ -93,8 +108,20 @@ export function cleanPayload(form: Record<string, any>, fields: HospitalField[])
 export function formatValue(value: any): string {
   if (value === null || value === undefined || value === "") return "-";
   if (Array.isArray(value)) return value.map(formatValue).filter((item) => item !== "-").join(", ");
+  if (value instanceof Date) return formatDateTime(value);
+  if (typeof value === "string" && isIsoDateString(value)) return formatDateTime(new Date(value));
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
+}
+
+function isIsoDateString(value: string) {
+  return /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/.test(value) && !Number.isNaN(new Date(value).getTime());
+}
+
+function formatDateTime(date: Date) {
+  if (Number.isNaN(date.getTime())) return "-";
+  const hasTime = date.getUTCHours() + date.getUTCMinutes() + date.getUTCSeconds() + date.getUTCMilliseconds() > 0;
+  return new Intl.DateTimeFormat("fr-FR", hasTime ? { dateStyle: "medium", timeStyle: "short" } : { dateStyle: "medium" }).format(date);
 }
 
 export function readError(err: any) {

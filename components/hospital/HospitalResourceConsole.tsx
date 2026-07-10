@@ -36,7 +36,7 @@ export default function HospitalResourceConsole() {
   const canAccessSelected = canAccessHospitalResource(user, module.key, selected?.key);
   const canCreateSelected = selected?.canCreate !== false && hasHospitalModulePermission(user, module.key, selected?.key, "CREATE");
   const canUpdateSelected = selected?.canUpdate !== false && hasHospitalModulePermission(user, module.key, selected?.key, "UPDATE");
-  const canPrintSelected = hasHospitalModulePermission(user, module.key, selected?.key, "PRINT");
+  const canPrintSelected = hasHospitalModulePermission(user, module.key, selected?.key, "PRINT") || selected?.endpoint === "/prescriptions";
   const canExportSelected = hasHospitalModulePermission(user, module.key, selected?.key, "EXPORT");
 
   const [rows, setRows] = useState<any[]>([]);
@@ -47,6 +47,7 @@ export default function HospitalResourceConsole() {
   const [form, setForm] = useState<Record<string, any>>({});
   const [formOpen, setFormOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<any | null>(null);
+  const [viewRow, setViewRow] = useState<any | null>(null);
   const [operation, setOperation] = useState<OperationState | null>(null);
   const [operationForm, setOperationForm] = useState<Record<string, any>>({});
   const [printDialog, setPrintDialog] = useState<{ row?: any } | null>(null);
@@ -101,6 +102,14 @@ export default function HospitalResourceConsole() {
     setEditingRow(row);
     setForm(defaultForm(selected?.fields ?? [], row));
     setFormOpen(true);
+  };
+
+  const openView = (row: any) => {
+    if (selected.endpoint === "/patients" && row?.id) {
+      router.push(`/${locale}/hospital/patients/${row.id}`);
+      return;
+    }
+    setViewRow(row);
   };
 
   const submit = async () => {
@@ -271,7 +280,7 @@ export default function HospitalResourceConsole() {
                     </thead>
                     <tbody>
                       {loading ? <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center text-sm font-semibold text-slate-500"><Loader2 className="mx-auto mb-3 size-6 animate-spin text-blue-700" />{hospitalUi(locale, "loadingData")}</td></tr> :
-                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs truncate px-5 py-4 text-sm font-semibold text-slate-700">{displayCell(row, column.key, referenceLabels)}</td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => handlePrimaryView(selected.endpoint, row, router, locale)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title="Voir"><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Documents"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : openOperation(action.kind, row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title={action.label}><action.icon className="size-4" /></button>)}</div></td></tr>) :
+                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs truncate px-5 py-4 text-sm font-semibold text-slate-700">{displayCell(row, column.key, referenceLabels)}</td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => openView(row)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title="Voir"><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Documents"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : openOperation(action.kind, row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title={action.label}><action.icon className="size-4" /></button>)}</div></td></tr>) :
                       <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center"><Database className="mx-auto mb-3 size-8 text-slate-300" /><p className="font-black text-slate-800">{hospitalUi(locale, "noData")}</p><p className="mt-1 text-sm text-slate-500">{hospitalUi(locale, "noDataHint")}</p></td></tr>}
                     </tbody>
                   </table>
@@ -298,6 +307,16 @@ export default function HospitalResourceConsole() {
               locale={locale as "fr" | "en"}
               row={printDialog.row}
               onClose={() => setPrintDialog(null)}
+            />
+          )}
+
+          {viewRow && (
+            <RecordDetailsDrawer
+              title={selected.title}
+              row={viewRow}
+              columns={selected.columns}
+              referenceLabels={referenceLabels}
+              onClose={() => setViewRow(null)}
             />
           )}
 
@@ -374,6 +393,75 @@ function referenceRowLabel(row: Record<string, any>, keys: string[]) {
   return label === "Référence sans nom" ? recordReference(row) : label;
 }
 
+
+function RecordDetailsDrawer({ title, row, columns, referenceLabels, onClose }: { title: string; row: any; columns: { key: string; label: string }[]; referenceLabels: Record<string, Record<string, string>>; onClose: () => void }) {
+  const labels = new Map(columns.map((column) => [column.key, column.label]));
+  const keys = Array.from(new Set([
+    ...columns.map((column) => column.key),
+    ...Object.keys(row ?? {}).filter((key) => !hiddenDetailKeys.has(key) && !key.endsWith("Id") && !key.endsWith("_id")),
+  ])).filter((key) => !hiddenDetailKeys.has(key));
+
+  return (
+    <div className="fixed inset-0 z-[80] bg-slate-950/40">
+      <div className="ml-auto h-full w-full max-w-4xl overflow-y-auto border-l border-slate-300 bg-white">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-7 py-5">
+          <div>
+            <h2 className="text-2xl font-black text-slate-950">Détails</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500">{title} · {recordReference(row)}</p>
+          </div>
+          <button onClick={onClose} className="border border-slate-300 p-2 text-slate-600 hover:bg-slate-50"><X className="size-5" /></button>
+        </div>
+
+        <div className="grid gap-4 p-7 md:grid-cols-2">
+          {keys.map((key) => {
+            const value = key in row ? row[key] : undefined;
+            if (value === undefined || value === null || value === "") return null;
+            return (
+              <section key={key} className={detailWide(value) ? "md:col-span-2" : ""}>
+                <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">{labels.get(key) ?? detailLabel(key)}</p>
+                <DetailValue value={displayDetailValue(row, key, referenceLabels)} />
+              </section>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailValue({ value }: { value: any }) {
+  if (Array.isArray(value) && value.every((item) => item && typeof item === "object" && !Array.isArray(item))) {
+    const columns = Array.from(new Set(value.flatMap((item) => Object.keys(item).filter((key) => !hiddenDetailKeys.has(key) && !key.endsWith("Id"))))).slice(0, 6);
+    return (
+      <div className="overflow-x-auto border border-slate-200 bg-white">
+        <table className="w-full min-w-[640px] text-left text-sm">
+          <thead className="bg-slate-50 text-xs font-black uppercase tracking-wide text-slate-500"><tr>{columns.map((column) => <th key={column} className="px-3 py-2">{detailLabel(column)}</th>)}</tr></thead>
+          <tbody>{value.map((item, index) => <tr key={index} className="border-t border-slate-100">{columns.map((column) => <td key={column} className="px-3 py-3 font-semibold text-slate-700">{formatValue(item[column])}</td>)}</tr>)}</tbody>
+        </table>
+      </div>
+    );
+  }
+  if (value && typeof value === "object" && typeof value.content === "string") return <div className="min-h-16 border border-slate-200 bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-800" dangerouslySetInnerHTML={{ __html: value.content }} />;
+  if (value && typeof value === "object") return <pre className="max-h-80 overflow-auto border border-slate-200 bg-slate-50 p-4 text-xs font-semibold text-slate-700">{JSON.stringify(value, null, 2)}</pre>;
+  return <div className="min-h-12 border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold leading-6 text-slate-800">{formatValue(value)}</div>;
+}
+
+const hiddenDetailKeys = new Set(["id", "organizationId", "organization_id", "deletedAt", "deleted_at", "passwordHash", "password_hash", "refreshTokenHash", "refresh_token_hash"]);
+
+function displayDetailValue(row: any, key: string, referenceLabels: Record<string, Record<string, string>>) {
+  const value = row?.[key];
+  const cell = displayCell(row, key, referenceLabels);
+  if (cell !== "Référence non trouvée" && cell !== "-" && cell !== formatValue(value)) return cell;
+  return value;
+}
+
+function detailWide(value: any) {
+  return Array.isArray(value) || (value && typeof value === "object") || String(value ?? "").length > 80;
+}
+
+function detailLabel(key: string) {
+  return key.replace(/_/g, " ").replace(/([A-Z])/g, " $1").replace(/^./, (value) => value.toUpperCase());
+}
 
 function getModuleActions(endpoint: string): OperationAction[] {
   if (endpoint === "/billing/invoices") return [

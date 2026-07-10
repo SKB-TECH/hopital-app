@@ -36,7 +36,7 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
   const selectedValues = Array.isArray(value) ? value : typeof value === "string" && value ? [value] : [];
 
   return (
-    <label className={field.type === "multiselect" || field.type === "module-permissions" || field.type === "price-list-items" || field.type === "purchase-order-items" || field.type === "dispensation-items" ? "block md:col-span-2" : "block"}>
+    <label className={field.type === "multiselect" || field.type === "module-permissions" || field.type === "price-list-items" || field.type === "purchase-order-items" || field.type === "dispensation-items" || field.type === "prescription-items" ? "block md:col-span-2" : "block"}>
       <span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">{field.label}{field.required ? " *" : ""}</span>
       {field.type === "module-permissions" ? (
         <ModulePermissionsEditor value={value} roles={form?.roles} onChange={onChange} locale={locale} />
@@ -48,6 +48,8 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
         <PurchaseOrderItemsField value={value} onChange={onChange} locale={locale} />
       ) : field.type === "dispensation-items" ? (
         <DispensationItemsField value={value} onChange={onChange} locale={locale} />
+      ) : field.type === "prescription-items" ? (
+        <PrescriptionItemsField value={value} onChange={onChange} locale={locale} />
       ) : field.reference ? (
         <Autocomplete value={String(value ?? "")} options={options} isLoading={loading} placeholder={field.placeholder || `${locale === "en" ? "Select" : "Sélectionner"} ${field.label.toLowerCase()}`} searchPlaceholder={`${locale === "en" ? "Search" : "Rechercher"} ${field.label.toLowerCase()}`} emptyText={locale === "en" ? "No result" : "Aucun résultat"} onSelect={(option) => onChange(option.id)} showIdFallback={false} />
       ) : field.type === "multiselect" ? (
@@ -82,6 +84,58 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
         <input type={field.type === "number" ? "number" : field.type === "date" ? "date" : field.type === "datetime" ? "datetime-local" : field.name === "password" || field.name.toLowerCase().includes("pin") ? "password" : "text"} value={value ?? ""} onChange={(event) => onChange(field.type === "number" ? Number(event.target.value) : event.target.value)} placeholder={field.name === "password" ? (locale === "en" ? "Minimum 10 characters" : "Minimum 10 caractères") : field.name.toLowerCase().includes("pin") ? "4 à 8 chiffres" : field.placeholder} className={base} />
       )}
     </label>
+  );
+}
+
+function PrescriptionItemsField({ value, onChange, locale }: { value: any; onChange: (value: any) => void; locale: string }) {
+  const rows = Array.isArray(value) ? value : [];
+  const [medicines, setMedicines] = useState<Array<{ id: string; label: string }>>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    api.get("/pharmacy/medicines")
+      .then((response) => mounted && setMedicines(normalizeRows(response.data).map((medicine) => ({
+        id: String(medicine.id ?? ""),
+        label: [medicine.name, medicine.strength, medicine.form].filter(Boolean).join(" · "),
+      })).filter((medicine) => medicine.id)))
+      .catch(() => mounted && setMedicines([]))
+      .finally(() => mounted && setLoading(false));
+    return () => { mounted = false; };
+  }, []);
+
+  const updateRow = (index: number, patch: Record<string, any>) => onChange(rows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row));
+  const addRow = () => onChange([...rows, { medicine: "", dosage: "", frequency: "", duration: "", instructions: "" }]);
+  const removeRow = (index: number) => onChange(rows.filter((_, rowIndex) => rowIndex !== index));
+
+  return (
+    <div>
+      <div className="overflow-x-auto border border-slate-200 bg-white">
+        <div className="min-w-[920px]">
+          <div className="grid grid-cols-[minmax(230px,1.4fr)_130px_140px_120px_minmax(220px,1.2fr)_44px] gap-2 bg-slate-50 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-slate-500">
+            <span>Médicament</span><span>Dose</span><span>Fréquence</span><span>Durée</span><span>Consignes</span><span />
+          </div>
+          <div className="divide-y divide-slate-100">
+            {rows.map((row, index) => (
+              <div key={index} className="grid grid-cols-[minmax(230px,1.4fr)_130px_140px_120px_minmax(220px,1.2fr)_44px] gap-2 p-3">
+                <>
+                  <input list={`prescription-medicines-${index}`} value={row.medicine ?? ""} onChange={(event) => updateRow(index, { medicine: event.target.value, medicineId: "" })} placeholder={loading ? "Chargement des suggestions..." : "Nom du médicament"} className="border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold outline-none focus:border-blue-700 focus:bg-white" />
+                  <datalist id={`prescription-medicines-${index}`}>{medicines.map((medicine) => <option key={medicine.id} value={medicine.label} />)}</datalist>
+                </>
+                <input value={row.dosage ?? ""} onChange={(event) => updateRow(index, { dosage: event.target.value })} placeholder="ex. 500 mg" className="border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold outline-none focus:border-blue-700 focus:bg-white" />
+                <input value={row.frequency ?? ""} onChange={(event) => updateRow(index, { frequency: event.target.value })} placeholder="ex. 3x/jour" className="border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold outline-none focus:border-blue-700 focus:bg-white" />
+                <input value={row.duration ?? ""} onChange={(event) => updateRow(index, { duration: event.target.value })} placeholder="ex. 5 jours" className="border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold outline-none focus:border-blue-700 focus:bg-white" />
+                <textarea value={row.instructions ?? ""} onChange={(event) => updateRow(index, { instructions: event.target.value })} placeholder="Après repas, surveillance, renouvellement..." className="h-20 resize-none border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold outline-none focus:border-blue-700 focus:bg-white" />
+                <button type="button" onClick={() => removeRow(index)} className="h-10 border border-slate-200 text-sm font-black text-slate-500 hover:bg-rose-50 hover:text-rose-700">×</button>
+              </div>
+            ))}
+            {!rows.length ? <p className="p-4 text-sm font-semibold text-slate-500">{locale === "en" ? "Add prescribed medicines." : "Ajoutez les médicaments prescrits avec posologie et durée."}</p> : null}
+          </div>
+        </div>
+      </div>
+      <button type="button" onClick={addRow} className="mt-3 border border-blue-700 bg-white px-4 py-2 text-sm font-black text-blue-800 hover:bg-blue-50">Ajouter une ligne d’ordonnance</button>
+    </div>
   );
 }
 
