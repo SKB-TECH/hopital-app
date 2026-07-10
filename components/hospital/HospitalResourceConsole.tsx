@@ -124,15 +124,19 @@ export default function HospitalResourceConsole() {
       if (editingRow?.id && selected.endpoint === "/users") {
         delete payload.password;
       }
+      let savedRow: any = null;
       if (editingRow?.id && canUpdateSelected) {
-        await api.patch(`${selected.endpoint}/${editingRow.id}`, payload);
+        const response = await api.patch(`${selected.endpoint}/${editingRow.id}`, payload);
+        savedRow = response.data;
       } else {
-        await api.post(selected.endpoint, payload);
+        const response = await api.post(selected.endpoint, payload);
+        savedRow = response.data;
       }
       setForm(defaultForm(selected.fields));
       setFormOpen(false);
       setEditingRow(null);
       await load();
+      if (selected.endpoint === "/prescriptions" && savedRow?.id) setPrintDialog({ row: savedRow });
     } catch (err: any) {
       setError(readError(err));
     } finally {
