@@ -6,7 +6,7 @@ import { CheckCircle2, CreditCard, Database, Download, Edit3, Eye, FileJson, Fil
 import DashboardNavbar from "@/components/dashboard/DashboardNavbar";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import { useSidebar } from "@/contexts/SidebarContext";
-import { findHospitalModule } from "@/shared/config/hospital-modules";
+import { findHospitalModule, hospitalReferences } from "@/shared/config/hospital-modules";
 import { hospitalText, hospitalUi, localizeHospitalModule } from "@/shared/config/hospital-i18n";
 import { api } from "@/shared/lib/http/api";
 import { useMe } from "@/shared/hooks/auth.hooks";
@@ -52,6 +52,7 @@ export default function HospitalResourceConsole() {
   const [operation, setOperation] = useState<OperationState | null>(null);
   const [operationForm, setOperationForm] = useState<Record<string, any>>({});
   const [printDialog, setPrintDialog] = useState<{ row?: any } | null>(null);
+  const [referenceLabels, setReferenceLabels] = useState<Record<string, Record<string, string>>>({});
 
   const load = async () => {
     if (!selected) return;
@@ -64,14 +65,16 @@ export default function HospitalResourceConsole() {
     try {
       const response = await api.get(selected.endpoint, { params: selected.endpoint === "/appointments" ? { limit: 100 } : undefined });
       const dataRows = normalizeRows(response.data);
+      let nextRows = dataRows;
       if (selected.endpoint === "/hr/attendance-events") {
         const employeesResponse = await api.get("/hr/employees", { params: { limit: 100 } });
-        setRows(buildAttendanceRegister(dataRows, normalizeRows(employeesResponse.data)));
-      } else {
-        setRows(dataRows);
+        nextRows = buildAttendanceRegister(dataRows, normalizeRows(employeesResponse.data));
       }
+      setRows(nextRows);
+      setReferenceLabels(await buildReferenceLabels(selected.columns.map((column) => column.key), nextRows));
     } catch (err: any) {
       setRows([]);
+      setReferenceLabels({});
       setError(readError(err));
     } finally {
       setLoading(false);
@@ -276,7 +279,7 @@ export default function HospitalResourceConsole() {
                     </thead>
                     <tbody>
                       {loading ? <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center text-sm font-semibold text-slate-500"><Loader2 className="mx-auto mb-3 size-6 animate-spin text-blue-700" />{hospitalUi(locale, "loadingData")}</td></tr> :
-                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs truncate px-5 py-4 text-sm font-semibold text-slate-700">{displayCell(row, column.key)}</td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => handlePrimaryView(selected.endpoint, row, router, locale)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title="Voir"><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Documents"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : openOperation(action.kind, row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title={action.label}><action.icon className="size-4" /></button>)}</div></td></tr>) :
+                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs truncate px-5 py-4 text-sm font-semibold text-slate-700">{displayCell(row, column.key, referenceLabels)}</td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => handlePrimaryView(selected.endpoint, row, router, locale)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title="Voir"><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Documents"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : openOperation(action.kind, row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title={action.label}><action.icon className="size-4" /></button>)}</div></td></tr>) :
                       <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center"><Database className="mx-auto mb-3 size-8 text-slate-300" /><p className="font-black text-slate-800">{hospitalUi(locale, "noData")}</p><p className="mt-1 text-sm text-slate-500">{hospitalUi(locale, "noDataHint")}</p></td></tr>}
                     </tbody>
                   </table>
@@ -340,12 +343,52 @@ export default function HospitalResourceConsole() {
   );
 }
 
-function displayCell(row: any, key: string) {
+async function buildReferenceLabels(keys: string[], rows: any[]) {
+  const maps: Record<string, Record<string, string>> = {};
+  const referenceKeys = [...new Set(keys.filter((key) => hospitalReferences[key] && rows.some((row) => row?.[key])))];
+  await Promise.all(referenceKeys.map(async (key) => {
+    const reference = hospitalReferences[key];
+    if (!reference) return;
+    try {
+      const response = await api.get(reference.endpoint, { params: { limit: 500 } });
+      maps[key] = Object.fromEntries(normalizeRows(response.data).map((row) => {
+        const valueKey = reference.valueKey ?? "id";
+        const id = String(row[valueKey] ?? row.id ?? "");
+        return [id, referenceRowLabel(row, reference.labelKeys)];
+      }).filter(([id, label]) => id && label));
+    } catch {
+      maps[key] = {};
+    }
+  }));
+  return maps;
+}
+
+function displayCell(row: any, key: string, referenceLabels: Record<string, Record<string, string>>) {
+  if (key === "id") return recordReference(row);
   if (key === "patientId" && row?.patientName) return [row.patientName, row.medicalRecordNumber].filter(Boolean).join(" · ");
   if (key === "practitionerId" && row?.practitionerName) return row.practitionerName;
   if (key === "prescriberId" && row?.prescriberName) return row.prescriberName;
   if (key === "attendingPractitionerId" && row?.attendingPractitionerName) return row.attendingPractitionerName;
-  return formatValue(row?.[key]);
+  const value = row?.[key];
+  const mapped = value !== undefined && value !== null ? referenceLabels[key]?.[String(value)] : undefined;
+  if (mapped) return mapped;
+  if (isUuid(value)) return "Référence non trouvée";
+  return formatValue(value);
+}
+
+function recordReference(row: any) {
+  const keys = ["invoiceNumber", "medicalRecordNumber", "employeeNumber", "badgeNumber", "code", "sku", "batchNumber", "donorNumber", "bagNumber", "name", "title", "chiefComplaint", "procedure", "status"];
+  const value = keys.map((key) => row?.[key]).find((item) => item !== undefined && item !== null && item !== "");
+  return formatValue(value ?? "-");
+}
+
+function referenceRowLabel(row: Record<string, any>, keys: string[]) {
+  const label = keys.map((key) => row[key]).filter((value) => value !== undefined && value !== null && value !== "" && !isUuid(value)).map(formatValue).join(" · ");
+  return label || recordReference(row);
+}
+
+function isUuid(value: any) {
+  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 

@@ -59,7 +59,7 @@ const dt = (name: string, label: string, required = false): HospitalField => ({ 
 const json = (name = "payload", label = "Données JSON", placeholder = '{"key":"value"}'): HospitalField => ({ name, label, type: "json", placeholder });
 const modulePermissions = (name = "modulePermissions", label = "Permissions modules"): HospitalField => ({ name, label, type: "module-permissions" });
 const HOSPITAL_LABELS: Record<string, string> = {
-  id: "ID",
+  id: "Référence",
   createdAt: "Créé le",
   updatedAt: "Modifié le",
   status: "Statut",
