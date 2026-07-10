@@ -1,6 +1,7 @@
 "use client";
 
 import { Activity, AlertTriangle, BarChart3, CircleDollarSign, Clock3, Loader2, TrendingUp, UsersRound } from "lucide-react";
+import { hospitalMetricLabel } from "@/shared/config/hospital-modules";
 import { formatValue } from "./utils";
 
 type DashboardColumn = { key: string; label: string };
@@ -29,23 +30,26 @@ export function DepartmentDashboard({ loading, data, columns, locale = "fr" }: {
   const primary = bestChartColumn(complex, data);
   const secondary = complex.filter((column) => column.key !== primary?.key);
   const alerts = simple.filter((column) => isAlertMetric(column.key, data?.[column.key]));
+  const metrics = (simple.length ? simple : columns.slice(0, 4)).slice(0, 4);
+  const sideColumn = secondary[0];
+  const hasSidePanel = alerts.length > 0 || Boolean(sideColumn && rowsFromValue(data?.[sideColumn.key]).length > 0);
 
   return (
     <div className="space-y-5 bg-[#fbfaff] p-4 sm:p-6">
-      <section className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-        {(simple.length ? simple : columns.slice(0, 4)).slice(0, 4).map((column, index) => (
-          <DashboardMetric key={column.key} label={column.label || humanize(column.key)} name={column.key} value={data?.[column.key]} tone={TONES[index % TONES.length]} index={index} />
+      <section className={metricGridClass(metrics.length)}>
+        {metrics.map((column, index) => (
+          <DashboardMetric key={column.key} label={displayLabel(column)} name={column.key} value={data?.[column.key]} tone={TONES[index % TONES.length]} index={index} />
         ))}
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
+      <section className={hasSidePanel ? "grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]" : "grid gap-5"}>
         <MainChartPanel column={primary} data={data} fallbackColumns={simple} locale={locale} />
-        <SidePanel alerts={alerts} column={secondary[0]} data={data} locale={locale} />
+        {hasSidePanel ? <SidePanel alerts={alerts} column={sideColumn} data={data} locale={locale} /> : null}
       </section>
 
       {secondary.slice(1).length ? (
         <section className="grid gap-5 xl:grid-cols-3">
-          {secondary.slice(1, 4).map((column) => <CompactDataPanel key={column.key} title={column.label || humanize(column.key)} value={data?.[column.key]} locale={locale} />)}
+          {secondary.slice(1, 4).map((column) => <CompactDataPanel key={column.key} title={displayLabel(column)} value={data?.[column.key]} locale={locale} />)}
         </section>
       ) : null}
     </div>
@@ -53,9 +57,10 @@ export function DepartmentDashboard({ loading, data, columns, locale = "fr" }: {
 }
 
 function DashboardMetric({ label, name, value, tone, index }: { label: string; name: string; value: any; tone: Tone; index: number }) {
-  const numeric = Number(value ?? 0);
+  const metricValue = metricNumber(value);
+  const numeric = Number(metricValue ?? 0);
   const percentage = isPercentageMetric(name);
-  const negative = isAlertMetric(name, value);
+  const negative = isAlertMetric(name, metricValue);
   const trend = trendValue(name, numeric, index);
 
   return (
@@ -66,7 +71,7 @@ function DashboardMetric({ label, name, value, tone, index }: { label: string; n
       </div>
       <p className="mt-4 line-clamp-1 text-xs font-bold text-slate-500">{label}</p>
       <div className="mt-1 flex items-end justify-between gap-3">
-        <p className="text-2xl font-black tracking-tight text-slate-950">{formatDashboardNumber(value)}{percentage ? <span className="ml-1 text-sm text-slate-400">%</span> : null}</p>
+        <p className="truncate text-2xl font-black tracking-tight text-slate-950">{formatDashboardNumber(metricValue)}{percentage ? <span className="ml-1 text-sm text-slate-400">%</span> : null}</p>
       </div>
       <div className="mt-4 flex items-center gap-2 text-[11px] font-bold">
         <span className={negative ? "text-rose-600" : "text-emerald-600"}>{negative ? "↓" : "↑"} {trend}%</span>
@@ -77,10 +82,10 @@ function DashboardMetric({ label, name, value, tone, index }: { label: string; n
 }
 
 function MainChartPanel({ column, data, fallbackColumns, locale }: { column?: DashboardColumn; data: Record<string, any>; fallbackColumns: DashboardColumn[]; locale: string }) {
-  const sourceRows = column ? rowsFromValue(data?.[column.key]) : fallbackColumns.map((item) => ({ label: item.label || humanize(item.key), value: data?.[item.key] }));
+  const sourceRows = column ? rowsFromValue(data?.[column.key]) : fallbackColumns.map((item) => ({ label: displayLabel(item), value: data?.[item.key] }));
   const rows = sourceRows.filter((row) => Number.isFinite(Number(findNumericValue(row))));
-  const points = chartPoints(rows.length >= 2 ? rows : fallbackColumns.map((item, index) => ({ label: shortLabel(item.label || item.key), value: Number(data?.[item.key] ?? index + 1) })), 760, 250);
-  const title = column?.label || (locale === "en" ? "Operational overview" : "Vue opérationnelle");
+  const points = chartPoints(rows.length >= 2 ? rows : fallbackColumns.map((item, index) => ({ label: shortLabel(displayLabel(item)), value: Number(metricNumber(data?.[item.key]) ?? index + 1) })), 760, 250);
+  const title = column ? displayLabel(column) : (locale === "en" ? "Operational overview" : "Vue opérationnelle");
 
   return (
     <section className="rounded-lg border border-slate-100 bg-white p-5 shadow-[0_12px_28px_rgba(15,23,42,0.045)]">
@@ -113,11 +118,11 @@ function MainChartPanel({ column, data, fallbackColumns, locale }: { column?: Da
 }
 
 function SidePanel({ alerts, column, data, locale }: { alerts: DashboardColumn[]; column?: DashboardColumn; data: Record<string, any>; locale: string }) {
-  const rows = column ? rowsFromValue(data?.[column.key]).slice(0, 6) : alerts.map((item) => ({ indicateur: item.label || humanize(item.key), valeur: data?.[item.key], status: "A surveiller" }));
+  const rows = column ? rowsFromValue(data?.[column.key]).slice(0, 6) : alerts.map((item) => ({ indicateur: displayLabel(item), valeur: data?.[item.key], status: "A surveiller" }));
   return (
     <section className="rounded-lg border border-slate-100 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.045)]">
       <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-        <h3 className="text-base font-black text-slate-950">{column?.label || (locale === "en" ? "Priority items" : "Points prioritaires")}</h3>
+        <h3 className="text-base font-black text-slate-950">{column ? displayLabel(column) : (locale === "en" ? "Priority items" : "Points prioritaires")}</h3>
         <span className="text-xs font-black text-violet-700">{locale === "en" ? "View all" : "Tout voir"}</span>
       </div>
       <div className="overflow-hidden">
@@ -181,6 +186,13 @@ function StatusPill({ warning }: { warning: boolean }) {
   return <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-black ${warning ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>{warning ? "Suivi" : "Stable"}</span>;
 }
 
+function metricGridClass(count: number) {
+  if (count <= 1) return "grid gap-4";
+  if (count === 2) return "grid gap-4 md:grid-cols-2";
+  if (count === 3) return "grid gap-4 md:grid-cols-3";
+  return "grid gap-4 md:grid-cols-2 2xl:grid-cols-4";
+}
+
 function MiniSparkline({ value, tone, index, negative }: { value: number; tone: Tone; index: number; negative: boolean }) {
   const points = sparkValues(value, index, negative);
   const path = points.map((point, pointIndex) => `${pointIndex ? "L" : "M"}${pointIndex * 13},${32 - point}`).join(" ");
@@ -204,12 +216,29 @@ function rowsFromValue(value: any) { return Array.isArray(value) ? value : objec
 function isPercentageMetric(name: string) { return /(rate|occupancy|compliance|ratio|percent|percentage)/i.test(name); }
 function isSimpleDashboardValue(value: any) { return value === null || value === undefined || ["string", "number", "boolean"].includes(typeof value); }
 function objectToRows(value: any) { if (!value || typeof value !== "object") return []; return Object.entries(value).map(([key, val]) => ({ indicateur: humanize(key), valeur: val })); }
-function findNumericValue(row: any) { if (typeof row === "number") return row; if (!row || typeof row !== "object") return undefined; const entry = Object.entries(row).find(([, value]) => Number.isFinite(Number(value))); return entry?.[1]; }
+function findNumericValue(row: any): any { if (typeof row === "number") return row; if (!row || typeof row !== "object") return undefined; const entry = Object.entries(row).find(([, value]) => Number.isFinite(Number(value))); if (entry) return entry[1]; return metricNumber(row); }
 function rowLabel(row: any) { if (!row || typeof row !== "object") return formatValue(row); const preferred = ["label", "name", "department", "position", "source_type", "service_code", "description", "blood_group", "component_type", "ward", "type", "indicateur"]; const key = preferred.find((item) => row[item] !== undefined) ?? Object.keys(row).find((item) => !Number.isFinite(Number(row[item]))) ?? Object.keys(row)[0]; return formatValue(row[key]); }
 function shortLabel(value: any) { return String(formatValue(value)).slice(0, 16); }
 function formatDashboardNumber(value: any) { const numeric = Number(value); if (Number.isFinite(numeric)) return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(numeric); return formatValue(value); }
 function isAlertMetric(key: string, value: any) { const numeric = Number(value ?? 0); if (!Number.isFinite(numeric) || numeric <= 0) return false; return /(critical|alert|pending|waiting|overdue|expired|expiring|low|outOfStock|outstanding|unpaid|emergency|missed|due)/i.test(key); }
-function humanize(key: string) { return key.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase()); }
+function humanize(key: string) { return hospitalMetricLabel(key); }
+function displayLabel(column: DashboardColumn) { return !column.label || column.label === column.key ? humanize(column.key) : column.label; }
+function metricNumber(value: any): number | string {
+  if (value === null || value === undefined || value === "") return 0;
+  if (["number", "boolean"].includes(typeof value)) return Number(value);
+  if (typeof value === "string") {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : value;
+  }
+  if (Array.isArray(value)) return value.length;
+  if (typeof value === "object") {
+    const direct = Object.values(value).find((item) => Number.isFinite(Number(item)));
+    if (direct !== undefined) return Number(direct);
+    const nested = Object.values(value).map(metricNumber).find((item) => Number.isFinite(Number(item)) && Number(item) > 0);
+    return nested ?? 0;
+  }
+  return 0;
+}
 function trendValue(name: string, numeric: number, index: number) { const base = Math.abs(Math.round((Number.isFinite(numeric) ? numeric : index + 1) * 1.7 + index * 3)); return Math.max(2, Math.min(18, base % 19)); }
 function sparkValues(value: number, index: number, negative: boolean) { const seed = Math.max(1, Math.abs(Math.round(value)) + index * 7); return Array.from({ length: 7 }, (_, item) => { const wave = ((seed + item * 11) % 24) + 5; return negative ? 28 - wave * 0.65 : wave; }); }
 function chartPoints(rows: any[], width: number, height: number) {
