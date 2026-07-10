@@ -12,7 +12,7 @@ import { api } from "@/shared/lib/http/api";
 import { useMe } from "@/shared/hooks/auth.hooks";
 import { canAccessHospitalModule, canAccessHospitalResource, getAccessibleHospitalResources, getFirstAccessibleHospitalModule, hasHospitalModulePermission } from "@/shared/lib/auth/module-access";
 import type { OperationAction, OperationKind, OperationState } from "@/components/hospital/resource-console/types";
-import { cleanObject, cleanPayload, defaultForm, defaultOperationForm, formatValue, normalizeRows, readError, validateOperation, nextStatuses } from "@/components/hospital/resource-console/utils";
+import { cleanObject, cleanPayload, defaultForm, defaultOperationForm, formatValue, isUuid, normalizeRows, readError, relationLabel, validateOperation, nextStatuses } from "@/components/hospital/resource-console/utils";
 import { DepartmentDashboard } from "@/components/hospital/resource-console/DepartmentDashboard";
 import { FieldInput } from "@/components/hospital/resource-console/FieldInput";
 import { ProfessionalError } from "@/components/hospital/resource-console/ProfessionalError";
@@ -370,12 +370,8 @@ function recordReference(row: any) {
 }
 
 function referenceRowLabel(row: Record<string, any>, keys: string[]) {
-  const label = keys.map((key) => row[key]).filter((value) => value !== undefined && value !== null && value !== "" && !isUuid(value)).map(formatValue).join(" · ");
-  return label || recordReference(row);
-}
-
-function isUuid(value: any) {
-  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  const label = relationLabel(row, keys);
+  return label === "Référence sans nom" ? recordReference(row) : label;
 }
 
 

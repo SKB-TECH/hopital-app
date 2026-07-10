@@ -78,8 +78,9 @@ export function cleanPayload(form: Record<string, any>, fields: HospitalField[])
   return out;
 }
 
-export function formatValue(value: any) {
+export function formatValue(value: any): string {
   if (value === null || value === undefined || value === "") return "-";
+  if (Array.isArray(value)) return value.map(formatValue).filter((item) => item !== "-").join(", ");
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
 }
@@ -95,7 +96,27 @@ export function readError(err: any) {
 }
 
 export function relationLabel(row: Record<string, any>, keys: string[]) {
-  return keys.map((key) => formatValue(row[key])).filter((value) => value && value !== "-").join(" · ") || row.id || "-";
+  const fromConfig = keys.map((key) => row[key]).filter(isReadableReferencePart).map(formatValue);
+  if (fromConfig.length) return fromConfig.join(" · ");
+  const fallbackKeys = [
+    "patientName", "practitionerName", "attendingPractitionerName", "prescriberName",
+    "invoiceNumber", "medicalRecordNumber", "employeeNumber", "badgeNumber", "code", "sku",
+    "batchNumber", "donorNumber", "bagNumber", "name", "title", "label", "chiefComplaint",
+    "procedure", "testName", "ward", "room", "status", "createdAt",
+  ];
+  const fallback = fallbackKeys.map((key) => row[key]).filter(isReadableReferencePart).map(formatValue);
+  return fallback.length ? fallback.join(" · ") : "Référence sans nom";
+}
+
+export function isUuid(value: any) {
+  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function isReadableReferencePart(value: any) {
+  if (value === undefined || value === null || value === "") return false;
+  if (isUuid(value)) return false;
+  if (typeof value === "object" && !Array.isArray(value)) return false;
+  return formatValue(value) !== "-";
 }
 
 export function defaultOperationForm(kind: OperationKind, row?: any, endpoint = "") {
