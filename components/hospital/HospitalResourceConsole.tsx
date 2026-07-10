@@ -404,7 +404,8 @@ function getRowActions(endpoint: string, row: any): OperationAction[] {
 
 function canRunOperation(kind: OperationKind, canCreate: boolean, canUpdate: boolean, canPrint: boolean) {
   if (kind === "print-invoice") return canPrint;
-  if (kind === "preview-invoice" || kind === "generate-invoice" || kind === "stock-movement") return canCreate;
+  if (kind === "preview-invoice" || kind === "generate-invoice") return true;
+  if (kind === "stock-movement") return canCreate;
   if (kind === "patient-record") return true;
   return canUpdate;
 }
