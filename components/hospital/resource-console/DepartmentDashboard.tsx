@@ -48,7 +48,7 @@ export function DepartmentDashboard({ loading, data, columns, locale = "fr" }: {
       </section>
 
       {secondary.slice(1).length ? (
-        <section className="grid gap-5 xl:grid-cols-3">
+        <section className={compactGridClass(secondary.slice(1).length)}>
           {secondary.slice(1, 4).map((column) => <CompactDataPanel key={column.key} title={displayLabel(column)} value={data?.[column.key]} locale={locale} />)}
         </section>
       ) : null}
@@ -193,6 +193,12 @@ function metricGridClass(count: number) {
   return "grid gap-4 md:grid-cols-2 2xl:grid-cols-4";
 }
 
+function compactGridClass(count: number) {
+  if (count <= 1) return "grid gap-5";
+  if (count === 2) return "grid gap-5 xl:grid-cols-2";
+  return "grid gap-5 xl:grid-cols-3";
+}
+
 function MiniSparkline({ value, tone, index, negative }: { value: number; tone: Tone; index: number; negative: boolean }) {
   const points = sparkValues(value, index, negative);
   const path = points.map((point, pointIndex) => `${pointIndex ? "L" : "M"}${pointIndex * 13},${32 - point}`).join(" ");
@@ -217,7 +223,9 @@ function isPercentageMetric(name: string) { return /(rate|occupancy|compliance|r
 function isSimpleDashboardValue(value: any) { return value === null || value === undefined || ["string", "number", "boolean"].includes(typeof value); }
 function objectToRows(value: any) { if (!value || typeof value !== "object") return []; return Object.entries(value).map(([key, val]) => ({ indicateur: humanize(key), valeur: val })); }
 function findNumericValue(row: any): any { if (typeof row === "number") return row; if (!row || typeof row !== "object") return undefined; const entry = Object.entries(row).find(([, value]) => Number.isFinite(Number(value))); if (entry) return entry[1]; return metricNumber(row); }
-function rowLabel(row: any) { if (!row || typeof row !== "object") return formatValue(row); const preferred = ["label", "name", "patientName", "practitionerName", "prescriberName", "department", "position", "source_type", "service_code", "description", "blood_group", "component_type", "ward", "type", "indicateur"]; const key = preferred.find((item) => row[item] !== undefined) ?? Object.keys(row).find((item) => !Number.isFinite(Number(row[item]))) ?? Object.keys(row)[0]; return formatValue(row[key]); }
+function rowLabel(row: any) { if (!row || typeof row !== "object") return formatValue(row); const fullName = [row.firstName ?? row.first_name, row.lastName ?? row.last_name].filter(Boolean).join(" ").trim(); if (fullName) return row.medicalRecordNumber || row.medical_record_number ? `${fullName} · ${row.medicalRecordNumber ?? row.medical_record_number}` : fullName; const preferred = ["label", "name", "patientName", "medicalRecordNumber", "practitionerName", "prescriberName", "cashierName", "department", "position", "sourceType", "source_type", "serviceCode", "service_code", "description", "bloodGroup", "blood_group", "componentType", "component_type", "ward", "type", "indicateur"]; const key = preferred.find((item) => isReadableLabelValue(row[item])) ?? Object.keys(row).find((item) => isReadableLabelValue(row[item])); return key ? formatValue(row[key]) : "-"; }
+function isReadableLabelValue(value: any) { return value !== undefined && value !== null && value !== "" && !isUuid(value) && !Number.isFinite(Number(value)); }
+function isUuid(value: any) { return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value); }
 function shortLabel(value: any) { return String(formatValue(value)).slice(0, 16); }
 function formatDashboardNumber(value: any) { const numeric = Number(value); if (Number.isFinite(numeric)) return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(numeric); return formatValue(value); }
 function isAlertMetric(key: string, value: any) { const numeric = Number(value ?? 0); if (!Number.isFinite(numeric) || numeric <= 0) return false; return /(critical|alert|pending|waiting|overdue|expired|expiring|low|outOfStock|outstanding|unpaid|emergency|missed|due)/i.test(key); }

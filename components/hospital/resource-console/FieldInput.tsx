@@ -36,7 +36,7 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
   const selectedValues = Array.isArray(value) ? value : typeof value === "string" && value ? [value] : [];
 
   return (
-    <label className={field.type === "multiselect" || field.type === "module-permissions" || field.type === "price-list-items" || field.type === "purchase-order-items" ? "block md:col-span-2" : "block"}>
+    <label className={field.type === "multiselect" || field.type === "module-permissions" || field.type === "price-list-items" || field.type === "purchase-order-items" || field.type === "dispensation-items" ? "block md:col-span-2" : "block"}>
       <span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">{field.label}{field.required ? " *" : ""}</span>
       {field.type === "module-permissions" ? (
         <ModulePermissionsEditor value={value} roles={form?.roles} onChange={onChange} locale={locale} />
@@ -46,6 +46,8 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
         <PriceListItemsField value={value} onChange={onChange} locale={locale} />
       ) : field.type === "purchase-order-items" ? (
         <PurchaseOrderItemsField value={value} onChange={onChange} locale={locale} />
+      ) : field.type === "dispensation-items" ? (
+        <DispensationItemsField value={value} onChange={onChange} locale={locale} />
       ) : field.reference ? (
         <Autocomplete value={String(value ?? "")} options={options} isLoading={loading} placeholder={field.placeholder || `${locale === "en" ? "Select" : "Sélectionner"} ${field.label.toLowerCase()}`} searchPlaceholder={`${locale === "en" ? "Search" : "Rechercher"} ${field.label.toLowerCase()}`} emptyText={locale === "en" ? "No result" : "Aucun résultat"} onSelect={(option) => onChange(option.id)} showIdFallback={false} />
       ) : field.type === "multiselect" ? (
@@ -80,6 +82,70 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
         <input type={field.type === "number" ? "number" : field.type === "date" ? "date" : field.type === "datetime" ? "datetime-local" : field.name === "password" || field.name.toLowerCase().includes("pin") ? "password" : "text"} value={value ?? ""} onChange={(event) => onChange(field.type === "number" ? Number(event.target.value) : event.target.value)} placeholder={field.name === "password" ? (locale === "en" ? "Minimum 10 characters" : "Minimum 10 caractères") : field.name.toLowerCase().includes("pin") ? "4 à 8 chiffres" : field.placeholder} className={base} />
       )}
     </label>
+  );
+}
+
+function DispensationItemsField({ value, onChange, locale }: { value: any; onChange: (value: any) => void; locale: string }) {
+  const rows = Array.isArray(value) ? value : [];
+  const [medicines, setMedicines] = useState<Array<{ id: string; label: string }>>([]);
+  const [batches, setBatches] = useState<Array<{ id: string; medicineId: string; label: string; quantity: number }>>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    Promise.all([api.get("/pharmacy/medicines"), api.get("/pharmacy/batches")])
+      .then(([medicineResponse, batchResponse]) => {
+        if (!mounted) return;
+        setMedicines(normalizeRows(medicineResponse.data).map((medicine) => ({
+          id: String(medicine.id ?? ""),
+          label: [medicine.name, medicine.code, medicine.strength].filter(Boolean).join(" · "),
+        })).filter((medicine) => medicine.id));
+        setBatches(normalizeRows(batchResponse.data).map((batch) => ({
+          id: String(batch.id ?? ""),
+          medicineId: String(batch.medicineId ?? ""),
+          quantity: Number(batch.quantity ?? 0),
+          label: [batch.batchNumber, batch.expiryDate, `${Number(batch.quantity ?? 0).toLocaleString(locale === "en" ? "en-US" : "fr-FR")} en stock`].filter(Boolean).join(" · "),
+        })).filter((batch) => batch.id && batch.medicineId));
+      })
+      .catch(() => { if (mounted) { setMedicines([]); setBatches([]); } })
+      .finally(() => mounted && setLoading(false));
+    return () => { mounted = false; };
+  }, [locale]);
+
+  const updateRow = (index: number, patch: Record<string, any>) => onChange(rows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row));
+  const addRow = () => onChange([...rows, { medicineId: "", batchId: "", quantity: 1 }]);
+  const removeRow = (index: number) => onChange(rows.filter((_, rowIndex) => rowIndex !== index));
+
+  return (
+    <div>
+      <div className="overflow-hidden border border-slate-200 bg-white">
+        <div className="grid grid-cols-[minmax(220px,1.3fr)_minmax(180px,1fr)_110px_44px] gap-2 bg-slate-50 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-slate-500">
+          <span>Médicament</span><span>Lot</span><span>Quantité</span><span />
+        </div>
+        <div className="divide-y divide-slate-100">
+          {rows.map((row, index) => {
+            const availableBatches = batches.filter((batch) => batch.medicineId === row.medicineId);
+            return (
+              <div key={index} className="grid grid-cols-[minmax(220px,1.3fr)_minmax(180px,1fr)_110px_44px] gap-2 p-3">
+                <select value={row.medicineId ?? ""} onChange={(event) => updateRow(index, { medicineId: event.target.value, batchId: "" })} className="border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold outline-none focus:border-blue-700 focus:bg-white">
+                  <option value="">{loading ? "Chargement..." : "Choisir le médicament"}</option>
+                  {medicines.map((medicine) => <option key={medicine.id} value={medicine.id}>{medicine.label}</option>)}
+                </select>
+                <select value={row.batchId ?? ""} onChange={(event) => updateRow(index, { batchId: event.target.value })} className="border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold outline-none focus:border-blue-700 focus:bg-white">
+                  <option value="">Choisir le lot</option>
+                  {availableBatches.map((batch) => <option key={batch.id} value={batch.id}>{batch.label}</option>)}
+                </select>
+                <input type="number" min="1" step="1" value={row.quantity ?? ""} onChange={(event) => updateRow(index, { quantity: event.target.value })} className="border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold outline-none focus:border-blue-700 focus:bg-white" />
+                <button type="button" onClick={() => removeRow(index)} className="border border-slate-200 text-sm font-black text-slate-500 hover:bg-rose-50 hover:text-rose-700">×</button>
+              </div>
+            );
+          })}
+          {!rows.length ? <p className="p-4 text-sm font-semibold text-slate-500">{locale === "en" ? "Add dispensed medicines." : "Ajoutez les médicaments délivrés."}</p> : null}
+        </div>
+      </div>
+      <button type="button" onClick={addRow} className="mt-3 border border-blue-700 bg-white px-4 py-2 text-sm font-black text-blue-800 hover:bg-blue-50">Ajouter un médicament</button>
+    </div>
   );
 }
 
