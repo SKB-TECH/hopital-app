@@ -1,9 +1,9 @@
 "use client";
 
-import { formatPatientValue } from "./helpers";
+import { formatPatientValue, labelPatientColumn, readablePatientColumns } from "./helpers";
 
 export function PatientRecordTable({ title, rows, billing, locale = "fr" }: { title: string; rows: any[]; billing?: boolean; locale?: string }) {
-  const columns = Array.from(new Set(rows.flatMap((row) => Object.keys(row)).filter((key) => !["organizationId", "deletedAt"].includes(key)))).slice(0, 7);
+  const columns = readablePatientColumns(rows);
 
   return (
     <div>
@@ -15,7 +15,7 @@ export function PatientRecordTable({ title, rows, billing, locale = "fr" }: { ti
               <tr>
                 {columns.map((column) => (
                   <th key={column} className="border-b border-slate-200 px-4 py-3 text-left text-xs font-black uppercase text-slate-500">
-                    {column}
+                    {labelPatientColumn(column)}
                   </th>
                 ))}
                 {billing && <th className="border-b border-slate-200 px-4 py-3 text-right text-xs font-black uppercase text-slate-500">Actions</th>}

@@ -401,9 +401,9 @@ function referenceRowLabel(row: Record<string, any>, keys: string[]) {
 function RecordDetailsDrawer({ title, row, columns, referenceLabels, onClose }: { title: string; row: any; columns: { key: string; label: string }[]; referenceLabels: Record<string, Record<string, string>>; onClose: () => void }) {
   const labels = new Map(columns.map((column) => [column.key, column.label]));
   const keys = Array.from(new Set([
-    ...columns.map((column) => column.key),
+    ...columns.map((column) => column.key).filter((key) => !isTechnicalDetailKey(key)),
     ...Object.keys(row ?? {}).filter((key) => !hiddenDetailKeys.has(key) && !key.endsWith("Id") && !key.endsWith("_id")),
-  ])).filter((key) => !hiddenDetailKeys.has(key));
+  ])).filter((key) => !isTechnicalDetailKey(key));
 
   return (
     <div className="fixed inset-0 z-[80] bg-slate-950/40">
@@ -435,7 +435,7 @@ function RecordDetailsDrawer({ title, row, columns, referenceLabels, onClose }: 
 
 function DetailValue({ value }: { value: any }) {
   if (Array.isArray(value) && value.every((item) => item && typeof item === "object" && !Array.isArray(item))) {
-    const columns = Array.from(new Set(value.flatMap((item) => Object.keys(item).filter((key) => !hiddenDetailKeys.has(key) && !key.endsWith("Id"))))).slice(0, 6);
+    const columns = Array.from(new Set(value.flatMap((item) => Object.keys(item).filter((key) => !isTechnicalDetailKey(key))))).slice(0, 6);
     return (
       <div className="overflow-x-auto border border-slate-200 bg-white">
         <table className="w-full min-w-[640px] text-left text-sm">
@@ -446,17 +446,30 @@ function DetailValue({ value }: { value: any }) {
     );
   }
   if (value && typeof value === "object" && typeof value.content === "string") return <div className="min-h-16 border border-slate-200 bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-800" dangerouslySetInnerHTML={{ __html: value.content }} />;
-  if (value && typeof value === "object") return <pre className="max-h-80 overflow-auto border border-slate-200 bg-slate-50 p-4 text-xs font-semibold text-slate-700">{JSON.stringify(value, null, 2)}</pre>;
+  if (value && typeof value === "object") return <div className="min-h-16 border border-slate-200 bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-800">{objectDetailText(value)}</div>;
   return <div className="min-h-12 border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold leading-6 text-slate-800">{formatValue(value)}</div>;
 }
 
 const hiddenDetailKeys = new Set(["id", "organizationId", "organization_id", "deletedAt", "deleted_at", "passwordHash", "password_hash", "refreshTokenHash", "refresh_token_hash"]);
+
+function isTechnicalDetailKey(key: string) {
+  return hiddenDetailKeys.has(key) || key.endsWith("Id") || key.endsWith("_id");
+}
 
 function displayDetailValue(row: any, key: string, referenceLabels: Record<string, Record<string, string>>) {
   const value = row?.[key];
   const cell = displayCell(row, key, referenceLabels);
   if (cell !== "Référence non trouvée" && cell !== "-" && cell !== formatValue(value)) return cell;
   return value;
+}
+
+function objectDetailText(value: Record<string, any>) {
+  if (typeof value.content === "string") return value.content.replace(/<[^>]+>/g, "").trim() || "-";
+  const text = Object.entries(value)
+    .filter(([key, item]) => key !== "format" && item !== null && item !== undefined && item !== "")
+    .map(([key, item]) => `${detailLabel(key)}: ${formatValue(item)}`)
+    .join(" · ");
+  return text || "-";
 }
 
 function detailWide(value: any) {

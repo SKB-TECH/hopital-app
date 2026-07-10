@@ -1,6 +1,7 @@
 "use client";
 
 import { hospitalText } from "@/shared/config/hospital-i18n";
+import { formatPatientValue } from "./helpers";
 
 export function PatientRecordSummary({ patient, data, locale = "fr" }: { patient: any; data: any; locale?: string }) {
   return (
@@ -20,9 +21,11 @@ export function PatientRecordSummary({ patient, data, locale = "fr" }: { patient
         <Info label={locale === "en" ? "Lab tests" : "Examens labo"} value={(data.labOrders ?? []).length} />
         <Info label={hospitalText("Factures", locale)} value={(data.invoices ?? []).length} />
       </div>
-      <pre className="mt-6 max-h-80 overflow-auto border border-slate-200 bg-slate-50 p-4 text-xs">
-        {JSON.stringify({ allergies: patient?.allergies, address: patient?.address, emergencyContact: patient?.emergencyContact }, null, 2)}
-      </pre>
+      <div className="mt-6 grid gap-4 md:grid-cols-3">
+        <Info label={locale === "en" ? "Allergies" : "Allergies"} value={formatPatientValue(patient?.allergies)} />
+        <Info label={locale === "en" ? "Address" : "Adresse"} value={formatPatientValue(patient?.address)} />
+        <Info label={locale === "en" ? "Emergency contact" : "Contact urgence"} value={formatPatientValue(patient?.emergencyContact)} />
+      </div>
     </div>
   );
 }
