@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, CreditCard, Database, Download, Edit3, Eye, FileJson, FileText, Loader2, Plus, Printer, Receipt, RefreshCcw, Search, Send, Smartphone, UserRound, X } from "lucide-react";
+import { CheckCircle2, CreditCard, Database, Download, Edit3, Eye, FileText, Loader2, Plus, Printer, Receipt, RefreshCcw, Search, Send, Smartphone, UserRound, X } from "lucide-react";
 import DashboardNavbar from "@/components/dashboard/DashboardNavbar";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import { useSidebar } from "@/contexts/SidebarContext";
@@ -12,7 +12,7 @@ import { api } from "@/shared/lib/http/api";
 import { useMe } from "@/shared/hooks/auth.hooks";
 import { canAccessHospitalModule, canAccessHospitalResource, getAccessibleHospitalResources, getFirstAccessibleHospitalModule, hasHospitalModulePermission } from "@/shared/lib/auth/module-access";
 import type { OperationAction, OperationKind, OperationState } from "@/components/hospital/resource-console/types";
-import { cleanObject, cleanPayload, defaultForm, defaultOperationForm, formatValue, normalizeRows, parseJsonPayload, readError, validateOperation, nextStatuses } from "@/components/hospital/resource-console/utils";
+import { cleanObject, cleanPayload, defaultForm, defaultOperationForm, formatValue, normalizeRows, readError, validateOperation, nextStatuses } from "@/components/hospital/resource-console/utils";
 import { DepartmentDashboard } from "@/components/hospital/resource-console/DepartmentDashboard";
 import { FieldInput } from "@/components/hospital/resource-console/FieldInput";
 import { ProfessionalError } from "@/components/hospital/resource-console/ProfessionalError";
@@ -45,8 +45,6 @@ export default function HospitalResourceConsole() {
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState<Record<string, any>>({});
-  const [rawJson, setRawJson] = useState("{}");
-  const [mode, setMode] = useState<"form" | "json">("form");
   const [formOpen, setFormOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<any | null>(null);
   const [operation, setOperation] = useState<OperationState | null>(null);
@@ -83,7 +81,6 @@ export default function HospitalResourceConsole() {
 
   useEffect(() => {
     setForm(defaultForm(selected?.fields ?? []));
-    setRawJson("{}");
     load();
   }, [selected?.endpoint, userLoading, user?.id, canAccessModule, canAccessSelected]);
 
@@ -96,8 +93,6 @@ export default function HospitalResourceConsole() {
     if (!canCreateSelected) return;
     setEditingRow(null);
     setForm(defaultForm(selected?.fields ?? []));
-    setRawJson("{}");
-    setMode("form");
     setFormOpen(true);
   };
 
@@ -105,8 +100,6 @@ export default function HospitalResourceConsole() {
     if (!canUpdateSelected) return;
     setEditingRow(row);
     setForm(defaultForm(selected?.fields ?? [], row));
-    setRawJson(JSON.stringify(row ?? {}, null, 2));
-    setMode("form");
     setFormOpen(true);
   };
 
@@ -118,7 +111,7 @@ export default function HospitalResourceConsole() {
     setError("");
     try {
       const effectiveFields = editingRow?.id && selected.endpoint === "/users" ? selected.fields.filter((field) => field.name !== "password") : selected.fields;
-      const payload = mode === "json" ? parseJsonPayload(rawJson) : cleanPayload(form, effectiveFields);
+      const payload = cleanPayload(form, effectiveFields);
       if (editingRow?.id && selected.endpoint === "/users") {
         delete payload.password;
       }
@@ -128,7 +121,6 @@ export default function HospitalResourceConsole() {
         await api.post(selected.endpoint, payload);
       }
       setForm(defaultForm(selected.fields));
-      setRawJson("{}");
       setFormOpen(false);
       setEditingRow(null);
       await load();
@@ -320,12 +312,7 @@ export default function HospitalResourceConsole() {
                   <button onClick={() => setFormOpen(false)} className="border border-slate-300 p-2 text-slate-600 hover:bg-slate-50"><X className="size-5" /></button>
                 </div>
                 <div className="p-7">
-                  <div className="mb-6 grid grid-cols-2 border border-slate-200 bg-slate-50 p-1 text-sm font-black">
-                    <button onClick={() => setMode("form")} className={`border px-3 py-2 ${mode === "form" ? "border-slate-900 bg-white text-slate-950" : "border-transparent text-slate-500"}`}>{hospitalUi(locale, "form")}</button>
-                    <button onClick={() => setMode("json")} className={`border px-3 py-2 ${mode === "json" ? "border-slate-900 bg-white text-slate-950" : "border-transparent text-slate-500"}`}><FileJson className="mr-1 inline size-4" /> {hospitalUi(locale, "advanced")}</button>
-                  </div>
-
-                  {(!editingRow && !canCreateSelected) || (editingRow && !canUpdateSelected) ? <p className="bg-slate-50 p-4 text-sm text-slate-500">{hospitalUi(locale, "readOnlyResource")}</p> : mode === "form" ? <div className="grid gap-5 md:grid-cols-2">{selected.fields.map((field) => <FieldInput key={field.name} locale={locale} field={field} form={form} value={form[field.name]} onChange={(value) => setForm((current) => ({ ...current, [field.name]: value }))} />)}</div> : <textarea value={rawJson} onChange={(event) => setRawJson(event.target.value)} className="h-[520px] w-full border border-slate-200 bg-slate-50 p-3 font-mono text-xs outline-none focus:border-blue-700 focus:bg-white" />}
+                  {(!editingRow && !canCreateSelected) || (editingRow && !canUpdateSelected) ? <p className="bg-slate-50 p-4 text-sm text-slate-500">{hospitalUi(locale, "readOnlyResource")}</p> : <div className="grid gap-5 md:grid-cols-2">{selected.fields.map((field) => <FieldInput key={field.name} locale={locale} field={field} form={form} value={form[field.name]} onChange={(value) => setForm((current) => ({ ...current, [field.name]: value }))} />)}</div>}
 
                   <div className="mt-8 flex justify-end gap-3 border-t border-slate-200 pt-5">
                     <button onClick={() => setFormOpen(false)} className="h-12 border border-slate-300 bg-white px-5 text-sm font-black text-slate-800 hover:bg-slate-50">{hospitalUi(locale, "cancel")}</button>

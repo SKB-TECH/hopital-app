@@ -390,7 +390,6 @@ export function hospitalUi(locale: HospitalLocale, key: string) {
     edit: { fr: "Modifier", en: "Edit" },
     newRecord: { fr: "Nouvel enregistrement", en: "New record" },
     form: { fr: "Formulaire", en: "Form" },
-    advanced: { fr: "Avancé", en: "Advanced" },
     readOnlyResource: { fr: "Cette ressource est consultable ou nécessite une action métier dédiée.", en: "This resource is read-only or requires a dedicated business action." },
     cancel: { fr: "Annuler", en: "Cancel" },
     save: { fr: "Enregistrer", en: "Save" },

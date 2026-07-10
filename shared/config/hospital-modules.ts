@@ -40,7 +40,7 @@ export const hospitalReferences: Record<string, HospitalField["reference"]> = {
   invoiceId: { endpoint: "/billing/invoices", labelKeys: ["invoiceNumber", "patientId"], descriptionKeys: ["status", "balanceDue"] },
   insuranceProviderId: { endpoint: "/insurance/providers", labelKeys: ["name", "code"], descriptionKeys: ["active"] },
   billingServiceCode: { endpoint: "/pricing/services", labelKeys: ["name", "code"], descriptionKeys: ["category", "unit"], valueKey: "code" },
-  facilityId: { endpoint: "/organizations", labelKeys: ["name", "code"], descriptionKeys: ["id"] },
+  facilityId: { endpoint: "/organizations/facilities", labelKeys: ["name", "code"], descriptionKeys: ["address", "timezone"] },
   pregnancyId: { endpoint: "/pregnancies", labelKeys: ["id", "expectedDeliveryDate"], descriptionKeys: ["status", "highRisk"] },
   deliveryId: { endpoint: "/deliveries", labelKeys: ["id", "deliveryType", "deliveryAt"], descriptionKeys: ["motherStatus"] },
   surgeryId: { endpoint: "/surgery", labelKeys: ["procedure", "scheduledAt"], descriptionKeys: ["status"] },
