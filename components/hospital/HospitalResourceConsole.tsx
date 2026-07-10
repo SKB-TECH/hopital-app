@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, CreditCard, Database, Download, Edit3, Eye, FileText, Loader2, Plus, Printer, Receipt, RefreshCcw, Search, Send, Smartphone, UserRound, X } from "lucide-react";
+import { BadgeDollarSign, CheckCircle2, CreditCard, Database, Download, Edit3, Eye, FileText, Loader2, Plus, Printer, Receipt, RefreshCcw, Search, Send, Smartphone, UserRound, X } from "lucide-react";
 import DashboardNavbar from "@/components/dashboard/DashboardNavbar";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import { useSidebar } from "@/contexts/SidebarContext";
@@ -19,6 +19,21 @@ import { ProfessionalError } from "@/components/hospital/resource-console/Profes
 import { AppointmentsCalendarView } from "@/components/hospital/resource-console/AppointmentsCalendarView";
 import { PrintDialog } from "@/components/hospital/resource-console/PrintDialog";
 import { OperationDialog } from "@/components/hospital/resource-console/OperationDialog";
+
+type MissingPricingRow = {
+  serviceCode: string;
+  description: string;
+  count: number;
+  unitPrice: string;
+  insurancePrice: string;
+};
+
+type MissingPricingState = {
+  name: string;
+  currency: string;
+  validFrom: string;
+  rows: MissingPricingRow[];
+};
 
 export default function HospitalResourceConsole() {
   const params = useParams<{ locale: string; module?: string }>();
@@ -50,6 +65,7 @@ export default function HospitalResourceConsole() {
   const [viewRow, setViewRow] = useState<any | null>(null);
   const [operation, setOperation] = useState<OperationState | null>(null);
   const [operationForm, setOperationForm] = useState<Record<string, any>>({});
+  const [missingPricing, setMissingPricing] = useState<MissingPricingState | null>(null);
   const [printDialog, setPrintDialog] = useState<{ row?: any } | null>(null);
   const [referenceLabels, setReferenceLabels] = useState<Record<string, Record<string, string>>>({});
 
@@ -189,6 +205,47 @@ export default function HospitalResourceConsole() {
       setOperation(null);
       await load();
     } catch (err: any) {
+      if (operation.kind === "generate-invoice" && err?.response?.data?.code === "UNPRICED_SERVICES") {
+        setMissingPricing(buildMissingPricingState(err.response.data.services, operationForm));
+        setError("");
+        return;
+      }
+      setError(readError(err));
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  const completeMissingPricing = async () => {
+    if (!missingPricing || !operation) return;
+    setPosting(true);
+    setError("");
+    try {
+      const services = await ensurePricingServices(missingPricing.rows);
+      const items = missingPricing.rows.map((row) => {
+        const service = services.find((item) => item.code === row.serviceCode);
+        const unitPrice = Number(row.unitPrice);
+        if (!service?.id) throw new Error(`Prestation introuvable: ${row.serviceCode}`);
+        if (!Number.isFinite(unitPrice) || unitPrice < 0) throw new Error(`Prix invalide pour ${row.serviceCode}`);
+        return {
+          serviceId: service.id,
+          unitPrice,
+          ...(row.insurancePrice === "" || row.insurancePrice === undefined || row.insurancePrice === null ? {} : { insurancePrice: Number(row.insurancePrice) }),
+        };
+      });
+      if (!items.length) throw new Error("Ajoutez au moins un tarif.");
+      const response = await api.post("/pricing/price-lists", {
+        name: missingPricing.name,
+        currency: missingPricing.currency,
+        validFrom: missingPricing.validFrom,
+        items,
+      });
+      await api.patch(`/pricing/price-lists/${response.data.id}/activate`);
+      await api.post("/billing/invoices", cleanObject(operationForm));
+      setMissingPricing(null);
+      setOperation(null);
+      await load();
+    } catch (err: any) {
       setError(readError(err));
     } finally {
       setPosting(false);
@@ -314,6 +371,17 @@ export default function HospitalResourceConsole() {
             />
           )}
 
+          {missingPricing && (
+            <MissingPricingDialog
+              state={missingPricing}
+              posting={posting}
+              locale={locale}
+              onChange={setMissingPricing}
+              onClose={() => setMissingPricing(null)}
+              onSubmit={completeMissingPricing}
+            />
+          )}
+
           {viewRow && (
             <RecordDetailsDrawer
               title={selected.title}
@@ -353,6 +421,80 @@ export default function HospitalResourceConsole() {
   );
 }
 
+function MissingPricingDialog({ state, posting, locale, onChange, onClose, onSubmit }: { state: MissingPricingState; posting: boolean; locale: string; onChange: (state: MissingPricingState) => void; onClose: () => void; onSubmit: () => void }) {
+  const updateRow = (index: number, patch: Partial<MissingPricingRow>) => onChange({ ...state, rows: state.rows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row) });
+  const total = state.rows.reduce((sum, row) => sum + Number(row.unitPrice || 0) * Math.max(1, Number(row.count || 1)), 0);
+
+  return (
+    <div className="fixed inset-0 z-[90] bg-slate-950/50">
+      <div className="ml-auto h-full w-full max-w-4xl overflow-y-auto border-l border-slate-300 bg-white">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-7 py-5">
+          <div className="flex items-center gap-4">
+            <span className="flex size-12 items-center justify-center bg-blue-700 text-white"><BadgeDollarSign className="size-6" /></span>
+            <div>
+              <h2 className="text-2xl font-black text-slate-950">Compléter les tarifs manquants</h2>
+              <p className="mt-1 text-sm font-semibold text-slate-500">Créer une grille complémentaire puis relancer la facture.</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="border border-slate-300 p-2 text-slate-600 hover:bg-slate-50"><X className="size-5" /></button>
+        </div>
+
+        <div className="space-y-5 p-7">
+          <div className="grid gap-4 border border-slate-200 bg-slate-50 p-4 md:grid-cols-3">
+            <label className="block">
+              <span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">Nom de grille</span>
+              <input value={state.name} onChange={(event) => onChange({ ...state, name: event.target.value })} className="w-full border border-slate-200 bg-white px-3 py-3 text-sm font-black outline-none focus:border-blue-700" />
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">Devise</span>
+              <select value={state.currency} onChange={(event) => onChange({ ...state, currency: event.target.value })} className="w-full border border-slate-200 bg-white px-3 py-3 text-sm font-black outline-none focus:border-blue-700">
+                {["USD", "CDF", "RWF", "EUR"].map((currency) => <option key={currency} value={currency}>{currency}</option>)}
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">Valable à partir du</span>
+              <input type="date" value={state.validFrom} onChange={(event) => onChange({ ...state, validFrom: event.target.value })} className="w-full border border-slate-200 bg-white px-3 py-3 text-sm font-black outline-none focus:border-blue-700" />
+            </label>
+          </div>
+
+          <div className="overflow-hidden border border-slate-200 bg-white">
+            <div className="grid grid-cols-[minmax(220px,1.4fr)_90px_150px_150px] gap-3 border-b border-slate-200 bg-white px-4 py-3 text-[11px] font-black uppercase tracking-wide text-slate-500">
+              <span>Prestation</span><span>Qté</span><span>Prix patient</span><span>Prix assurance</span>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {state.rows.map((row, index) => (
+                <div key={row.serviceCode} className="grid grid-cols-[minmax(220px,1.4fr)_90px_150px_150px] gap-3 p-4">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="bg-slate-950 px-2 py-1 text-[11px] font-black text-white">{row.serviceCode}</span>
+                      <span className="text-sm font-black text-slate-950">{cleanMissingDescription(row.description, row.serviceCode)}</span>
+                    </div>
+                    <p className="mt-2 text-xs font-semibold text-slate-500">{row.serviceCode === "BED_NIGHT" ? "Prix d’une nuit. La quantité correspond au nombre de nuits." : "Prix unitaire appliqué à chaque ligne détectée."}</p>
+                  </div>
+                  <div className="flex h-12 items-center border border-slate-100 bg-slate-50 px-3 text-sm font-black text-slate-700">{row.count}</div>
+                  <input type="number" min="0" step="0.01" value={row.unitPrice} onChange={(event) => updateRow(index, { unitPrice: event.target.value })} placeholder="ex. 25" className="h-12 border border-slate-200 bg-slate-50 px-3 text-sm font-black outline-none focus:border-blue-700 focus:bg-white" />
+                  <input type="number" min="0" step="0.01" value={row.insurancePrice} onChange={(event) => updateRow(index, { insurancePrice: event.target.value })} placeholder="Optionnel" className="h-12 border border-slate-200 bg-slate-50 px-3 text-sm font-black outline-none focus:border-blue-700 focus:bg-white" />
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end border-t border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-900">
+              Total estimé: {total.toLocaleString(locale === "en" ? "en-US" : "fr-FR", { maximumFractionDigits: 2 })} {state.currency}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 border-t border-slate-200 pt-5">
+            <button onClick={onClose} className="h-12 border border-slate-300 bg-white px-5 text-sm font-black text-slate-800 hover:bg-slate-50">Annuler</button>
+            <button disabled={posting} onClick={onSubmit} className="inline-flex h-12 items-center justify-center gap-2 bg-blue-700 px-6 text-sm font-black text-white hover:bg-blue-800 disabled:opacity-50">
+              {posting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+              Créer les tarifs et facturer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 async function buildReferenceLabels(keys: string[], rows: any[]) {
   const maps: Record<string, Record<string, string>> = {};
   const referenceKeys = [...new Set(keys.filter((key) => hospitalReferences[key] && rows.some((row) => row?.[key])))];
@@ -371,6 +513,63 @@ async function buildReferenceLabels(keys: string[], rows: any[]) {
     }
   }));
   return maps;
+}
+
+function buildMissingPricingState(services: any[], operationForm: Record<string, any>): MissingPricingState {
+  const rows = normalizeRows(services).map((service) => ({
+    serviceCode: String(service.serviceCode ?? "").trim().toUpperCase(),
+    description: String(service.description ?? service.serviceCode ?? ""),
+    count: Math.max(1, Number(service.count ?? 1)),
+    unitPrice: "",
+    insurancePrice: "",
+  })).filter((service) => service.serviceCode);
+  const validFrom = String(operationForm.from ?? "").slice(0, 10) || new Date().toISOString().slice(0, 10);
+  return {
+    name: `Tarifs manquants ${new Date().toISOString().slice(0, 10)}`,
+    currency: "USD",
+    validFrom,
+    rows,
+  };
+}
+
+async function ensurePricingServices(rows: MissingPricingRow[]) {
+  const response = await api.get("/pricing/services", { params: { limit: 1000 } });
+  const existing = normalizeRows(response.data).map((service) => ({ id: String(service.id ?? ""), code: String(service.code ?? "").toUpperCase() }));
+  const byCode = new Map(existing.filter((service) => service.id && service.code).map((service) => [service.code, service]));
+
+  for (const row of rows) {
+    if (byCode.has(row.serviceCode)) continue;
+    const created = await api.post("/pricing/services", servicePayload(row));
+    const service = { id: String(created.data?.id ?? ""), code: row.serviceCode };
+    if (service.id) byCode.set(row.serviceCode, service);
+  }
+
+  return Array.from(byCode.values());
+}
+
+function servicePayload(row: MissingPricingRow) {
+  const code = row.serviceCode;
+  const isNight = code === "BED_NIGHT";
+  const isConsultation = code.startsWith("CON") || code.includes("CONSULT");
+  const isEmergency = code.startsWith("TRI") || code.includes("EMERGENCY");
+  return {
+    code,
+    name: cleanMissingDescription(row.description, code),
+    category: isNight ? "HOSPITALISATION" : isConsultation ? "CONSULTATION" : isEmergency ? "URGENCE" : "AUTRE",
+    unit: isNight ? "NIGHT" : "ACT",
+    sourceModule: isNight ? "admissions" : isConsultation ? "consultations" : isEmergency ? "emergency" : "billing",
+    sourceEvent: code,
+  };
+}
+
+function cleanMissingDescription(description: string, code: string) {
+  const cleaned = String(description || "").replace(/^Tarif manquant:\s*/i, "").trim();
+  if (!cleaned || cleaned === code) {
+    if (code === "BED_NIGHT") return "Nuit d’hospitalisation";
+    if (code === "CON-001") return "Consultation générale";
+    if (code === "TRI-002") return "Triage / traitement";
+  }
+  return cleaned || code;
 }
 
 function displayCell(row: any, key: string, referenceLabels: Record<string, Record<string, string>>) {
