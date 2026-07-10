@@ -16,6 +16,7 @@ export const hospitalReferences: Record<string, HospitalField["reference"]> = {
   collectedBy: { endpoint: "/users", labelKeys: ["firstName", "lastName", "email"], descriptionKeys: ["roles"] },
   receivedBy: { endpoint: "/users", labelKeys: ["firstName", "lastName", "email"], descriptionKeys: ["roles"] },
   bedId: { endpoint: "/admissions/beds", labelKeys: ["code", "ward", "room"], descriptionKeys: ["status"] },
+  admissionId: { endpoint: "/admissions", labelKeys: ["patientName", "medicalRecordNumber", "bedCode", "ward", "admittedAt"], descriptionKeys: ["status", "attendingPractitionerName"] },
   medicineId: { endpoint: "/pharmacy/medicines", labelKeys: ["name", "code", "strength"], descriptionKeys: ["form"] },
   batchId: { endpoint: "/pharmacy/batches", labelKeys: ["batchNumber", "expiryDate"], descriptionKeys: ["quantity"] },
   prescriptionId: { endpoint: "/prescriptions", labelKeys: ["patientName", "medicalRecordNumber", "status", "createdAt"], descriptionKeys: ["prescriberName"] },
