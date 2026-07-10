@@ -11,7 +11,7 @@ import { TextAreaField, TextField } from "./ResourceFields";
 export function PrintDialog({ moduleEndpoint, moduleTitle, locale, row, onClose }: { moduleEndpoint: string; moduleTitle: string; locale: "fr" | "en"; row?: any; onClose: () => void }) {
   const [templates, setTemplates] = useState<PrintTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState("generic-record");
-  const [watermark, setWatermark] = useState("CONFIDENTIEL");
+  const [watermark, setWatermark] = useState("");
   const [emailTo, setEmailTo] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -46,7 +46,7 @@ export function PrintDialog({ moduleEndpoint, moduleTitle, locale, row, onClose 
     recordId: row?.id,
     data: row?.id ? undefined : { module: moduleTitle, rowsCount: "Impression de liste", generatedAt: new Date().toISOString() },
     locale,
-    watermark,
+    watermark: watermark.trim() || undefined,
     includeQr: true,
     includeBarcode: true,
   });
