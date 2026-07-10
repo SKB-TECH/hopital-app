@@ -126,7 +126,7 @@ function isReadableReferencePart(value: any) {
 }
 
 export function defaultOperationForm(kind: OperationKind, row?: any, endpoint = "") {
-  if (kind === "preview-invoice" || kind === "generate-invoice") return { patientId: row?.patientId ?? "", admissionId: row?.admissionId ?? "", from: "", to: "" };
+  if (kind === "preview-invoice" || kind === "generate-invoice") return { patientId: row?.patientId ?? "", admissionId: row?.admissionId ?? "", from: "", to: "", draftId: `INV-DRAFT-${Date.now()}`, invoiceItems: [] };
   if (kind === "pay-invoice") return { amount: row?.balanceDue ?? "", method: "CASH", reference: "" };
   if (kind === "discharge") return { summary: "" };
   if (kind === "complete-consultation") return { assessment: row?.assessment ?? "", plan: row?.plan ?? "", notes: row?.notes ?? "" };

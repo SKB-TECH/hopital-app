@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Loader2, Send, X } from "lucide-react";
 import { hospitalText } from "@/shared/config/hospital-i18n";
+import { api } from "@/shared/lib/http/api";
 import type { OperationState } from "./types";
-import { nextStatuses } from "./utils";
+import { nextStatuses, normalizeRows } from "./utils";
 import { operationTitle } from "./operation-utils";
 import { ReferenceField, SelectField, TextAreaField, TextField } from "./ResourceFields";
 
@@ -21,6 +23,7 @@ export function OperationDialog({ operation, form, setForm, posting, locale = "f
           {operation.kind === "preview-invoice" || operation.kind === "generate-invoice" ? <>
             <ReferenceField referenceKey="patientId" label="Patient" value={form.patientId} onChange={(value) => setForm({ ...form, patientId: value })} />
             <ReferenceField referenceKey="admissionId" label="Admission" value={form.admissionId} onChange={(value) => setForm({ ...form, admissionId: value })} />
+            <InvoiceItemsField value={form.invoiceItems} onChange={(value) => setForm({ ...form, invoiceItems: value })} />
             <TextField type="datetime-local" label="Du" value={form.from} onChange={(value) => setForm({ ...form, from: value })} />
             <TextField type="datetime-local" label="Au" value={form.to} onChange={(value) => setForm({ ...form, to: value })} />
             {form.preview && <pre className="max-h-80 overflow-auto border border-slate-200 bg-slate-50 p-4 text-xs">{JSON.stringify(form.preview, null, 2)}</pre>}
@@ -57,6 +60,51 @@ export function OperationDialog({ operation, form, setForm, posting, locale = "f
             <button disabled={posting} onClick={onSubmit} className="inline-flex h-12 items-center justify-center gap-2 bg-blue-700 px-6 text-sm font-black text-white hover:bg-blue-800 disabled:opacity-50">{posting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}Confirmer</button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function InvoiceItemsField({ value, onChange }: { value: any; onChange: (value: any[]) => void }) {
+  const rows = Array.isArray(value) ? value : [];
+  const [services, setServices] = useState<Array<{ code: string; label: string }>>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    api.get("/pricing/services")
+      .then((response) => mounted && setServices(normalizeRows(response.data).map((service) => ({
+        code: String(service.code ?? ""),
+        label: [service.name, service.code, service.category].filter(Boolean).join(" · "),
+      })).filter((service) => service.code)))
+      .catch(() => mounted && setServices([]))
+      .finally(() => mounted && setLoading(false));
+    return () => { mounted = false; };
+  }, []);
+
+  const updateRow = (index: number, patch: Record<string, any>) => onChange(rows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row));
+  const addRow = () => onChange([...rows, { serviceCode: "", quantity: 1 }]);
+  const removeRow = (index: number) => onChange(rows.filter((_, rowIndex) => rowIndex !== index));
+
+  return (
+    <div className="border border-slate-200 bg-white">
+      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+        <div><p className="text-xs font-black uppercase tracking-wide text-slate-500">Motifs facturables</p><p className="mt-1 text-xs font-semibold text-slate-500">Ajoutez consultation, labo, pharmacie, acte ou autre prestation.</p></div>
+        <button type="button" onClick={addRow} className="border border-blue-700 px-3 py-2 text-xs font-black text-blue-800 hover:bg-blue-50">Ajouter</button>
+      </div>
+      <div className="divide-y divide-slate-100">
+        {rows.map((row, index) => (
+          <div key={index} className="grid grid-cols-[1fr_96px_40px] gap-2 p-3">
+            <select value={row.serviceCode ?? ""} onChange={(event) => updateRow(index, { serviceCode: event.target.value })} className="border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold outline-none focus:border-blue-700 focus:bg-white">
+              <option value="">{loading ? "Chargement..." : "Choisir le motif"}</option>
+              {services.map((service) => <option key={service.code} value={service.code}>{service.label}</option>)}
+            </select>
+            <input type="number" min="1" step="1" value={row.quantity ?? 1} onChange={(event) => updateRow(index, { quantity: Number(event.target.value) })} className="border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold outline-none focus:border-blue-700 focus:bg-white" />
+            <button type="button" onClick={() => removeRow(index)} className="border border-slate-200 text-sm font-black text-slate-500 hover:bg-rose-50 hover:text-rose-700">×</button>
+          </div>
+        ))}
+        {!rows.length ? <p className="px-4 py-4 text-sm font-semibold text-slate-500">Aucun motif ajouté. La facture reprendra les frais déjà générés pour ce patient.</p> : null}
       </div>
     </div>
   );
