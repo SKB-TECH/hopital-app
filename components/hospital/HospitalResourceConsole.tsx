@@ -762,16 +762,37 @@ function getModuleActions(endpoint: string): OperationAction[] {
 function getRowActions(endpoint: string, row: any): OperationAction[] {
   if (endpoint === "/billing/invoices") return [
     { kind: "print-invoice", label: "Imprimer PDF", icon: Printer },
-    ...(Number(row?.balanceDue ?? 0) > 0 ? [{ kind: "pay-invoice" as const, label: "Encaisser", icon: CreditCard }] : []),
+    ...(canPayInvoice(row) ? [{ kind: "pay-invoice" as const, label: "Encaisser", icon: CreditCard }] : []),
   ];
   const actions: OperationAction[] = [];
   if (row?.patientId && endpoint !== "/patients") actions.push({ kind: "patient-record", label: "Dossier patient", icon: UserRound });
-  if (endpoint === "/pharmacy/dispensations" && row?.patientId) actions.push({ kind: "generate-invoice", label: "Facturer / encaisser", icon: Receipt });
+  if (endpoint === "/pharmacy/dispensations" && row?.patientId && canBillDispensation(row)) actions.push({ kind: "generate-invoice", label: "Facturer / encaisser", icon: Receipt });
   if (endpoint === "/laboratory/results" && !row?.validatedAt) actions.push({ kind: "validate-lab", label: "Valider résultat", icon: CheckCircle2 });
   if (endpoint === "/consultations" && row?.status !== "COMPLETED") actions.push({ kind: "complete-consultation", label: "Terminer consultation", icon: CheckCircle2 });
   if (endpoint === "/admissions" && row?.status !== "DISCHARGED") actions.push({ kind: "discharge", label: "Sortie patient", icon: FileText });
   if (row?.status && nextStatuses(endpoint, row.status).length) actions.push({ kind: "change-status", label: "Changer statut", icon: CheckCircle2 });
   return actions;
+}
+
+function canPayInvoice(row: any) {
+  const status = String(row?.status ?? "").toUpperCase();
+  if (["PAID", "VOID", "CANCELLED"].includes(status)) return false;
+  return moneyNumber(row?.balanceDue ?? row?.balance_due) > 0;
+}
+
+function canBillDispensation(row: any) {
+  const status = String(row?.invoiceStatus ?? row?.paymentStatus ?? "").toUpperCase();
+  if (["PAID", "PAYÉ", "PAYEE", "PAYÉE"].includes(status)) return false;
+  if (row?.invoiceId && moneyNumber(row?.balanceDue ?? row?.balance_due) <= 0) return false;
+  return true;
+}
+
+function moneyNumber(value: any) {
+  if (value === null || value === undefined || value === "") return 0;
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  const normalized = String(value).replace(/\s/g, "").replace(",", ".");
+  const numeric = Number(normalized);
+  return Number.isFinite(numeric) ? numeric : 0;
 }
 
 function canRunOperation(kind: OperationKind, canCreate: boolean, canUpdate: boolean, canPrint: boolean) {

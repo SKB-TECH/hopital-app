@@ -234,7 +234,7 @@ export function defaultOperationForm(kind: OperationKind, row?: any, endpoint = 
       paymentReference: isPharmacyDispensation ? "Délivrance pharmacie" : "",
     };
   }
-  if (kind === "pay-invoice") return { amount: row?.balanceDue ?? "", method: "CASH", reference: "" };
+  if (kind === "pay-invoice") return { amount: row?.balanceDue ?? row?.balance_due ?? "", method: "CASH", reference: "" };
   if (kind === "discharge") return { summary: "" };
   if (kind === "complete-consultation") return { assessment: row?.assessment ?? "", plan: row?.plan ?? "", notes: row?.notes ?? "" };
   if (kind === "stock-movement") return { stockItemId: row?.id ?? "", type: "RECEIPT", quantity: 1, reference: "" };
