@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { BadgeDollarSign, CheckCircle2, CreditCard, Database, Download, Edit3, Eye, FileText, Loader2, Plus, Printer, Receipt, RefreshCcw, Search, Send, Smartphone, UserRound, X } from "lucide-react";
 import DashboardNavbar from "@/components/dashboard/DashboardNavbar";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
@@ -94,9 +95,11 @@ export default function HospitalResourceConsole() {
       setRows(nextRows);
       setReferenceLabels(await buildReferenceLabels(referenceKeysForRows(selected.columns.map((column) => column.key), nextRows), nextRows));
     } catch (err: any) {
+      const message = readError(err);
       setRows([]);
       setReferenceLabels({});
-      setError(readError(err));
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -167,10 +170,13 @@ export default function HospitalResourceConsole() {
       setForm(defaultForm(selected.fields));
       setFormOpen(false);
       setEditingRow(null);
+      toast.success(editingRow?.id ? "Enregistrement modifié avec succès." : "Enregistrement créé avec succès.");
       await load();
       if (selected.endpoint === "/prescriptions" && savedRow?.id) setPrintDialog({ row: savedRow });
     } catch (err: any) {
-      setError(readError(err));
+      const message = readError(err);
+      setError(message);
+      toast.error(message);
     } finally {
       setPosting(false);
     }
@@ -205,6 +211,7 @@ export default function HospitalResourceConsole() {
         if (invoice?.id && operationForm.sourceType === "DISPENSATION") {
           await printService.print({ template: "pharmacy-invoice", module: "billing/invoices", recordId: invoice.id, locale: printLocale, includeQr: true, includeBarcode: true });
         }
+        toast.success(collectNow ? "Facture générée et encaissement enregistré." : "Facture générée avec succès.");
       }
       if (operation.kind === "preview-invoice") {
         const response = await api.post("/billing/invoices/preview", invoiceApiPayload(operationForm));
@@ -214,24 +221,30 @@ export default function HospitalResourceConsole() {
       }
       if (operation.kind === "pay-invoice" && operation.row?.id) {
         await api.post(`/billing/invoices/${operation.row.id}/payments`, cleanObject(operationForm));
+        toast.success("Paiement enregistré avec succès.");
       }
       if (operation.kind === "validate-lab" && operation.row?.id) {
         await api.patch(`/laboratory/results/${operation.row.id}/validate`, {});
+        toast.success("Résultat laboratoire validé.");
       }
       if (operation.kind === "discharge" && operation.row?.id) {
         await api.patch(`/admissions/${operation.row.id}/discharge`, cleanObject(operationForm));
+        toast.success("Sortie patient enregistrée.");
       }
       if (operation.kind === "complete-consultation" && operation.row?.id) {
         await api.patch(`/consultations/${operation.row.id}/complete`, cleanObject(operationForm));
+        toast.success("Consultation clôturée.");
       }
       if (operation.kind === "stock-movement") {
         await api.post("/inventory/items/movements", cleanObject(operationForm));
+        toast.success("Mouvement de stock enregistré.");
       }
       if (operation.kind === "change-status" && operation.row?.id && operation.endpoint) {
         const payload: Record<string, any> = { status: operationForm.status };
         if (operation.endpoint === "/nursing/medications" && operationForm.administeredAt) payload.administeredAt = operationForm.administeredAt;
         if (operation.row && Object.prototype.hasOwnProperty.call(operation.row, "notes") && operationForm.notes) payload.notes = operationForm.notes;
         await api.patch(`${operation.endpoint}/${operation.row.id}`, payload);
+        toast.success("Statut mis à jour.");
       }
       setOperation(null);
       await load();
@@ -239,9 +252,12 @@ export default function HospitalResourceConsole() {
       if (operation.kind === "generate-invoice" && err?.response?.data?.code === "UNPRICED_SERVICES") {
         setMissingPricing(buildMissingPricingState(err.response.data.services, operationForm));
         setError("");
+        toast.warning("Configurez les tarifs manquants avant de générer la facture.");
         return;
       }
-      setError(readError(err));
+      const message = readError(err);
+      setError(message);
+      toast.error(message);
     } finally {
       setPosting(false);
     }
@@ -276,8 +292,11 @@ export default function HospitalResourceConsole() {
       setMissingPricing(null);
       setOperation(null);
       await load();
+      toast.success("Tarifs créés et facture générée avec succès.");
     } catch (err: any) {
-      setError(readError(err));
+      const message = readError(err);
+      setError(message);
+      toast.error(message);
     } finally {
       setPosting(false);
     }
