@@ -20,6 +20,8 @@ export function categoryFromModule(moduleKey: string) {
 }
 
 export function pickDefaultTemplate(templates: PrintTemplate[], moduleKey: string) {
+  if (moduleKey === "billing/invoices") return templates.find((template) => template.key === "invoice")?.key ?? "invoice";
+  if (moduleKey === "pharmacy/dispensations") return templates.find((template) => template.key === "medicine-receipt")?.key ?? "medicine-receipt";
   return templates.find((template) => template.defaultModule === moduleKey)?.key
     ?? templates.find((template) => template.category === categoryFromModule(moduleKey))?.key
     ?? "generic-record";

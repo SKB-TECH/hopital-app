@@ -9,6 +9,7 @@ import { useSidebar } from "@/contexts/SidebarContext";
 import { findHospitalModule, hospitalReferences } from "@/shared/config/hospital-modules";
 import { hospitalText, hospitalUi, localizeHospitalModule } from "@/shared/config/hospital-i18n";
 import { api } from "@/shared/lib/http/api";
+import { printService } from "@/shared/services/print.service";
 import { useMe } from "@/shared/hooks/auth.hooks";
 import { canAccessHospitalModule, canAccessHospitalResource, getAccessibleHospitalResources, getFirstAccessibleHospitalModule, hasHospitalModulePermission } from "@/shared/lib/auth/module-access";
 import type { OperationAction, OperationKind, OperationState } from "@/components/hospital/resource-console/types";
@@ -41,6 +42,7 @@ export default function HospitalResourceConsole() {
   const router = useRouter();
   const { isCollapsed } = useSidebar();
   const locale = params.locale || "fr";
+  const printLocale: "fr" | "en" = locale === "en" ? "en" : "fr";
   const baseModule = findHospitalModule(params.module);
   const module = useMemo(() => localizeHospitalModule(baseModule, locale), [baseModule, locale]);
   const { data: user, isLoading: userLoading } = useMe();
@@ -185,6 +187,9 @@ export default function HospitalResourceConsole() {
               reference: paymentReference,
             }));
           }
+        }
+        if (invoice?.id && operationForm.sourceType === "DISPENSATION") {
+          await printService.print({ template: "pharmacy-invoice", module: "billing/invoices", recordId: invoice.id, locale: printLocale, includeQr: true, includeBarcode: true });
         }
       }
       if (operation.kind === "preview-invoice") {
