@@ -1,25 +1,26 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { CalendarRange, CheckCircle2, CreditCard, Loader2, Plus, Receipt, Send, Trash2, UserRound, WalletCards, X } from "lucide-react";
+import { CalendarRange, CheckCircle2, CreditCard, Loader2, Pill, Plus, Receipt, Send, Trash2, UserRound, WalletCards, X } from "lucide-react";
 import { hospitalText } from "@/shared/config/hospital-i18n";
 import { api } from "@/shared/lib/http/api";
 import type { OperationState } from "./types";
-import { formatValue, isTechnicalKey, isUuid, nextStatuses, normalizeRows } from "./utils";
+import { cleanObject, formatValue, isTechnicalKey, isUuid, nextStatuses, normalizeRows } from "./utils";
 import { operationTitle } from "./operation-utils";
 import { ReferenceField, SelectField, TextAreaField, TextField } from "./ResourceFields";
 
 export function OperationDialog({ operation, form, setForm, posting, locale = "fr", onClose, onSubmit }: { operation: OperationState; form: Record<string, any>; setForm: (form: Record<string, any>) => void; posting: boolean; locale?: string; onClose: () => void; onSubmit: () => void }) {
   const title = hospitalText(operationTitle(operation.kind), locale);
   const isInvoiceFlow = operation.kind === "preview-invoice" || operation.kind === "generate-invoice";
+  const isPharmacySale = isInvoiceFlow && form.sourceType === "DISPENSATION" && form.sourceId;
 
   return (
     <div className="fixed inset-0 z-[80] bg-slate-950/40">
       <div className={`ml-auto h-full w-full overflow-y-auto border-l border-slate-300 bg-white ${isInvoiceFlow ? "max-w-5xl" : "max-w-2xl"}`}>
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-7 py-5">
           <div>
-            <h2 className="text-2xl font-black text-slate-950">{title}</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-500">{isInvoiceFlow ? "Facturation patient, prestations et encaissement" : "Action métier sécurisée"}</p>
+            <h2 className="text-2xl font-black text-slate-950">{isPharmacySale ? "Vente pharmacie" : title}</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500">{isPharmacySale ? "Médicaments délivrés, montant et encaissement" : isInvoiceFlow ? "Facturation patient, prestations et encaissement" : "Action métier sécurisée"}</p>
           </div>
           <button onClick={onClose} className="border border-slate-300 p-2 text-slate-600 hover:bg-slate-50"><X className="size-5" /></button>
         </div>
@@ -61,7 +62,7 @@ export function OperationDialog({ operation, form, setForm, posting, locale = "f
           {operation.kind === "validate-lab" ? <p className="border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">Confirmer la validation biologique de ce résultat. Cette action engage le validateur.</p> : null}
           <div className="flex justify-end gap-3 border-t border-slate-200 pt-5">
             <button onClick={onClose} className="h-12 border border-slate-300 bg-white px-5 text-sm font-black text-slate-800 hover:bg-slate-50">Annuler</button>
-            <button disabled={posting} onClick={onSubmit} className="inline-flex h-12 items-center justify-center gap-2 bg-blue-700 px-6 text-sm font-black text-white hover:bg-blue-800 disabled:opacity-50">{posting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}{isInvoiceFlow ? operation.kind === "generate-invoice" ? "Générer la facture" : "Calculer l’aperçu" : "Confirmer"}</button>
+            <button disabled={posting} onClick={onSubmit} className="inline-flex h-12 items-center justify-center gap-2 bg-blue-700 px-6 text-sm font-black text-white hover:bg-blue-800 disabled:opacity-50">{posting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}{isPharmacySale ? "Valider la vente" : isInvoiceFlow ? operation.kind === "generate-invoice" ? "Générer la facture" : "Calculer l’aperçu" : "Confirmer"}</button>
           </div>
         </div>
       </div>
@@ -74,6 +75,34 @@ function InvoiceWorkflow({ operationKind, form, setForm }: { operationKind: stri
   const estimatedManualTotal = invoiceItemsTotal(form.invoiceItems);
   const displayTotal = previewTotal || estimatedManualTotal;
   const isPharmacyDispensation = form.sourceType === "DISPENSATION" && form.sourceId;
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
+
+  useEffect(() => {
+    if (!isPharmacyDispensation || !form.patientId || form.preview) return;
+    let mounted = true;
+    setPreviewLoading(true);
+    setPreviewError("");
+    const { collectNow, paymentMethod, paymentAmount, paymentReference, preview, ...payload } = form;
+    api.post("/billing/invoices/preview", cleanObject(payload))
+      .then((response) => {
+        if (!mounted) return;
+        const total = Number(response.data?.subtotal ?? 0);
+        setForm({
+          ...form,
+          preview: response.data,
+          paymentAmount: form.paymentAmount || (total > 0 ? String(total) : ""),
+        });
+      })
+      .catch((error) => mounted && setPreviewError(error?.response?.data?.message || error?.message || "Impossible de charger les médicaments délivrés."))
+      .finally(() => mounted && setPreviewLoading(false));
+    return () => { mounted = false; };
+  }, [isPharmacyDispensation, form.patientId, form.sourceId]);
+
+  if (isPharmacyDispensation) {
+    return <PharmacySaleWorkflow operationKind={operationKind} form={form} setForm={setForm} previewLoading={previewLoading} previewError={previewError} />;
+  }
+
   return (
     <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
       <div className="space-y-5">
@@ -159,6 +188,97 @@ function InvoicePanel({ icon, title, subtitle, children }: { icon: ReactNode; ti
       </div>
       <div className="p-5">{children}</div>
     </section>
+  );
+}
+
+function PharmacySaleWorkflow({ operationKind, form, setForm, previewLoading, previewError }: { operationKind: string; form: Record<string, any>; setForm: (form: Record<string, any>) => void; previewLoading: boolean; previewError: string }) {
+  const charges = normalizeRows(form.preview?.charges);
+  const total = Number(form.preview?.subtotal ?? 0);
+  const currency = form.preview?.currency ?? charges[0]?.currency ?? "USD";
+  const itemCount = charges.reduce((sum, charge: any) => sum + Number(charge.quantity || 0), 0);
+
+  return (
+    <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
+      <div className="space-y-5">
+        <section className="border border-slate-200 bg-white">
+          <div className="flex items-start gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4">
+            <div className="flex size-10 items-center justify-center bg-blue-700 text-white"><Pill className="size-5" /></div>
+            <div>
+              <h3 className="font-black text-slate-950">Médicaments vendus</h3>
+              <p className="mt-1 text-xs font-semibold text-slate-500">Lignes reprises depuis la délivrance sélectionnée.</p>
+            </div>
+          </div>
+
+          <div className="p-5">
+            {previewLoading ? (
+              <div className="flex h-40 items-center justify-center border border-slate-200 bg-slate-50 text-sm font-bold text-slate-500">
+                <Loader2 className="mr-2 size-5 animate-spin text-blue-700" />Chargement des médicaments délivrés...
+              </div>
+            ) : previewError ? (
+              <div className="border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800">{previewError}</div>
+            ) : charges.length ? (
+              <div className="border border-slate-200">
+                <div className="hidden grid-cols-[minmax(0,1fr)_80px_130px_130px] bg-slate-50 px-4 py-3 text-xs font-black uppercase tracking-wide text-slate-500 md:grid">
+                  <span>Médicament</span>
+                  <span className="text-right">Qté</span>
+                  <span className="text-right">Prix unitaire</span>
+                  <span className="text-right">Montant</span>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {charges.map((charge: any, index: number) => (
+                    <div key={charge.id ?? index} className="grid gap-3 px-4 py-4 text-sm md:grid-cols-[minmax(0,1fr)_80px_130px_130px] md:items-center">
+                      <div className="min-w-0">
+                        <p className="break-words font-black leading-5 text-slate-900">{charge.description ?? charge.serviceCode ?? "Médicament"}</p>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 md:block md:text-right">
+                        <span className="text-xs font-black uppercase text-slate-400 md:hidden">Qté</span>
+                        <span className="font-bold text-slate-700">{formatValue(charge.quantity)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 md:block md:text-right">
+                        <span className="text-xs font-black uppercase text-slate-400 md:hidden">Prix unitaire</span>
+                        <span className="font-bold text-slate-700">{formatMoney(Number(charge.unitPrice ?? 0), charge.currency ?? currency)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-3 md:block md:border-t-0 md:pt-0 md:text-right">
+                        <span className="text-xs font-black uppercase text-slate-400 md:hidden">Montant</span>
+                        <span className="font-black text-slate-950">{formatMoney(Number(charge.total ?? 0), charge.currency ?? currency)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">Aucun médicament facturable trouvé pour cette délivrance.</div>
+            )}
+          </div>
+        </section>
+      </div>
+
+      <aside className="space-y-5">
+        <div className="border border-slate-200 bg-slate-950 p-5 text-white">
+          <p className="text-xs font-black uppercase tracking-wide text-blue-200">Total à payer</p>
+          <p className="mt-3 text-4xl font-black">{formatMoney(total, currency)}</p>
+          <div className="mt-4 grid grid-cols-2 gap-2 text-xs font-bold text-slate-300">
+            <span>Lignes</span><span className="text-right text-white">{charges.length}</span>
+            <span>Unités</span><span className="text-right text-white">{formatValue(itemCount)}</span>
+            <span>Mode</span><span className="text-right text-white">{operationKind === "generate-invoice" ? "Vente" : "Aperçu"}</span>
+          </div>
+        </div>
+
+        {operationKind === "generate-invoice" ? (
+          <div className="border border-blue-200 bg-blue-50 p-5">
+            <div className="mb-4 flex items-center gap-2 text-sm font-black text-slate-950"><WalletCards className="size-4 text-blue-700" />Paiement pharmacie</div>
+            <div className="space-y-4">
+              <TextField type="number" label="Montant encaissé" value={form.paymentAmount} onChange={(value) => setForm({ ...form, paymentAmount: Number(value), collectNow: true })} />
+              <SelectField label="Méthode" value={form.paymentMethod} onChange={(value) => setForm({ ...form, paymentMethod: value, collectNow: true })} options={["CASH", "CARD", "MOBILE_MONEY", "BANK_TRANSFER"]} />
+              <TextField label="Référence paiement" value={form.paymentReference} onChange={(value) => setForm({ ...form, paymentReference: value, collectNow: true })} />
+              <div className="flex items-center gap-2 bg-white px-3 py-2 text-xs font-bold text-emerald-700">
+                <CheckCircle2 className="size-4" />La vente sera facturée et encaissée en une seule action.
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </aside>
+    </div>
   );
 }
 

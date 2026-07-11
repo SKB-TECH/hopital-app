@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, AlertTriangle, BarChart3, CircleDollarSign, Clock3, Loader2, TrendingUp, UsersRound } from "lucide-react";
+import { Activity, AlertTriangle, BarChart3, CircleDollarSign, Clock3, Loader2, Printer, TrendingUp, UsersRound } from "lucide-react";
 import { hospitalMetricLabel } from "@/shared/config/hospital-modules";
 import { formatValue } from "./utils";
 
@@ -23,6 +23,10 @@ export function DepartmentDashboard({ loading, data, columns, locale = "fr" }: {
         {locale === "en" ? "Loading dashboard..." : "Chargement du tableau de bord..."}
       </div>
     );
+  }
+
+  if (columns.some((column) => column.key === "salesLines")) {
+    return <PharmacySalesDashboard data={data ?? {}} columns={columns} locale={locale} />;
   }
 
   const simple = columns.filter((column) => isSimpleDashboardValue(data?.[column.key]));
@@ -54,6 +58,146 @@ export function DepartmentDashboard({ loading, data, columns, locale = "fr" }: {
       ) : null}
     </div>
   );
+}
+
+function PharmacySalesDashboard({ data, columns, locale }: { data: Record<string, any>; columns: DashboardColumn[]; locale: string }) {
+  const metrics = columns.filter((column) => isSimpleDashboardValue(data?.[column.key])).slice(0, 5);
+  const salesLines = rowsFromValue(data?.salesLines);
+  const salesByDay = rowsFromValue(data?.salesByDay).filter((row) => Number.isFinite(Number(findNumericValue(row))));
+  const recentSales = rowsFromValue(data?.recentSales);
+  const paymentMethods = rowsFromValue(data?.paymentMethods);
+  const total = Number(data?.salesThisMonth ?? data?.salesToday ?? 0);
+  const units = Number(data?.unitsSoldThisMonth ?? salesLines.reduce((sum, row) => sum + Number(row.quantitySold ?? 0), 0));
+
+  return (
+    <div className="pharmacy-sales-report space-y-5 bg-[#fbfaff] p-4 sm:p-6 print:bg-white print:p-0">
+      <style jsx global>{`
+        @media print {
+          body * { visibility: hidden; }
+          .pharmacy-sales-report, .pharmacy-sales-report * { visibility: visible; }
+          .pharmacy-sales-report { position: absolute; inset: 0 auto auto 0; width: 100%; }
+          .pharmacy-sales-report .no-print { display: none !important; }
+        }
+      `}</style>
+      <section className="flex flex-col gap-4 rounded-lg border border-slate-100 bg-white p-5 shadow-[0_12px_28px_rgba(15,23,42,0.045)] print:border-slate-300 print:shadow-none">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase text-blue-700">Pharmacie</p>
+            <h2 className="mt-1 text-2xl font-black text-slate-950">Rapport des ventes médicaments</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500">Médicament, quantité vendue, prix unitaire, total et encaissements.</p>
+          </div>
+          <button onClick={() => window.print()} className="no-print inline-flex h-11 items-center justify-center gap-2 border border-blue-700 bg-blue-700 px-4 text-sm font-black text-white hover:bg-blue-800">
+            <Printer className="size-4" /> Imprimer le rapport
+          </button>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          {metrics.map((column, index) => <PharmacySalesMetric key={column.key} label={displayLabel(column)} value={data?.[column.key]} tone={TONES[index % TONES.length]} />)}
+        </div>
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(300px,0.75fr)]">
+        <SalesChartPanel rows={salesByDay.length ? salesByDay : salesLines} title="Évolution des ventes" />
+        <section className="rounded-lg border border-slate-100 bg-white p-5 shadow-[0_12px_28px_rgba(15,23,42,0.045)] print:border-slate-300 print:shadow-none">
+          <h3 className="text-base font-black text-slate-950">Résumé caisse</h3>
+          <div className="mt-5 space-y-4">
+            <SummaryLine label="Total ventes" value={formatMoney(total)} strong />
+            <SummaryLine label="Unités vendues" value={formatDashboardNumber(units)} />
+            <SummaryLine label="Délivrances" value={formatDashboardNumber(data?.dispensationsToday ?? recentSales.length)} />
+          </div>
+          <div className="mt-6 border-t border-slate-100 pt-5">
+            <p className="mb-3 text-xs font-black uppercase text-slate-500">Modes de paiement</p>
+            <KeyValueRows rows={paymentMethods.slice(0, 4)} locale={locale} />
+          </div>
+        </section>
+      </section>
+
+      <section className="rounded-lg border border-slate-100 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.045)] print:border-slate-300 print:shadow-none">
+        <div className="border-b border-slate-100 px-5 py-4">
+          <h3 className="text-base font-black text-slate-950">Détail des médicaments vendus</h3>
+          <p className="mt-1 text-xs font-semibold text-slate-500">Tableau imprimable pour le contrôle journalier ou mensuel.</p>
+        </div>
+        <SalesDataGrid rows={salesLines} />
+      </section>
+    </div>
+  );
+}
+
+function PharmacySalesMetric({ label, value, tone }: { label: string; value: any; tone: Tone }) {
+  return (
+    <article className="border border-slate-100 bg-slate-50 p-4 print:border-slate-300">
+      <div className={`mb-4 flex size-10 items-center justify-center rounded-lg ${toneClass[tone].icon}`}>{metricIcon(label)}</div>
+      <p className="text-xs font-black uppercase text-slate-500">{label}</p>
+      <p className="mt-1 truncate text-2xl font-black text-slate-950">{/(vente|payé|recette|montant)/i.test(label) ? formatMoney(value) : formatDashboardNumber(value)}</p>
+    </article>
+  );
+}
+
+function SalesChartPanel({ rows, title }: { rows: any[]; title: string }) {
+  const points = chartPoints(rows.length >= 2 ? rows : [{ label: "Début", value: 0 }, { label: "Ventes", value: 1 }], 760, 250);
+  return (
+    <section className="rounded-lg border border-slate-100 bg-white p-5 shadow-[0_12px_28px_rgba(15,23,42,0.045)] print:border-slate-300 print:shadow-none">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <div>
+          <h3 className="text-base font-black text-slate-950">{title}</h3>
+          <p className="mt-1 text-xs font-semibold text-slate-400">Courbe des ventes pharmacie</p>
+        </div>
+        <BarChart3 className="size-5 text-blue-700" />
+      </div>
+      <div className="relative h-[300px] overflow-hidden rounded-lg bg-gradient-to-b from-blue-50 to-white print:h-[230px]">
+        <svg viewBox="0 0 820 300" className="h-full w-full" role="img" aria-label={title}>
+          {[0, 1, 2, 3].map((line) => <line key={line} x1="45" x2="790" y1={56 + line * 58} y2={56 + line * 58} stroke="#e7edf7" strokeWidth="1" />)}
+          <defs>
+            <linearGradient id="pharmacy-sales-area" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#1d4ed8" stopOpacity="0.24" />
+              <stop offset="100%" stopColor="#1d4ed8" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path d={`${areaPath(points)} L ${points.at(-1)?.x ?? 45} 265 L ${points[0]?.x ?? 45} 265 Z`} fill="url(#pharmacy-sales-area)" />
+          <path d={smoothPath(points)} fill="none" stroke="#1d4ed8" strokeWidth="4" strokeLinecap="round" />
+          {points.map((point, index) => <circle key={index} cx={point.x} cy={point.y} r="4" fill="#1d4ed8" stroke="white" strokeWidth="3" />)}
+        </svg>
+        <div className="absolute inset-x-5 bottom-4 grid grid-cols-4 gap-2 text-[11px] font-bold text-slate-500 md:grid-cols-6">
+          {rows.slice(0, 6).map((row, index) => <span key={index} className="truncate">{shortLabel(rowLabel(row))}</span>)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SalesDataGrid({ rows }: { rows: any[] }) {
+  if (!rows.length) return <p className="p-10 text-center text-sm font-semibold text-slate-500">Aucune vente pharmacie à afficher.</p>;
+  const total = rows.reduce((sum, row) => sum + Number(row.totalPrice ?? 0), 0);
+  return (
+    <div className="w-full">
+      <table className="w-full table-fixed border-collapse text-left">
+        <thead className="bg-slate-50 text-[11px] font-black uppercase text-slate-500">
+          <tr>
+            <th className="w-[42%] px-4 py-3">Médicament</th>
+            <th className="w-[18%] px-4 py-3 text-right">Quantité vendue</th>
+            <th className="w-[20%] px-4 py-3 text-right">Prix unitaire</th>
+            <th className="w-[20%] px-4 py-3 text-right">Prix total</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {rows.map((row, index) => (
+            <tr key={`${row.serviceCode ?? row.medicine ?? "sale"}-${index}`} className="align-top text-sm">
+              <td className="break-words px-4 py-3 font-bold text-slate-800">{formatValue(row.medicine ?? row.serviceCode)}</td>
+              <td className="px-4 py-3 text-right font-black text-slate-700">{formatDashboardNumber(row.quantitySold)}</td>
+              <td className="px-4 py-3 text-right font-semibold text-slate-700">{formatMoney(row.unitPrice)}</td>
+              <td className="px-4 py-3 text-right font-black text-slate-950">{formatMoney(row.totalPrice)}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot className="border-t border-slate-200 bg-slate-50 text-sm font-black text-slate-950">
+          <tr><td className="px-4 py-3" colSpan={3}>Total</td><td className="px-4 py-3 text-right">{formatMoney(total)}</td></tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
+
+function SummaryLine({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  return <div className="flex items-center justify-between gap-4 text-sm"><span className="font-bold text-slate-500">{label}</span><span className={strong ? "text-2xl font-black text-slate-950" : "font-black text-slate-900"}>{value}</span></div>;
 }
 
 function DashboardMetric({ label, name, value, tone, index }: { label: string; name: string; value: any; tone: Tone; index: number }) {
@@ -151,8 +295,29 @@ function CompactDataPanel({ title, value, locale = "fr" }: { title: string; valu
         <h3 className="font-black text-slate-950">{title}</h3>
         <span className="text-xs font-black text-violet-700">{locale === "en" ? "View all" : "Tout voir"}</span>
       </div>
-      {chartable.length >= 2 ? <RankedBars rows={chartable} /> : <KeyValueRows rows={rows} locale={locale} />}
+      {title === hospitalMetricLabel("salesLines") ? <SalesLinesTable rows={rowsFromValue(value)} /> : chartable.length >= 2 ? <RankedBars rows={chartable} /> : <KeyValueRows rows={rows} locale={locale} />}
     </section>
+  );
+}
+
+function SalesLinesTable({ rows }: { rows: any[] }) {
+  if (!rows.length) return <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm font-semibold text-slate-500">Aucune vente pharmacie.</p>;
+  return (
+    <div className="overflow-hidden border border-slate-200">
+      <div className="grid grid-cols-[minmax(0,1fr)_90px_110px_110px] bg-slate-50 px-3 py-2 text-[11px] font-black uppercase text-slate-500">
+        <span>Médicament</span><span className="text-right">Quantité</span><span className="text-right">Prix unit.</span><span className="text-right">Total</span>
+      </div>
+      <div className="divide-y divide-slate-100">
+        {rows.slice(0, 8).map((row, index) => (
+          <div key={index} className="grid grid-cols-[minmax(0,1fr)_90px_110px_110px] gap-2 px-3 py-3 text-sm">
+            <span className="min-w-0 truncate font-bold text-slate-800">{formatValue(row.medicine)}</span>
+            <span className="text-right font-black text-slate-700">{formatDashboardNumber(row.quantitySold)}</span>
+            <span className="text-right font-bold text-slate-600">{formatDashboardNumber(row.unitPrice)}</span>
+            <span className="text-right font-black text-slate-950">{formatDashboardNumber(row.totalPrice)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -223,10 +388,15 @@ function isPercentageMetric(name: string) { return /(rate|occupancy|compliance|r
 function isSimpleDashboardValue(value: any) { return value === null || value === undefined || ["string", "number", "boolean"].includes(typeof value); }
 function objectToRows(value: any) { if (!value || typeof value !== "object") return []; return Object.entries(value).map(([key, val]) => ({ indicateur: humanize(key), valeur: val })); }
 function findNumericValue(row: any): any { if (typeof row === "number") return row; if (!row || typeof row !== "object") return undefined; const entry = Object.entries(row).find(([, value]) => Number.isFinite(Number(value))); if (entry) return entry[1]; return metricNumber(row); }
-function rowLabel(row: any) { if (!row || typeof row !== "object") return formatValue(row); const fullName = [row.firstName ?? row.first_name, row.lastName ?? row.last_name].filter(Boolean).join(" ").trim(); if (fullName) return row.medicalRecordNumber || row.medical_record_number ? `${fullName} · ${row.medicalRecordNumber ?? row.medical_record_number}` : fullName; const preferred = ["label", "name", "patientName", "medicalRecordNumber", "practitionerName", "prescriberName", "cashierName", "department", "position", "sourceType", "source_type", "serviceCode", "service_code", "description", "bloodGroup", "blood_group", "componentType", "component_type", "ward", "type", "indicateur"]; const key = preferred.find((item) => isReadableLabelValue(row[item])) ?? Object.keys(row).find((item) => isReadableLabelValue(row[item])); return key ? formatValue(row[key]) : "-"; }
+function rowLabel(row: any) { if (!row || typeof row !== "object") return formatValue(row); const fullName = [row.firstName ?? row.first_name, row.lastName ?? row.last_name].filter(Boolean).join(" ").trim(); if (fullName) return row.medicalRecordNumber || row.medical_record_number ? `${fullName} · ${row.medicalRecordNumber ?? row.medical_record_number}` : fullName; const preferred = ["medicine", "invoiceNumber", "patientName", "label", "name", "medicalRecordNumber", "practitionerName", "prescriberName", "cashierName", "department", "position", "method", "sourceType", "source_type", "serviceCode", "service_code", "description", "bloodGroup", "blood_group", "componentType", "component_type", "ward", "type", "day", "indicateur"]; const key = preferred.find((item) => isReadableLabelValue(row[item])) ?? Object.keys(row).find((item) => isReadableLabelValue(row[item])); return key ? formatValue(row[key]) : "-"; }
 function isReadableLabelValue(value: any) { return value !== undefined && value !== null && value !== "" && !isUuid(value) && !Number.isFinite(Number(value)); }
 function isUuid(value: any) { return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value); }
 function shortLabel(value: any) { return String(formatValue(value)).slice(0, 16); }
+function formatMoney(value: any, currency = "USD") {
+  const numeric = Number(value ?? 0);
+  if (!Number.isFinite(numeric)) return formatValue(value);
+  return new Intl.NumberFormat("fr-FR", { style: "currency", currency, maximumFractionDigits: numeric % 1 ? 2 : 0 }).format(numeric);
+}
 function formatDashboardNumber(value: any) { const numeric = Number(value); if (Number.isFinite(numeric)) return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(numeric); return formatValue(value); }
 function isAlertMetric(key: string, value: any) { const numeric = Number(value ?? 0); if (!Number.isFinite(numeric) || numeric <= 0) return false; return /(critical|alert|pending|waiting|overdue|expired|expiring|low|outOfStock|outstanding|unpaid|emergency|missed|due)/i.test(key); }
 function humanize(key: string) { return hospitalMetricLabel(key); }
