@@ -63,6 +63,9 @@ export default function HospitalResourceConsole() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState("");
@@ -86,8 +89,9 @@ export default function HospitalResourceConsole() {
     setLoading(true);
     setError("");
     try {
-      const response = await api.get(selected.endpoint, { params: resourceQueryParams(selected.endpoint, debouncedQuery, fromDate, toDate, statusFilter) });
+      const response = await api.get(selected.endpoint, { params: resourceQueryParams(selected.endpoint, debouncedQuery, fromDate, toDate, statusFilter, page, pageSize) });
       const dataRows = normalizeRows(response.data);
+      setTotalRows(readTotalRows(response.data, dataRows.length));
       let nextRows = dataRows;
       if (selected.endpoint === "/hr/attendance-events") {
         const employeesResponse = await api.get("/hr/employees", { params: { limit: 100 } });
@@ -98,6 +102,7 @@ export default function HospitalResourceConsole() {
     } catch (err: any) {
       const message = readError(err);
       setRows([]);
+      setTotalRows(0);
       setReferenceLabels({});
       setError(message);
       toast.error(message);
@@ -109,7 +114,7 @@ export default function HospitalResourceConsole() {
   useEffect(() => {
     setForm(defaultForm(selected?.fields ?? []));
     load();
-  }, [selected?.endpoint, userLoading, user?.id, canAccessModule, canAccessSelected, debouncedQuery, fromDate, toDate, statusFilter]);
+  }, [selected?.endpoint, userLoading, user?.id, canAccessModule, canAccessSelected, debouncedQuery, fromDate, toDate, statusFilter, page, pageSize]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedQuery(query.trim()), 350);
@@ -122,9 +127,15 @@ export default function HospitalResourceConsole() {
     setFromDate("");
     setToDate("");
     setStatusFilter("");
+    setPage(1);
   }, [selected?.endpoint]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedQuery, fromDate, toDate, statusFilter, pageSize]);
+
   const filtered = rows;
+  const pageCount = Math.max(1, Math.ceil(Math.max(totalRows, filtered.length) / pageSize));
 
   const openCreate = () => {
     if (!canCreateSelected) return;
@@ -433,8 +444,9 @@ export default function HospitalResourceConsole() {
                     <button onClick={() => { setQuery(""); setDebouncedQuery(""); setFromDate(""); setToDate(""); setStatusFilter(""); }} className="h-12 border border-slate-300 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50">Effacer</button>
                   </div>}
                 </div>
-                {!canAccessSelected ? <div className="p-8 text-sm font-semibold text-amber-800">{hospitalUi(locale, "moduleNotAssigned")}</div> : isDashboard ? <DepartmentDashboard loading={loading} data={rows[0] ?? {}} columns={selected.columns} locale={locale} /> : isAppointmentsCalendar ? <AppointmentsCalendarView rows={filtered} loading={loading} onRefresh={load} onCreate={openCreate} locale={locale} /> : <div className="overflow-x-auto">
-                  <table className="w-full min-w-[960px]">
+                {!canAccessSelected ? <div className="p-8 text-sm font-semibold text-amber-800">{hospitalUi(locale, "moduleNotAssigned")}</div> : isDashboard ? <DepartmentDashboard loading={loading} data={rows[0] ?? {}} columns={selected.columns} locale={locale} /> : isAppointmentsCalendar ? <AppointmentsCalendarView rows={filtered} loading={loading} onRefresh={load} onCreate={openCreate} locale={locale} /> : <div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[960px]">
                     <thead className="bg-slate-50">
                       <tr>{selected.columns.map((column) => <th key={column.key} className="border-b border-slate-200 px-5 py-4 text-left text-xs font-black uppercase tracking-wide text-slate-500">{column.label}</th>)}<th className="border-b border-slate-200 px-5 py-4 text-right text-xs font-black uppercase tracking-wide text-slate-500">{hospitalUi(locale, "actions")}</th></tr>
                     </thead>
@@ -443,7 +455,21 @@ export default function HospitalResourceConsole() {
                       filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs truncate px-5 py-4 text-sm font-semibold text-slate-700">{safeCellText(displayCell(row, column.key, referenceLabels))}</td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => openView(row)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title="Voir"><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Documents"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : openOperation(action.kind, row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title={action.label}><action.icon className="size-4" /></button>)}</div></td></tr>) :
                       <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center"><Database className="mx-auto mb-3 size-8 text-slate-300" /><p className="font-black text-slate-800">{hospitalUi(locale, "noData")}</p><p className="mt-1 text-sm text-slate-500">{hospitalUi(locale, "noDataHint")}</p></td></tr>}
                     </tbody>
-                  </table>
+                    </table>
+                  </div>
+                  <div className="flex flex-col gap-3 border-t border-slate-200 bg-white px-5 py-4 md:flex-row md:items-center md:justify-between">
+                    <div className="text-sm font-semibold text-slate-500">
+                      {totalRows ? `${((page - 1) * pageSize) + 1}-${Math.min(page * pageSize, totalRows)} sur ${totalRows}` : `${filtered.length} ligne${filtered.length > 1 ? "s" : ""}`}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))} className="h-10 border border-slate-300 bg-white px-3 text-sm font-black text-slate-700 outline-none focus:border-blue-700">
+                        {[25, 50, 100, 200].map((size) => <option key={size} value={size}>{size} / page</option>)}
+                      </select>
+                      <button disabled={page <= 1 || loading} onClick={() => setPage((current) => Math.max(1, current - 1))} className="h-10 border border-slate-300 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">Précédent</button>
+                      <span className="h-10 border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-black text-slate-700">Page {page} / {pageCount}</span>
+                      <button disabled={page >= pageCount || loading || !filtered.length} onClick={() => setPage((current) => current + 1)} className="h-10 border border-slate-300 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">Suivant</button>
+                    </div>
+                  </div>
                 </div>}
               </section>
           </div>
@@ -521,14 +547,21 @@ export default function HospitalResourceConsole() {
   );
 }
 
-function resourceQueryParams(endpoint: string, search: string, from: string, to: string, status: string) {
+function resourceQueryParams(endpoint: string, search: string, from: string, to: string, status: string, page: number, limit: number) {
   return cleanObject({
-    limit: endpoint === "/appointments" ? 100 : 50,
+    page: endpoint === "/appointments" ? 1 : page,
+    limit: endpoint === "/appointments" ? 100 : limit,
     search: search || undefined,
     from: from || undefined,
     to: to || undefined,
     status: status || undefined,
   });
+}
+
+function readTotalRows(responseData: any, fallback: number) {
+  const candidates = [responseData?.total, responseData?.totalItems, responseData?.meta?.total, responseData?.pagination?.total, responseData?.count];
+  const value = candidates.map((item) => Number(item)).find((item) => Number.isFinite(item) && item >= 0);
+  return value ?? fallback;
 }
 
 async function parseWhoGrowthFile(file: File) {
@@ -835,19 +868,21 @@ function displayCell(row: any, key: string, referenceLabels: Record<string, Reco
   if (mapped) return mapped;
   const readableSibling = readableSiblingValue(row, key);
   if (readableSibling) return formatValue(readableSibling);
-  if (isUuid(value)) return "Référence non trouvée";
+  if (isUuid(value)) return "Référence interne";
   return formatValue(value);
 }
 
 function recordReference(row: any) {
-  const keys = ["invoiceNumber", "medicalRecordNumber", "employeeNumber", "badgeNumber", "code", "sku", "batchNumber", "donorNumber", "bagNumber", "name", "title", "chiefComplaint", "procedure", "status"];
+  const keys = ["displayReference", "invoiceNumber", "medicalRecordNumber", "employeeNumber", "badgeNumber", "orderNumber", "ticketNumber", "entryNumber", "contractNumber", "runNumber", "code", "sku", "batchNumber", "donorNumber", "bagNumber", "barcode", "name", "title", "chiefComplaint", "procedure", "status"];
   const value = keys.map((key) => row?.[key]).find((item) => item !== undefined && item !== null && item !== "");
-  return formatValue(value ?? "-");
+  if (value) return formatValue(value);
+  const id = String(row?.id ?? "").replace(/-/g, "").slice(0, 8).toUpperCase();
+  return id ? `REF-${new Date().getFullYear()}-${id}` : "Référence interne";
 }
 
 function referenceRowLabel(row: Record<string, any>, keys: string[]) {
   const label = relationLabel(row, keys);
-  return label === "Référence sans nom" ? recordReference(row) : label;
+  return label === "Référence sans nom" || isUuid(label) ? recordReference(row) : label;
 }
 
 function safeCellText(value: any) {
@@ -936,7 +971,9 @@ function isTechnicalDetailKey(key: string) {
 function displayDetailValue(row: any, key: string, referenceLabels: Record<string, Record<string, string>>) {
   const value = row?.[key];
   const cell = displayCell(row, key, referenceLabels);
-  if (cell !== "Référence non trouvée" && cell !== "-" && cell !== formatValue(value)) return cell;
+  if (cell !== "-" && cell !== formatValue(value)) return cell;
+  if (isUuid(value)) return "Référence interne";
+  if (Array.isArray(value) && value.every((item) => isUuid(item))) return `${value.length} référence${value.length > 1 ? "s" : ""} interne${value.length > 1 ? "s" : ""}`;
   return value;
 }
 
