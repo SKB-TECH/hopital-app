@@ -422,6 +422,7 @@ export default function HospitalResourceConsole() {
               moduleTitle={selected.title}
               locale={locale as "fr" | "en"}
               row={printDialog.row}
+              data={printDialog.row ? undefined : printPayloadData(selected.title, rows)}
               onClose={() => setPrintDialog(null)}
             />
           )}
@@ -484,6 +485,11 @@ function resourceQueryParams(endpoint: string, search: string, from: string, to:
     to: to || undefined,
     status: status || undefined,
   });
+}
+
+function printPayloadData(moduleTitle: string, rows: any[]) {
+  if (rows.length === 1 && rows[0] && typeof rows[0] === "object" && !Array.isArray(rows[0])) return { title: moduleTitle, ...rows[0] };
+  return { title: moduleTitle, rows, rowsCount: rows.length };
 }
 
 function MissingPricingDialog({ state, posting, locale, onChange, onClose, onSubmit }: { state: MissingPricingState; posting: boolean; locale: string; onChange: (state: MissingPricingState) => void; onClose: () => void; onSubmit: () => void }) {

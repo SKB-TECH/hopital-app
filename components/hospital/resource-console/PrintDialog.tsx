@@ -8,7 +8,7 @@ import { categoryFromModule, pickDefaultTemplate } from "./print-utils";
 import { ProfessionalError } from "./ProfessionalError";
 import { TextAreaField, TextField } from "./ResourceFields";
 
-export function PrintDialog({ moduleEndpoint, moduleTitle, locale, row, onClose }: { moduleEndpoint: string; moduleTitle: string; locale: "fr" | "en"; row?: any; onClose: () => void }) {
+export function PrintDialog({ moduleEndpoint, moduleTitle, locale, row, data, onClose }: { moduleEndpoint: string; moduleTitle: string; locale: "fr" | "en"; row?: any; data?: any; onClose: () => void }) {
   const [templates, setTemplates] = useState<PrintTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState("generic-record");
   const [watermark, setWatermark] = useState("");
@@ -44,7 +44,7 @@ export function PrintDialog({ moduleEndpoint, moduleTitle, locale, row, onClose 
     template: selectedTemplate,
     module: moduleKey,
     recordId: row?.id,
-    data: row?.id ? undefined : { module: moduleTitle, rowsCount: "Impression de liste", generatedAt: new Date().toISOString() },
+    data: row?.id ? undefined : { module: moduleTitle, generatedAt: new Date().toISOString(), ...(data ?? {}) },
     locale,
     watermark: watermark.trim() || undefined,
     includeQr: true,
