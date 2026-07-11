@@ -864,6 +864,7 @@ function displayCell(row: any, key: string, referenceLabels: Record<string, Reco
   if (key === "prescriberId" && row?.prescriberName) return row.prescriberName;
   if (key === "attendingPractitionerId" && row?.attendingPractitionerName) return row.attendingPractitionerName;
   const value = row?.[key];
+  if (key === "percentiles") return whoDecisionText(value);
   const mapped = value !== undefined && value !== null ? referenceLabels[key]?.[String(value)] : undefined;
   if (mapped) return mapped;
   const readableSibling = readableSiblingValue(row, key);
@@ -889,6 +890,19 @@ function safeCellText(value: any) {
   if (value === null || value === undefined || value === "") return "-";
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
   return formatValue(value);
+}
+
+function whoDecisionText(value: any) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return formatValue(value);
+  const summary = value.whoSummary;
+  const alerts = Array.isArray(value.whoAlerts) ? value.whoAlerts : [];
+  const who = value.who && typeof value.who === "object" ? value.who : null;
+  const indicators = who?.indicators && typeof who.indicators === "object" ? Object.values(who.indicators as Record<string, any>) : [];
+  const severity = String(summary?.severity ?? (alerts.some((alert: any) => alert?.severity === "CRITICAL") ? "CRITICAL" : alerts.some((alert: any) => alert?.severity === "WARNING") ? "WARNING" : indicators.length ? "NORMAL" : "")).toUpperCase();
+  const label = severity === "CRITICAL" ? "Critique" : severity === "WARNING" ? "À surveiller" : severity === "NORMAL" ? "Normal" : "Décision non calculée";
+  const decision = summary?.decision || (severity === "CRITICAL" ? "Alerte critique OMS: évaluation médicale urgente recommandée." : severity === "WARNING" ? "Surveillance OMS: contrôle clinique recommandé." : severity === "NORMAL" ? "Croissance compatible avec les standards OMS." : "Saisissez une mesure complète et chargez le référentiel OMS.");
+  const zScores = indicators.slice(0, 3).map((indicator: any) => `${indicator.label}: Z ${Number(indicator.zScore) >= 0 ? "+" : ""}${indicator.zScore}`).join(" · ");
+  return [label, decision, zScores].filter(Boolean).join(" · ");
 }
 
 
