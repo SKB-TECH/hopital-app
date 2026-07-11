@@ -13,7 +13,7 @@ import { printService } from "@/shared/services/print.service";
 import { useMe } from "@/shared/hooks/auth.hooks";
 import { canAccessHospitalModule, canAccessHospitalResource, getAccessibleHospitalResources, getFirstAccessibleHospitalModule, hasHospitalModulePermission } from "@/shared/lib/auth/module-access";
 import type { OperationAction, OperationKind, OperationState } from "@/components/hospital/resource-console/types";
-import { cleanObject, cleanPayload, defaultForm, defaultOperationForm, formatValue, isTechnicalKey, isUuid, normalizeRows, readError, relationLabel, validateOperation, nextStatuses } from "@/components/hospital/resource-console/utils";
+import { cleanObject, cleanPayload, defaultForm, defaultOperationForm, formatValue, invoiceApiPayload, isTechnicalKey, isUuid, normalizeRows, readError, relationLabel, validateOperation, nextStatuses } from "@/components/hospital/resource-console/utils";
 import { DepartmentDashboard } from "@/components/hospital/resource-console/DepartmentDashboard";
 import { FieldInput } from "@/components/hospital/resource-console/FieldInput";
 import { ProfessionalError } from "@/components/hospital/resource-console/ProfessionalError";
@@ -175,8 +175,8 @@ export default function HospitalResourceConsole() {
     try {
       validateOperation(operation.kind, operationForm);
       if (operation.kind === "generate-invoice") {
-        const { collectNow, paymentMethod, paymentAmount, paymentReference, preview, ...invoiceForm } = operationForm;
-        const response = await api.post("/billing/invoices", cleanObject(invoiceForm));
+        const { collectNow, paymentMethod, paymentAmount, paymentReference } = operationForm;
+        const response = await api.post("/billing/invoices", invoiceApiPayload(operationForm));
         const invoice = response.data;
         if (collectNow && invoice?.id) {
           const amount = Number(paymentAmount || invoice.balanceDue || invoice.total || 0);
@@ -193,7 +193,7 @@ export default function HospitalResourceConsole() {
         }
       }
       if (operation.kind === "preview-invoice") {
-        const response = await api.post("/billing/invoices/preview", cleanObject(operationForm));
+        const response = await api.post("/billing/invoices/preview", invoiceApiPayload(operationForm));
         setOperationForm((current) => ({ ...current, preview: response.data }));
         setPosting(false);
         return;
@@ -258,7 +258,7 @@ export default function HospitalResourceConsole() {
         items,
       });
       await api.patch(`/pricing/price-lists/${response.data.id}/activate`);
-      await api.post("/billing/invoices", cleanObject(operationForm));
+      await api.post("/billing/invoices", invoiceApiPayload(operationForm));
       setMissingPricing(null);
       setOperation(null);
       await load();

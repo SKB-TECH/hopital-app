@@ -5,6 +5,11 @@ export function cleanObject(input: Record<string, any>) {
   return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== "" && value !== undefined && value !== null && value !== "{}" && value !== "[]"));
 }
 
+export function invoiceApiPayload(input: Record<string, any>) {
+  const { collectNow, paymentMethod, paymentAmount, paymentReference, preview, ...payload } = input;
+  return cleanObject(payload);
+}
+
 export function normalizeRows(data: any): any[] {
   if (Array.isArray(data)) return data;
   if (Array.isArray(data?.data)) return data.data;

@@ -5,7 +5,7 @@ import { CalendarRange, CheckCircle2, CreditCard, Loader2, Pill, Plus, Receipt, 
 import { hospitalText } from "@/shared/config/hospital-i18n";
 import { api } from "@/shared/lib/http/api";
 import type { OperationState } from "./types";
-import { cleanObject, formatValue, isTechnicalKey, isUuid, nextStatuses, normalizeRows } from "./utils";
+import { formatValue, invoiceApiPayload, isTechnicalKey, isUuid, nextStatuses, normalizeRows } from "./utils";
 import { operationTitle } from "./operation-utils";
 import { ReferenceField, SelectField, TextAreaField, TextField } from "./ResourceFields";
 
@@ -83,8 +83,7 @@ function InvoiceWorkflow({ operationKind, form, setForm }: { operationKind: stri
     let mounted = true;
     setPreviewLoading(true);
     setPreviewError("");
-    const { collectNow, paymentMethod, paymentAmount, paymentReference, preview, ...payload } = form;
-    api.post("/billing/invoices/preview", cleanObject(payload))
+    api.post("/billing/invoices/preview", invoiceApiPayload(form))
       .then((response) => {
         if (!mounted) return;
         const total = Number(response.data?.subtotal ?? 0);
