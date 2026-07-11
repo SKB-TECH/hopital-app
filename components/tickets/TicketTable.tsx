@@ -65,11 +65,11 @@ export default function TicketTable({
             <tr key={ticket.id} className="group border-b border-slate-100 transition-colors hover:bg-slate-50">
               <td className="px-5 py-4 text-sm font-semibold text-slate-500">{index + 1}</td>
               <td className="px-5 py-4 text-sm font-semibold text-slate-900">{ticket.code}</td>
-              <td className="px-5 py-4 text-sm text-slate-600">{eventNameById[ticket.eventId] ?? ticket.eventId}</td>
+              <td className="px-5 py-4 text-sm text-slate-600">{eventNameById[ticket.eventId] ?? "Référence non trouvée"}</td>
               <td className="px-5 py-4 text-sm text-slate-600">
-                {ticketTypeNameById[ticket.ticketTypeId] ?? ticket.ticketTypeId}
+                {ticketTypeNameById[ticket.ticketTypeId] ?? "Référence non trouvée"}
               </td>
-              <td className="px-5 py-4 text-sm text-slate-600">{userNameById[ticket.userId] ?? ticket.userId}</td>
+              <td className="px-5 py-4 text-sm text-slate-600">{userNameById[ticket.userId] ?? "Référence non trouvée"}</td>
               <td className="px-5 py-4">
                 <Badge className={STATUS_STYLES[ticket.status] ?? "bg-slate-100 text-slate-700 border-slate-200"}>
                   {ticket.status}

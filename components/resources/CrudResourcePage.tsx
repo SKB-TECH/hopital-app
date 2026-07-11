@@ -217,7 +217,7 @@ export default function CrudResourcePage({
                   ) : filteredRows.length ? (
                     filteredRows.map((row) => (
                       <tr key={rowKey(row, idFields)} className="border-b border-slate-100 hover:bg-slate-50">
-                        {columns.map((column) => <td key={column.key} className="px-4 py-3 text-sm text-slate-700">{formatValue(row[column.key])}</td>)}
+                        {columns.map((column) => <td key={column.key} className="px-4 py-3 text-sm text-slate-700">{displayCell(row, column.key, options)}</td>)}
                         <td className="px-4 py-3">
                           <div className="flex gap-1">
                             {canUpdate && <button onClick={() => startEdit(row)} className="flex size-8 items-center justify-center rounded hover:bg-slate-100" title={t("actions.edit")}><Edit className="size-4" /></button>}
@@ -331,10 +331,25 @@ function toDateTimeLocalValue(value: unknown) {
   return local.toISOString().slice(0, 16);
 }
 
-function formatValue(value: any) {
+function formatValue(value: any): string {
   if (value === null || value === undefined || value === "") return "-";
-  if (typeof value === "object") return value.fr ?? value.en ?? value.name ?? displayText(value.title) ?? value.fullName ?? value.displayName ?? value.id ?? "-";
+  if (isUuid(value)) return "Référence interne";
+  if (Array.isArray(value)) {
+    if (value.length && value.every(isUuid)) return `${value.length} référence${value.length > 1 ? "s" : ""} interne${value.length > 1 ? "s" : ""}`;
+    return value.map(formatValue).filter((item) => item !== "-").join(", ") || "-";
+  }
+  if (typeof value === "object") return value.fr ?? value.en ?? value.name ?? displayText(value.title) ?? value.fullName ?? value.displayName ?? value.code ?? "-";
   return String(value);
+}
+
+function displayCell(row: any, key: string, options: Record<string, ResourceOption[]>) {
+  const value = row?.[key];
+  const option = options[key]?.find((item) => item.id === value);
+  if (option) return option.name;
+  const sibling = readableSiblingValue(row, key);
+  if (sibling) return sibling;
+  if (isTechnicalKey(key)) return "-";
+  return formatValue(value);
 }
 
 function optionLabel(row: any, nameKey?: string) {
@@ -345,7 +360,7 @@ function optionLabel(row: any, nameKey?: string) {
     || row.fullName
     || row.displayName
     || row.email
-    || row.id;
+    || "Référence";
 }
 
 function displayText(value: any) {
@@ -353,6 +368,20 @@ function displayText(value: any) {
   if (typeof value === "string") return value;
   if (typeof value === "object") return value.fr ?? value.en ?? value.name ?? value.title ?? "";
   return String(value);
+}
+
+function readableSiblingValue(row: any, key: string) {
+  const base = key.replace(/(_id|_ids|Ids|Id)$/g, "");
+  const candidates = [`${base}Name`, `${base}_name`, `${base}Label`, `${base}_label`, `${base}Title`, `${base}_title`, `${base}Code`, `${base}_code`];
+  return candidates.map((candidate) => row?.[candidate]).find((value) => value !== undefined && value !== null && value !== "" && !isUuid(value));
+}
+
+function isTechnicalKey(key: string) {
+  return key === "id" || key.endsWith("Id") || key.endsWith("Ids") || key.endsWith("_id") || key.endsWith("_ids");
+}
+
+function isUuid(value: any) {
+  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(value);
 }
 
 function Th({ children }: { children: React.ReactNode }) {

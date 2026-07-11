@@ -12,7 +12,7 @@ import { api } from "@/shared/lib/http/api";
 import { useMe } from "@/shared/hooks/auth.hooks";
 import { canAccessHospitalModule, canAccessHospitalResource, getAccessibleHospitalResources, getFirstAccessibleHospitalModule, hasHospitalModulePermission } from "@/shared/lib/auth/module-access";
 import type { OperationAction, OperationKind, OperationState } from "@/components/hospital/resource-console/types";
-import { cleanObject, cleanPayload, defaultForm, defaultOperationForm, formatValue, isUuid, normalizeRows, readError, relationLabel, validateOperation, nextStatuses } from "@/components/hospital/resource-console/utils";
+import { cleanObject, cleanPayload, defaultForm, defaultOperationForm, formatValue, isTechnicalKey, isUuid, normalizeRows, readError, relationLabel, validateOperation, nextStatuses } from "@/components/hospital/resource-console/utils";
 import { DepartmentDashboard } from "@/components/hospital/resource-console/DepartmentDashboard";
 import { FieldInput } from "@/components/hospital/resource-console/FieldInput";
 import { ProfessionalError } from "@/components/hospital/resource-console/ProfessionalError";
@@ -86,7 +86,7 @@ export default function HospitalResourceConsole() {
         nextRows = buildAttendanceRegister(dataRows, normalizeRows(employeesResponse.data));
       }
       setRows(nextRows);
-      setReferenceLabels(await buildReferenceLabels(selected.columns.map((column) => column.key), nextRows));
+      setReferenceLabels(await buildReferenceLabels(referenceKeysForRows(selected.columns.map((column) => column.key), nextRows), nextRows));
     } catch (err: any) {
       setRows([]);
       setReferenceLabels({});
@@ -173,7 +173,19 @@ export default function HospitalResourceConsole() {
     try {
       validateOperation(operation.kind, operationForm);
       if (operation.kind === "generate-invoice") {
-        await api.post("/billing/invoices", cleanObject(operationForm));
+        const { collectNow, paymentMethod, paymentAmount, paymentReference, preview, ...invoiceForm } = operationForm;
+        const response = await api.post("/billing/invoices", cleanObject(invoiceForm));
+        const invoice = response.data;
+        if (collectNow && invoice?.id) {
+          const amount = Number(paymentAmount || invoice.balanceDue || invoice.total || 0);
+          if (amount > 0) {
+            await api.post(`/billing/invoices/${invoice.id}/payments`, cleanObject({
+              amount,
+              method: paymentMethod || "CASH",
+              reference: paymentReference,
+            }));
+          }
+        }
       }
       if (operation.kind === "preview-invoice") {
         const response = await api.post("/billing/invoices/preview", cleanObject(operationForm));
@@ -581,6 +593,8 @@ function displayCell(row: any, key: string, referenceLabels: Record<string, Reco
   const value = row?.[key];
   const mapped = value !== undefined && value !== null ? referenceLabels[key]?.[String(value)] : undefined;
   if (mapped) return mapped;
+  const readableSibling = readableSiblingValue(row, key);
+  if (readableSibling) return readableSibling;
   if (isUuid(value)) return "Référence non trouvée";
   return formatValue(value);
 }
@@ -601,7 +615,7 @@ function RecordDetailsDrawer({ title, row, columns, referenceLabels, onClose }: 
   const labels = new Map(columns.map((column) => [column.key, column.label]));
   const keys = Array.from(new Set([
     ...columns.map((column) => column.key).filter((key) => !isTechnicalDetailKey(key)),
-    ...Object.keys(row ?? {}).filter((key) => !hiddenDetailKeys.has(key) && !key.endsWith("Id") && !key.endsWith("_id")),
+    ...Object.keys(row ?? {}).filter((key) => !isTechnicalDetailKey(key)),
   ])).filter((key) => !isTechnicalDetailKey(key));
 
   return (
@@ -639,7 +653,7 @@ function DetailValue({ value }: { value: any }) {
       <div className="overflow-x-auto border border-slate-200 bg-white">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="bg-slate-50 text-xs font-black uppercase tracking-wide text-slate-500"><tr>{columns.map((column) => <th key={column} className="px-3 py-2">{detailLabel(column)}</th>)}</tr></thead>
-          <tbody>{value.map((item, index) => <tr key={index} className="border-t border-slate-100">{columns.map((column) => <td key={column} className="px-3 py-3 font-semibold text-slate-700">{formatValue(item[column])}</td>)}</tr>)}</tbody>
+          <tbody>{value.map((item, index) => <tr key={index} className="border-t border-slate-100">{columns.map((column) => <td key={column} className="px-3 py-3 font-semibold text-slate-700">{formatDetailCell(item[column])}</td>)}</tr>)}</tbody>
         </table>
       </div>
     );
@@ -649,10 +663,28 @@ function DetailValue({ value }: { value: any }) {
   return <div className="min-h-12 border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold leading-6 text-slate-800">{formatValue(value)}</div>;
 }
 
-const hiddenDetailKeys = new Set(["id", "organizationId", "organization_id", "deletedAt", "deleted_at", "passwordHash", "password_hash", "refreshTokenHash", "refresh_token_hash"]);
+const hiddenDetailKeys = new Set([
+  "id",
+  "organizationId",
+  "organization_id",
+  "deletedAt",
+  "deleted_at",
+  "passwordHash",
+  "password_hash",
+  "refreshTokenHash",
+  "refresh_token_hash",
+  "chargeId",
+  "charge_id",
+  "chargeIds",
+  "charge_ids",
+  "sampleChargeIds",
+  "sample_charge_ids",
+  "invoiceId",
+  "invoice_id",
+]);
 
 function isTechnicalDetailKey(key: string) {
-  return hiddenDetailKeys.has(key) || key.endsWith("Id") || key.endsWith("_id");
+  return hiddenDetailKeys.has(key) || isTechnicalKey(key);
 }
 
 function displayDetailValue(row: any, key: string, referenceLabels: Record<string, Record<string, string>>) {
@@ -665,10 +697,38 @@ function displayDetailValue(row: any, key: string, referenceLabels: Record<strin
 function objectDetailText(value: Record<string, any>) {
   if (typeof value.content === "string") return value.content.replace(/<[^>]+>/g, "").trim() || "-";
   const text = Object.entries(value)
-    .filter(([key, item]) => key !== "format" && item !== null && item !== undefined && item !== "")
-    .map(([key, item]) => `${detailLabel(key)}: ${formatValue(item)}`)
+    .filter(([key, item]) => key !== "format" && !isTechnicalDetailKey(key) && item !== null && item !== undefined && item !== "")
+    .map(([key, item]) => `${detailLabel(key)}: ${formatDetailCell(item)}`)
     .join(" · ");
   return text || "-";
+}
+
+function formatDetailCell(value: any) {
+  if (isUuid(value)) return "-";
+  if (Array.isArray(value) && value.every((item) => isUuid(item))) return `${value.length} référence${value.length > 1 ? "s" : ""} interne${value.length > 1 ? "s" : ""}`;
+  return formatValue(value);
+}
+
+function readableSiblingValue(row: any, key: string) {
+  const base = key.replace(/(_id|Id|Ids|_ids)$/g, "");
+  const candidates = [
+    `${base}Name`,
+    `${base}_name`,
+    `${base}Label`,
+    `${base}_label`,
+    `${base}Code`,
+    `${base}_code`,
+    key.replace(/Id$/, "Name"),
+    key.replace(/_id$/, "_name"),
+  ];
+  return candidates.map((candidate) => row?.[candidate]).find((value) => value !== undefined && value !== null && value !== "" && !isUuid(value));
+}
+
+function referenceKeysForRows(columnKeys: string[], rows: any[]) {
+  return Array.from(new Set([
+    ...columnKeys,
+    ...rows.flatMap((row) => Object.keys(row ?? {}).filter((key) => hospitalReferences[key] && row?.[key])),
+  ]));
 }
 
 function detailWide(value: any) {

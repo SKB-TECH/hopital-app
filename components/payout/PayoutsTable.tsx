@@ -228,7 +228,7 @@ export function PayoutsTable({
                                             type="checkbox"
                                             checked={selectedRows.includes(payout.id)}
                                             onChange={() => toggleRow(payout.id)}
-                                            aria-label={`Select ${payout.orderId}`}
+                                            aria-label={`Select ${displayOrderReference(payout.orderId)}`}
                                             className="rounded border-slate-300"
                                         />
                                     </td>
@@ -237,7 +237,7 @@ export function PayoutsTable({
                                     </td>
                                     <td className="px-5 py-4">
                                         <span className="font-mono text-sm font-bold text-slate-900">
-                                            {payout.orderId}
+                                            {displayOrderReference(payout.orderId)}
                                         </span>
                                     </td>
                                     <td className="px-5 py-4">
@@ -359,4 +359,12 @@ export function PayoutsTable({
             </div>
         </div>
     );
+}
+
+function displayOrderReference(value: string) {
+    return isUuid(value) ? "Commande liée" : value;
+}
+
+function isUuid(value: string) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(String(value));
 }

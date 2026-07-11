@@ -53,7 +53,7 @@ export function PayoutModal({ payout, onClose, onSaved }: PayoutModalProps) {
         ) {
             options.unshift({
                 id: payout.orderId,
-                label: `${payout.orderId} (${t("modal.currentOrder")})`,
+                label: t("modal.currentOrder"),
             });
         }
 

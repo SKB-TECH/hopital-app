@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Download, Eye, Loader2, Mail, Printer, X } from "lucide-react";
 import { printService, type PrintTemplate } from "@/shared/services/print.service";
-import { readError } from "./utils";
+import { formatValue, readError } from "./utils";
 import { categoryFromModule, pickDefaultTemplate } from "./print-utils";
 import { ProfessionalError } from "./ProfessionalError";
 import { TextAreaField, TextField } from "./ResourceFields";
@@ -75,7 +75,7 @@ export function PrintDialog({ moduleEndpoint, moduleTitle, locale, row, onClose 
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-7 py-5">
           <div>
             <h2 className="text-2xl font-black text-slate-950">Documents & impression</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-500">{moduleTitle}{row?.id ? ` · ${row.id}` : " · impression du module"}</p>
+            <p className="mt-1 text-sm font-semibold text-slate-500">{moduleTitle}{row?.id ? ` · ${printableRowReference(row)}` : " · impression du module"}</p>
           </div>
           <button onClick={onClose} className="border border-slate-300 p-2 text-slate-600 hover:bg-slate-50"><X className="size-5" /></button>
         </div>
@@ -115,4 +115,10 @@ export function PrintDialog({ moduleEndpoint, moduleTitle, locale, row, onClose 
       </div>
     </div>
   );
+}
+
+function printableRowReference(row: any) {
+  const keys = ["invoiceNumber", "medicalRecordNumber", "employeeNumber", "badgeNumber", "code", "sku", "batchNumber", "donorNumber", "bagNumber", "name", "title", "patientName", "chiefComplaint", "procedure", "status"];
+  const value = keys.map((key) => row?.[key]).find((item) => item !== undefined && item !== null && item !== "");
+  return formatValue(value ?? "document");
 }

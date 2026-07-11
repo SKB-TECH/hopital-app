@@ -48,18 +48,18 @@ export default function TicketDetailsModal({
                 <DetailItem label={t("details.fields.code")} value={ticket.code} />
                 <DetailItem
                   label={t("details.fields.event")}
-                  value={eventNameById[ticket.eventId] ?? ticket.eventId}
+                  value={eventNameById[ticket.eventId] ?? "Référence non trouvée"}
                 />
                 <DetailItem
                   label={t("details.fields.ticketType")}
-                  value={ticketTypeNameById[ticket.ticketTypeId] ?? ticket.ticketTypeId}
+                  value={ticketTypeNameById[ticket.ticketTypeId] ?? "Référence non trouvée"}
                 />
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <DetailItem
                   label={t("details.fields.user")}
-                  value={userNameById[ticket.userId] ?? ticket.userId}
+                  value={userNameById[ticket.userId] ?? "Référence non trouvée"}
                 />
                 <DetailItem label={t("details.fields.status")} value={ticket.status} />
               </div>

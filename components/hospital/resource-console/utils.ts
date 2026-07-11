@@ -107,11 +107,64 @@ export function cleanPayload(form: Record<string, any>, fields: HospitalField[])
 
 export function formatValue(value: any): string {
   if (value === null || value === undefined || value === "") return "-";
-  if (Array.isArray(value)) return value.map(formatValue).filter((item) => item !== "-").join(", ");
+  if (isUuid(value)) return "Référence interne";
+  if (Array.isArray(value)) {
+    if (value.length && value.every(isUuid)) return `${value.length} référence${value.length > 1 ? "s" : ""} interne${value.length > 1 ? "s" : ""}`;
+    return value.map(formatValue).filter((item) => item !== "-").join(", ");
+  }
   if (value instanceof Date) return formatDateTime(value);
   if (typeof value === "string" && isIsoDateString(value)) return formatDateTime(new Date(value));
-  if (typeof value === "object") return JSON.stringify(value);
+  if (typeof value === "object") {
+    if (typeof value.content === "string") return cleanHtmlText(value.content);
+    const readable = [
+      value.label, value.name, value.title, value.code, value.invoiceNumber, value.medicalRecordNumber,
+      value.patientName, value.practitionerName, value.prescriberName, value.employeeNumber,
+      value.batchNumber, value.bagNumber, value.sku, value.status,
+    ].map(formatValue).filter((item) => item !== "-" && item !== "Référence interne");
+    if (readable.length) return readable.join(" · ");
+    return Object.entries(value)
+      .filter(([key, item]) => !isTechnicalKey(key) && item !== null && item !== undefined && item !== "")
+      .map(([key, item]) => `${humanizeKey(key)}: ${formatValue(item)}`)
+      .join(" · ") || "-";
+  }
   return String(value);
+}
+
+export function isTechnicalKey(key: string) {
+  return key === "id"
+    || key === "organizationId"
+    || key === "organization_id"
+    || key === "deletedAt"
+    || key === "deleted_at"
+    || key === "passwordHash"
+    || key === "password_hash"
+    || key === "refreshTokenHash"
+    || key === "refresh_token_hash"
+    || key.endsWith("Id")
+    || key.endsWith("Ids")
+    || key.endsWith("_id")
+    || key.endsWith("_ids");
+}
+
+function humanizeKey(key: string) {
+  return key.replace(/_/g, " ").replace(/([A-Z])/g, " $1").replace(/^./, (value) => value.toUpperCase());
+}
+
+function cleanHtmlText(value: string) {
+  return value
+    .replace(/<\s*br\s*\/?>/gi, "\n")
+    .replace(/<\s*\/div\s*>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join("\n") || "-";
 }
 
 function isIsoDateString(value: string) {
@@ -159,7 +212,7 @@ function isReadableReferencePart(value: any) {
 }
 
 export function defaultOperationForm(kind: OperationKind, row?: any, endpoint = "") {
-  if (kind === "preview-invoice" || kind === "generate-invoice") return { patientId: row?.patientId ?? "", admissionId: row?.admissionId ?? "", from: "", to: "", draftId: `INV-DRAFT-${Date.now()}`, invoiceItems: [] };
+  if (kind === "preview-invoice" || kind === "generate-invoice") return { patientId: row?.patientId ?? "", admissionId: row?.admissionId ?? "", from: "", to: "", draftId: `INV-DRAFT-${Date.now()}`, invoiceItems: [], collectNow: false, paymentMethod: "CASH", paymentAmount: "", paymentReference: "" };
   if (kind === "pay-invoice") return { amount: row?.balanceDue ?? "", method: "CASH", reference: "" };
   if (kind === "discharge") return { summary: "" };
   if (kind === "complete-consultation") return { assessment: row?.assessment ?? "", plan: row?.plan ?? "", notes: row?.notes ?? "" };
@@ -171,6 +224,7 @@ export function defaultOperationForm(kind: OperationKind, row?: any, endpoint = 
 export function validateOperation(kind: OperationKind, form: Record<string, any>) {
   if ((kind === "preview-invoice" || kind === "generate-invoice") && !form.patientId) throw new Error("Sélectionnez le patient pour calculer la facture.");
   if ((kind === "preview-invoice" || kind === "generate-invoice") && form.from && form.to && new Date(form.to).getTime() < new Date(form.from).getTime()) throw new Error("La date de fin de facture doit être après la date de début.");
+  if (kind === "generate-invoice" && form.collectNow && form.paymentAmount && (!Number.isFinite(Number(form.paymentAmount)) || Number(form.paymentAmount) <= 0)) throw new Error("Le montant encaissé doit être supérieur à 0.");
   if (kind === "pay-invoice" && (!Number.isFinite(Number(form.amount)) || Number(form.amount) <= 0)) throw new Error("Le montant encaissé doit être supérieur à 0.");
   if (kind === "stock-movement" && !form.stockItemId) throw new Error("Sélectionnez l’article de stock.");
   if (kind === "stock-movement" && (!Number.isFinite(Number(form.quantity)) || Number(form.quantity) <= 0)) throw new Error("La quantité du mouvement de stock doit être supérieure à 0.");

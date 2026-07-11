@@ -1,37 +1,41 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Loader2, Plus, Send, Trash2, X } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { CalendarRange, CheckCircle2, CreditCard, Loader2, Plus, Receipt, Send, Trash2, UserRound, WalletCards, X } from "lucide-react";
 import { hospitalText } from "@/shared/config/hospital-i18n";
 import { api } from "@/shared/lib/http/api";
 import type { OperationState } from "./types";
-import { nextStatuses, normalizeRows } from "./utils";
+import { formatValue, isTechnicalKey, isUuid, nextStatuses, normalizeRows } from "./utils";
 import { operationTitle } from "./operation-utils";
 import { ReferenceField, SelectField, TextAreaField, TextField } from "./ResourceFields";
 
 export function OperationDialog({ operation, form, setForm, posting, locale = "fr", onClose, onSubmit }: { operation: OperationState; form: Record<string, any>; setForm: (form: Record<string, any>) => void; posting: boolean; locale?: string; onClose: () => void; onSubmit: () => void }) {
   const title = hospitalText(operationTitle(operation.kind), locale);
+  const isInvoiceFlow = operation.kind === "preview-invoice" || operation.kind === "generate-invoice";
 
   return (
     <div className="fixed inset-0 z-[80] bg-slate-950/40">
-      <div className="ml-auto h-full w-full max-w-2xl overflow-y-auto border-l border-slate-300 bg-white">
+      <div className={`ml-auto h-full w-full overflow-y-auto border-l border-slate-300 bg-white ${isInvoiceFlow ? "max-w-5xl" : "max-w-2xl"}`}>
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-7 py-5">
-          <div><h2 className="text-2xl font-black text-slate-950">{title}</h2><p className="mt-1 text-sm font-semibold text-slate-500">Action métier sécurisée</p></div>
+          <div>
+            <h2 className="text-2xl font-black text-slate-950">{title}</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500">{isInvoiceFlow ? "Facturation patient, prestations et encaissement" : "Action métier sécurisée"}</p>
+          </div>
           <button onClick={onClose} className="border border-slate-300 p-2 text-slate-600 hover:bg-slate-50"><X className="size-5" /></button>
         </div>
         <div className="space-y-5 p-7">
-          {operation.kind === "preview-invoice" || operation.kind === "generate-invoice" ? <>
-            <ReferenceField referenceKey="patientId" label="Patient" value={form.patientId} onChange={(value) => setForm({ ...form, patientId: value })} />
-            <ReferenceField referenceKey="admissionId" label="Admission" value={form.admissionId} onChange={(value) => setForm({ ...form, admissionId: value })} />
-            <InvoiceItemsField value={form.invoiceItems} onChange={(value) => setForm({ ...form, invoiceItems: value })} />
-            <TextField type="datetime-local" label="Du" value={form.from} onChange={(value) => setForm({ ...form, from: value })} />
-            <TextField type="datetime-local" label="Au" value={form.to} onChange={(value) => setForm({ ...form, to: value })} />
-            {form.preview && <pre className="max-h-80 overflow-auto border border-slate-200 bg-slate-50 p-4 text-xs">{JSON.stringify(form.preview, null, 2)}</pre>}
-          </> : null}
+          {isInvoiceFlow ? <InvoiceWorkflow operationKind={operation.kind} form={form} setForm={setForm} /> : null}
           {operation.kind === "pay-invoice" ? <>
-            <TextField type="number" label="Montant" value={form.amount} onChange={(value) => setForm({ ...form, amount: Number(value) })} />
-            <SelectField label="Méthode" value={form.method} onChange={(value) => setForm({ ...form, method: value })} options={["CASH", "CARD", "MOBILE_MONEY", "BANK_TRANSFER"]} />
-            <TextField label="Référence" value={form.reference} onChange={(value) => setForm({ ...form, reference: value })} />
+            <div className="border border-slate-200 bg-slate-950 p-5 text-white">
+              <p className="text-xs font-black uppercase tracking-wide text-blue-200">Facture à encaisser</p>
+              <p className="mt-2 text-2xl font-black">{formatMoney(Number(operation.row?.balanceDue ?? form.amount ?? 0), operation.row?.currency ?? "USD")}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-300">{operation.row?.invoiceNumber ?? "Facture"}</p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <TextField type="number" label="Montant encaissé" value={form.amount} onChange={(value) => setForm({ ...form, amount: Number(value) })} />
+              <SelectField label="Méthode" value={form.method} onChange={(value) => setForm({ ...form, method: value })} options={["CASH", "CARD", "MOBILE_MONEY", "BANK_TRANSFER"]} />
+            </div>
+            <TextField label="Référence paiement" value={form.reference} onChange={(value) => setForm({ ...form, reference: value })} />
           </> : null}
           {operation.kind === "discharge" ? <TextAreaField label="Résumé de sortie" value={form.summary} onChange={(value) => setForm({ ...form, summary: value })} /> : null}
           {operation.kind === "complete-consultation" ? <>
@@ -57,12 +61,145 @@ export function OperationDialog({ operation, form, setForm, posting, locale = "f
           {operation.kind === "validate-lab" ? <p className="border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">Confirmer la validation biologique de ce résultat. Cette action engage le validateur.</p> : null}
           <div className="flex justify-end gap-3 border-t border-slate-200 pt-5">
             <button onClick={onClose} className="h-12 border border-slate-300 bg-white px-5 text-sm font-black text-slate-800 hover:bg-slate-50">Annuler</button>
-            <button disabled={posting} onClick={onSubmit} className="inline-flex h-12 items-center justify-center gap-2 bg-blue-700 px-6 text-sm font-black text-white hover:bg-blue-800 disabled:opacity-50">{posting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}Confirmer</button>
+            <button disabled={posting} onClick={onSubmit} className="inline-flex h-12 items-center justify-center gap-2 bg-blue-700 px-6 text-sm font-black text-white hover:bg-blue-800 disabled:opacity-50">{posting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}{isInvoiceFlow ? operation.kind === "generate-invoice" ? "Générer la facture" : "Calculer l’aperçu" : "Confirmer"}</button>
           </div>
         </div>
       </div>
     </div>
   );
+}
+
+function InvoiceWorkflow({ operationKind, form, setForm }: { operationKind: string; form: Record<string, any>; setForm: (form: Record<string, any>) => void }) {
+  const previewTotal = Number(form.preview?.subtotal ?? 0);
+  const estimatedManualTotal = invoiceItemsTotal(form.invoiceItems);
+  const displayTotal = previewTotal || estimatedManualTotal;
+  return (
+    <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
+      <div className="space-y-5">
+        <InvoicePanel icon={<UserRound className="size-5" />} title="Patient et séjour" subtitle="Sélectionnez le dossier à facturer">
+          <div className="grid gap-4 md:grid-cols-2">
+            <ReferenceField referenceKey="patientId" label="Patient" value={form.patientId} onChange={(value) => setForm({ ...form, patientId: value })} />
+            <ReferenceField referenceKey="admissionId" label="Admission" value={form.admissionId} onChange={(value) => setForm({ ...form, admissionId: value })} />
+          </div>
+        </InvoicePanel>
+
+        <InvoicePanel icon={<Receipt className="size-5" />} title="Prestations facturées" subtitle="Ajoutez les actes à facturer ou laissez vide pour reprendre les frais déjà générés">
+          <InvoiceItemsField value={form.invoiceItems} onChange={(value) => setForm({ ...form, invoiceItems: value })} />
+        </InvoicePanel>
+
+        <InvoicePanel icon={<CalendarRange className="size-5" />} title="Période de facturation" subtitle="Filtre optionnel pour limiter les frais repris">
+          <div className="grid gap-4 md:grid-cols-2">
+            <TextField type="datetime-local" label="Du" value={form.from} onChange={(value) => setForm({ ...form, from: value })} />
+            <TextField type="datetime-local" label="Au" value={form.to} onChange={(value) => setForm({ ...form, to: value })} />
+          </div>
+        </InvoicePanel>
+
+        {form.preview ? <InvoicePreview value={form.preview} /> : null}
+      </div>
+
+      <aside className="space-y-5">
+        <div className="border border-slate-200 bg-slate-950 p-5 text-white">
+          <p className="text-xs font-black uppercase tracking-wide text-blue-200">Résumé caisse</p>
+          <p className="mt-3 text-3xl font-black">{formatMoney(displayTotal, form.preview?.currency ?? "USD")}</p>
+          <div className="mt-4 grid grid-cols-2 gap-2 text-xs font-bold text-slate-300">
+            <span>Prestations</span><span className="text-right text-white">{Array.isArray(form.invoiceItems) ? form.invoiceItems.length : 0}</span>
+            <span>Mode</span><span className="text-right text-white">{operationKind === "generate-invoice" ? "Création" : "Aperçu"}</span>
+          </div>
+        </div>
+
+        {operationKind === "generate-invoice" ? (
+          <div className="border border-blue-200 bg-blue-50 p-5">
+            <label className="flex cursor-pointer items-start gap-3">
+              <input type="checkbox" checked={Boolean(form.collectNow)} onChange={(event) => setForm({ ...form, collectNow: event.target.checked, paymentAmount: event.target.checked ? form.paymentAmount || String(displayTotal || "") : form.paymentAmount })} className="mt-1 size-4 rounded border-slate-300" />
+              <span>
+                <span className="flex items-center gap-2 text-sm font-black text-slate-950"><WalletCards className="size-4 text-blue-700" />Encaisser immédiatement</span>
+                <span className="mt-1 block text-xs font-semibold text-slate-600">Cochez ici si le patient paie au moment de la création de la facture.</span>
+              </span>
+            </label>
+            {form.collectNow ? (
+              <div className="mt-4 space-y-4 border-t border-blue-100 pt-4">
+                <TextField type="number" label="Montant encaissé" value={form.paymentAmount} onChange={(value) => setForm({ ...form, paymentAmount: Number(value) })} />
+                <SelectField label="Méthode" value={form.paymentMethod} onChange={(value) => setForm({ ...form, paymentMethod: value })} options={["CASH", "CARD", "MOBILE_MONEY", "BANK_TRANSFER"]} />
+                <TextField label="Référence paiement" value={form.paymentReference} onChange={(value) => setForm({ ...form, paymentReference: value })} />
+                <div className="flex items-center gap-2 bg-white px-3 py-2 text-xs font-bold text-emerald-700">
+                  <CheckCircle2 className="size-4" />La facture sera marquée payée à hauteur du montant encaissé.
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="border border-slate-200 bg-slate-50 p-5 text-sm font-semibold text-slate-600">
+            <CreditCard className="mb-3 size-5 text-slate-500" />
+            Lancez l’aperçu pour vérifier les lignes et tarifs. L’encaissement apparaît au moment de générer la facture.
+          </div>
+        )}
+      </aside>
+    </div>
+  );
+}
+
+function InvoicePanel({ icon, title, subtitle, children }: { icon: ReactNode; title: string; subtitle: string; children: ReactNode }) {
+  return (
+    <section className="border border-slate-200 bg-white">
+      <div className="flex items-start gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4">
+        <div className="flex size-10 items-center justify-center bg-blue-700 text-white">{icon}</div>
+        <div>
+          <h3 className="font-black text-slate-950">{title}</h3>
+          <p className="mt-1 text-xs font-semibold text-slate-500">{subtitle}</p>
+        </div>
+      </div>
+      <div className="p-5">{children}</div>
+    </section>
+  );
+}
+
+function InvoicePreview({ value }: { value: any }) {
+  const charges = normalizeRows(value?.charges);
+  const unpriced = normalizeRows(value?.unpriced);
+  return (
+    <div className="border border-slate-200 bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3">
+        <div>
+          <p className="text-xs font-black uppercase tracking-wide text-slate-500">Aperçu facture</p>
+          <p className="mt-1 text-sm font-black text-slate-950">{formatValue(value?.subtotal)} {value?.currency ?? ""}</p>
+        </div>
+        {unpriced.length ? <span className="bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">Tarifs à compléter</span> : null}
+      </div>
+      <div className="divide-y divide-slate-100">
+        {charges.slice(0, 12).map((charge: any, index: number) => (
+          <div key={index} className="grid gap-2 px-4 py-3 text-sm md:grid-cols-[1fr_90px_120px]">
+            <div className="font-bold text-slate-800">{charge.description ?? charge.serviceCode ?? "Prestation"}</div>
+            <div className="font-semibold text-slate-500">Qté {formatValue(charge.quantity)}</div>
+            <div className="font-black text-slate-950 md:text-right">{formatValue(charge.total ?? charge.unitPrice)} {charge.currency ?? value?.currency ?? ""}</div>
+          </div>
+        ))}
+        {!charges.length ? <p className="px-4 py-4 text-sm font-semibold text-slate-500">Aucune ligne à afficher.</p> : null}
+      </div>
+      {unpriced.length ? (
+        <div className="border-t border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+          {unpriced.map((item: any) => cleanPreviewText(item.description ?? item.serviceCode)).join(" · ")}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function cleanPreviewText(value: any): string {
+  if (isUuid(value)) return "Référence interne";
+  if (Array.isArray(value)) return value.filter((item) => !isUuid(item)).map(cleanPreviewText).join(" · ");
+  if (value && typeof value === "object") {
+    return Object.entries(value).filter(([key]) => !isTechnicalKey(key)).map(([, item]) => cleanPreviewText(item)).filter(Boolean).join(" · ");
+  }
+  return formatValue(value);
+}
+
+function invoiceItemsTotal(value: any) {
+  const rows = Array.isArray(value) ? value : [];
+  return rows.reduce((sum, row) => sum + Number(row.quantity || 0) * Number(row.unitPrice || 0), 0);
+}
+
+function formatMoney(value: number, currency: string) {
+  return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(Number.isFinite(value) ? value : 0)} ${currency}`;
 }
 
 function InvoiceItemsField({ value, onChange }: { value: any; onChange: (value: any[]) => void }) {

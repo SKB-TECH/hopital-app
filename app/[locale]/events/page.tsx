@@ -81,6 +81,8 @@ type EventForm = Omit<EventRow, "id" | "ticketsSold" | "revenue"> & {
   bannerPublicId: string;
 };
 
+type RelationOption = { id: string; label: string };
+
 const emptyText = { fr: "", en: "" };
 
 const newTicket = (): TicketTypeForm => ({
@@ -342,6 +344,21 @@ function EventDrawer({ mode, event, t, onClose, onSave }: { mode: "create" | "ed
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState<EventForm>(() => (event ? fromEvent(event) : newEvent()));
+  const [relationOptions, setRelationOptions] = useState<Record<string, RelationOption[]>>({});
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.all([
+      relationOptionsFor("/organizers", "organizers"),
+      relationOptionsFor("/categories", "categories"),
+      relationOptionsFor("/venues", "venues"),
+      relationOptionsFor("/speakers", "speakers"),
+      relationOptionsFor("/sponsors", "sponsors"),
+    ]).then((entries) => {
+      if (mounted) setRelationOptions(Object.fromEntries(entries));
+    }).catch(() => undefined);
+    return () => { mounted = false; };
+  }, []);
 
   const updateText = (field: "title" | "shortDescription" | "description" | "refundPolicy", value: string) => {
     setForm((current) => ({ ...current, [field]: { ...current[field], [lang]: value } }));
@@ -469,7 +486,7 @@ function EventDrawer({ mode, event, t, onClose, onSave }: { mode: "create" | "ed
                   render={(session, index) => (
                     <div className="grid gap-3 md:grid-cols-2">
                       <Field label={`${t("sessions.title")} ${lang.toUpperCase()}`}><Input value={session.title[lang]} onChange={(event) => updateSession(form, setForm, index, "title", lang, event.target.value)} /></Field>
-                      <Field label={t("sessions.speakerId")}><Input value={session.speakerId} onChange={(event) => updateSessionSimple(form, setForm, index, "speakerId", event.target.value)} /></Field>
+                      <Field label={t("sessions.speakerId")}><RelationSelect value={session.speakerId} options={relationOptions.speakers ?? []} onChange={(value) => updateSessionSimple(form, setForm, index, "speakerId", value)} /></Field>
                       <Field label={t("sessions.startAt")}><Input type="datetime-local" value={session.startAt} onChange={(event) => updateSessionSimple(form, setForm, index, "startAt", event.target.value)} /></Field>
                       <Field label={t("sessions.endAt")}><Input type="datetime-local" value={session.endAt} onChange={(event) => updateSessionSimple(form, setForm, index, "endAt", event.target.value)} /></Field>
                     </div>
@@ -491,15 +508,15 @@ function EventDrawer({ mode, event, t, onClose, onSave }: { mode: "create" | "ed
               </Panel>
 
               <Panel title={t("sections.settings")} icon={<Save className="size-4" />}>
-                <Field label={t("form.organizerId")} required><Input value={form.organizerId} onChange={(event) => setForm({ ...form, organizerId: event.target.value })} /></Field>
-                <Field label={t("form.categoryId")}><Input value={form.categoryId} onChange={(event) => setForm({ ...form, categoryId: event.target.value })} /></Field>
-                <Field label={t("form.venueId")}><Input value={form.venueId} onChange={(event) => setForm({ ...form, venueId: event.target.value })} /></Field>
+                <Field label={t("form.organizerId")} required><RelationSelect value={form.organizerId} options={relationOptions.organizers ?? []} onChange={(value) => setForm({ ...form, organizerId: value })} /></Field>
+                <Field label={t("form.categoryId")}><RelationSelect value={form.categoryId} options={relationOptions.categories ?? []} onChange={(value) => setForm({ ...form, categoryId: value })} /></Field>
+                <Field label={t("form.venueId")}><RelationSelect value={form.venueId} options={relationOptions.venues ?? []} onChange={(value) => setForm({ ...form, venueId: value })} /></Field>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label={t("form.type")}><Select value={form.type} onChange={(value) => setForm({ ...form, type: value as EventForm["type"] })}><option value="PHYSICAL">Physical</option><option value="VIRTUAL">Virtual</option><option value="HYBRID">Hybrid</option></Select></Field>
                   <Field label={t("table.status")}><Select value={form.status} onChange={(value) => setForm({ ...form, status: value as EventStatus })}><option value="draft">{t("status.draft")}</option><option value="published">{t("status.published")}</option><option value="cancelled">{t("status.cancelled")}</option></Select></Field>
                 </div>
-                <Field label={t("form.sponsorIds")}><Input value={form.sponsorIds.join(", ")} onChange={(event) => setForm({ ...form, sponsorIds: toIds(event.target.value) })} /></Field>
-                <Field label={t("form.speakerIds")}><Input value={form.speakerIds.join(", ")} onChange={(event) => setForm({ ...form, speakerIds: toIds(event.target.value) })} /></Field>
+                <Field label={t("form.sponsorIds")}><RelationMultiSelect value={form.sponsorIds} options={relationOptions.sponsors ?? []} onChange={(value) => setForm({ ...form, sponsorIds: value })} /></Field>
+                <Field label={t("form.speakerIds")}><RelationMultiSelect value={form.speakerIds} options={relationOptions.speakers ?? []} onChange={(value) => setForm({ ...form, speakerIds: value })} /></Field>
               </Panel>
             </div>
           </div>
@@ -562,6 +579,50 @@ function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
 
 function Select({ children, value, icon, onChange }: { children: React.ReactNode; value: string; icon?: React.ReactNode; onChange: (value: string) => void }) {
   return <label className="flex h-10 items-center gap-2 rounded border border-slate-200 bg-white px-3 text-sm text-slate-700">{icon}<select value={value} onChange={(event) => onChange(event.target.value)} className="w-full bg-transparent outline-none">{children}</select></label>;
+}
+
+function RelationSelect({ value, options, onChange }: { value: string; options: RelationOption[]; onChange: (value: string) => void }) {
+  const hasCurrent = value && !options.some((option) => option.id === value);
+  return (
+    <Select value={value ?? ""} onChange={onChange}>
+      <option value="">-</option>
+      {hasCurrent ? <option value={value}>Référence actuelle</option> : null}
+      {options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+    </Select>
+  );
+}
+
+function RelationMultiSelect({ value, options, onChange }: { value: string[]; options: RelationOption[]; onChange: (value: string[]) => void }) {
+  const selected = new Set(value ?? []);
+  const toggle = (id: string) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    onChange(Array.from(next));
+  };
+  return (
+    <div className="rounded border border-slate-200 bg-white p-2">
+      <div className="max-h-40 overflow-y-auto">
+        {options.length ? options.map((option) => (
+          <label key={option.id} className="flex items-center gap-2 rounded px-2 py-2 text-sm hover:bg-slate-50">
+            <input type="checkbox" checked={selected.has(option.id)} onChange={() => toggle(option.id)} className="rounded border-slate-300" />
+            <span className="font-semibold text-slate-700">{option.label}</span>
+          </label>
+        )) : <p className="px-2 py-2 text-sm font-semibold text-slate-500">{selected.size ? `${selected.size} référence(s) actuelle(s)` : "Aucune option disponible"}</p>}
+      </div>
+    </div>
+  );
+}
+
+async function relationOptionsFor(endpoint: string, key: string): Promise<[string, RelationOption[]]> {
+  const response = await api.get(endpoint, { params: { limit: 500 } });
+  const rows = Array.isArray(response.data?.data) ? response.data.data : Array.isArray(response.data) ? response.data : [];
+  return [key, rows.map((row: any) => ({ id: String(row.id ?? ""), label: relationOptionLabel(row) })).filter((option: RelationOption) => option.id)];
+}
+
+function relationOptionLabel(row: any) {
+  const title = textMap(undefined, row.title);
+  return row.name ?? title.fr ?? title.en ?? row.fullName ?? row.displayName ?? row.email ?? row.code ?? "Référence";
 }
 
 function IconButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick?: () => void }) {

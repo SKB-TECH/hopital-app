@@ -7,17 +7,21 @@ export function normalizeRows(data: any): any[] {
 
 export function formatPatientValue(value: any): string {
   if (value === null || value === undefined || value === "") return "-";
+  if (isUuid(value)) return "Référence interne";
   if (value instanceof Date) return formatDate(value);
   if (typeof value === "string" && isIsoDate(value)) return formatDate(new Date(value));
-  if (Array.isArray(value)) return value.map(formatPatientValue).filter((item) => item !== "-").join(", ") || "-";
+  if (Array.isArray(value)) {
+    if (value.length && value.every(isUuid)) return `${value.length} référence${value.length > 1 ? "s" : ""} interne${value.length > 1 ? "s" : ""}`;
+    return value.map(formatPatientValue).filter((item) => item !== "-").join(", ") || "-";
+  }
   if (typeof value === "object" && typeof value.content === "string") return stripHtml(value.content);
   if (typeof value === "object" && "content" in value && value.content) return formatPatientValue(value.content);
-  if (typeof value === "object") return Object.entries(value).filter(([, item]) => item !== null && item !== undefined && item !== "").map(([key, item]) => `${labelPatientColumn(key)}: ${formatPatientValue(item)}`).join(" · ") || "-";
+  if (typeof value === "object") return Object.entries(value).filter(([key, item]) => !isTechnicalPatientColumn(key) && item !== null && item !== undefined && item !== "").map(([key, item]) => `${labelPatientColumn(key)}: ${formatPatientValue(item)}`).join(" · ") || "-";
   return String(value);
 }
 
 export function isTechnicalPatientColumn(key: string) {
-  return key === "id" || key === "organizationId" || key === "organization_id" || key === "deletedAt" || key === "deleted_at" || key.endsWith("Id") || key.endsWith("_id");
+  return key === "id" || key === "organizationId" || key === "organization_id" || key === "deletedAt" || key === "deleted_at" || key.endsWith("Id") || key.endsWith("Ids") || key.endsWith("_id") || key.endsWith("_ids");
 }
 
 export function labelPatientColumn(key: string): string {
@@ -68,6 +72,10 @@ export function patientFullName(patient: any) {
 
 function isIsoDate(value: string) {
   return /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/.test(value) && !Number.isNaN(new Date(value).getTime());
+}
+
+function isUuid(value: any) {
+  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(value);
 }
 
 function formatDate(date: Date) {
