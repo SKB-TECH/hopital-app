@@ -308,8 +308,7 @@ export default function HospitalResourceConsole() {
     setImportingWho(true);
     setError("");
     try {
-      const content = await file.text();
-      const rows = parseWhoGrowthImport(content, file.name);
+      const rows = await parseWhoGrowthFile(file);
       if (!rows.length) throw new Error("Le fichier ne contient aucune ligne OMS importable.");
       const response = await api.post("/pediatrics/who-growth-standards/import", rows);
       await load();
@@ -396,7 +395,7 @@ export default function HospitalResourceConsole() {
                       {selected.endpoint === "/pediatrics/who-growth-standards" && canCreateSelected && <label className="inline-flex h-11 cursor-pointer items-center gap-2 border border-emerald-600 bg-emerald-50 px-4 text-sm font-black text-emerald-800 hover:bg-emerald-100">
                         {importingWho ? <Loader2 className="size-4 animate-spin" /> : <UploadCloud className="size-4" />}
                         Importer OMS
-                        <input type="file" accept=".json,.csv,.txt,text/csv,application/json" className="hidden" disabled={importingWho} onChange={(event) => { importWhoGrowthFile(event.target.files?.[0]); event.currentTarget.value = ""; }} />
+                        <input type="file" accept=".xlsx,.xls,.json,.csv,.txt,text/csv,application/json" className="hidden" disabled={importingWho} onChange={(event) => { importWhoGrowthFile(event.target.files?.[0]); event.currentTarget.value = ""; }} />
                       </label>}
                       {selected.endpoint === "/hr/attendance-events" && <button onClick={() => router.push(`/${locale}/attendance-kiosk`)} className="inline-flex h-11 items-center gap-2 bg-slate-950 px-4 text-sm font-black text-white hover:bg-slate-800"><Smartphone className="size-4" />Kiosque présence</button>}
                       {moduleActions.map((action) => <button key={action.kind} onClick={() => openOperation(action.kind)} className="inline-flex h-11 items-center gap-2 border border-blue-700 bg-white px-4 text-sm font-black text-blue-800 hover:bg-blue-50"><action.icon className="size-4" />{hospitalText(action.label, locale)}</button>)}
@@ -532,22 +531,114 @@ function resourceQueryParams(endpoint: string, search: string, from: string, to:
   });
 }
 
-function parseWhoGrowthImport(content: string, fileName: string) {
-  const text = content.replace(/^\uFEFF/, "").trim();
+async function parseWhoGrowthFile(file: File) {
+  const lower = file.name.toLowerCase();
+  const rows = lower.endsWith(".xlsx") || lower.endsWith(".xls") ? await parseWhoXlsx(file) : await parseWhoText(file);
+  return enrichWhoRows(rows, file.name);
+}
+
+async function parseWhoXlsx(file: File) {
+  const XLSX = await import("xlsx");
+  const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: true }) as unknown[][];
+  return whoMatrixToRows(matrix);
+}
+
+async function parseWhoText(file: File) {
+  const text = (await file.text()).replace(/^\uFEFF/, "").trim();
   if (!text) return [];
-  if (fileName.toLowerCase().endsWith(".json") || text.startsWith("[")) {
+  if (file.name.toLowerCase().endsWith(".json") || text.startsWith("[")) {
     const parsed = JSON.parse(text);
     if (!Array.isArray(parsed)) throw new Error("Le fichier JSON doit contenir un tableau de lignes OMS.");
     return parsed;
   }
   const lines = text.split(/\r?\n/).filter((line) => line.trim());
-  if (lines.length < 2) return [];
   const delimiter = detectWhoDelimiter(lines[0]);
-  const headers = splitWhoLine(lines[0], delimiter).map((header) => header.trim());
-  return lines.slice(1).map((line) => {
-    const values = splitWhoLine(line, delimiter);
-    return Object.fromEntries(headers.map((header, index) => [header, values[index]?.trim() ?? ""]));
+  return whoMatrixToRows(lines.map((line) => splitWhoLine(line, delimiter)));
+}
+
+function whoMatrixToRows(matrix: unknown[][]) {
+  const headerIndex = matrix.findIndex((row) => {
+    const keys = row.map((cell) => normalizeWhoKey(cell));
+    return keys.includes("l") && keys.includes("m") && keys.includes("s") && keys.some((key) => ["month", "months", "week", "weeks", "length", "height", "day", "days"].includes(key));
   });
+  if (headerIndex < 0) throw new Error("Colonnes OMS introuvables: le fichier doit contenir L, M, S et Month/Length/Height.");
+  const headers = matrix[headerIndex].map((cell) => String(cell ?? "").trim());
+  return matrix.slice(headerIndex + 1).map((row) => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""]))).filter((row) => {
+    const normalized = normalizeWhoRecord(row);
+    return Number.isFinite(Number(pickWhoValue(normalized, ["l"]))) && Number.isFinite(Number(pickWhoValue(normalized, ["m"]))) && Number.isFinite(Number(pickWhoValue(normalized, ["s"])));
+  });
+}
+
+function enrichWhoRows(rows: Record<string, unknown>[], fileName: string) {
+  const inferred = inferWhoFile(fileName);
+  return rows.map((row) => {
+    const normalized = normalizeWhoRecord(row);
+    const standard = String(pickWhoValue(normalized, ["standard", "indicator"]) ?? inferred.standard ?? "").toUpperCase();
+    const sex = normalizeWhoSex(pickWhoValue(normalized, ["sex", "gender"]) ?? inferred.sex);
+    const xUnit = String(pickWhoValue(normalized, ["xunit", "unit"]) ?? inferred.xUnit ?? "").toUpperCase();
+    const xValue = inferWhoXValue(normalized, xUnit);
+    return {
+      standard,
+      sex,
+      xUnit,
+      xValue,
+      l: pickWhoValue(normalized, ["l"]),
+      m: pickWhoValue(normalized, ["m"]),
+      s: pickWhoValue(normalized, ["s"]),
+      source: "WHO",
+      sourceVersion: "WHO Child Growth Standards",
+      metadata: { importedFrom: fileName },
+    };
+  }).filter((row) => row.standard && row.sex && row.xUnit && Number.isFinite(Number(row.xValue)));
+}
+
+function inferWhoFile(fileName: string) {
+  const lower = fileName.toLowerCase();
+  const sex = lower.includes("girl") || lower.includes("female") ? "F" : lower.includes("boy") || lower.includes("male") ? "M" : "";
+  if (lower.includes("wfa")) return { standard: "WFA", sex, xUnit: "AGE_DAYS" };
+  if (lower.includes("lhfa") || lower.includes("hfa")) return { standard: "HFA", sex, xUnit: "AGE_DAYS" };
+  if (lower.includes("bfa") || lower.includes("bmi")) return { standard: "BFA", sex, xUnit: "AGE_DAYS" };
+  if (lower.includes("hcfa") || lower.includes("head")) return { standard: "HCFA", sex, xUnit: "AGE_DAYS" };
+  if (lower.includes("wfl")) return { standard: "WFL", sex, xUnit: "LENGTH_CM" };
+  if (lower.includes("wfh")) return { standard: "WFH", sex, xUnit: "HEIGHT_CM" };
+  return { standard: "", sex, xUnit: "" };
+}
+
+function inferWhoXValue(row: Record<string, unknown>, xUnit: string) {
+  if (xUnit === "AGE_DAYS") {
+    const days = pickWhoValue(row, ["xvalue", "x", "day", "days", "agedays", "ageindays"]);
+    if (days !== undefined) return Number(days);
+    const weeks = pickWhoValue(row, ["week", "weeks"]);
+    if (weeks !== undefined) return Math.round(Number(weeks) * 7);
+    const months = pickWhoValue(row, ["month", "months"]);
+    if (months !== undefined) return Math.round(Number(months) * 30.4375);
+  }
+  return Number(pickWhoValue(row, ["xvalue", "x", "length", "height", "cm"]));
+}
+
+function normalizeWhoRecord(row: Record<string, unknown>) {
+  return Object.fromEntries(Object.entries(row).map(([key, value]) => [normalizeWhoKey(key), value]));
+}
+
+function normalizeWhoKey(value: unknown) {
+  return String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function pickWhoValue(row: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = row[key];
+    if (value !== undefined && value !== null && String(value).trim() !== "") return value;
+  }
+  return undefined;
+}
+
+function normalizeWhoSex(value: unknown) {
+  const normalized = String(value ?? "").trim().toUpperCase();
+  if (["1", "M", "MALE", "BOY", "BOYS", "GARCON", "GARÇON"].includes(normalized)) return "M";
+  if (["2", "F", "FEMALE", "GIRL", "GIRLS", "FILLE"].includes(normalized)) return "F";
+  return normalized;
 }
 
 function detectWhoDelimiter(header: string) {
