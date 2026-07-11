@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BadgeDollarSign, Plus, Trash2 } from "lucide-react";
+import { BadgeDollarSign, Loader2, Plus, Trash2, UploadCloud } from "lucide-react";
 import type { HospitalField } from "@/shared/types/hospital.types";
 import { api } from "@/shared/lib/http/api";
 import Autocomplete, { type AutocompleteOption } from "@/components/ui/autocomplete";
@@ -14,6 +14,7 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
   const autoBase = "w-full border border-dashed border-slate-200 bg-slate-100 px-3 py-3 text-sm font-black text-slate-500 outline-none";
   const [options, setOptions] = useState<AutocompleteOption[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   useEffect(() => {
     if (!field.reference) return;
@@ -35,6 +36,33 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
 
   const datalistId = `list-${field.name}`;
   const selectedValues = Array.isArray(value) ? value : typeof value === "string" && value ? [value] : [];
+
+  const uploadFile = async (file: File) => {
+    setUploadingFile(true);
+    try {
+      const response = await api.post("/files/upload-url", { fileName: file.name, contentType: file.type || "application/octet-stream", size: file.size, patientId: form?.patientId || undefined });
+      const upload = response.data;
+      const body = new FormData();
+      Object.entries(upload.fields ?? {}).forEach(([key, item]) => body.append(key, String(item)));
+      body.append("file", file);
+      const cloudinaryResponse = await fetch(upload.url, { method: upload.method || "POST", body });
+      const result = await cloudinaryResponse.json();
+      if (!cloudinaryResponse.ok) throw new Error(result?.error?.message || "Upload Cloudinary impossible");
+      const payload = {
+        provider: "cloudinary",
+        fileId: upload.file?.id,
+        fileName: file.name,
+        contentType: file.type,
+        size: file.size,
+        url: result.secure_url,
+        publicId: result.public_id,
+        resourceType: result.resource_type,
+      };
+      onChange(field.name === "url" ? result.secure_url : payload);
+    } finally {
+      setUploadingFile(false);
+    }
+  };
 
   return (
     <label className={field.type === "multiselect" || field.type === "module-permissions" || field.type === "price-list-items" || field.type === "purchase-order-items" || field.type === "dispensation-items" || field.type === "prescription-items" ? "block md:col-span-2" : "block"}>
@@ -77,6 +105,16 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
         </select>
       ) : field.type === "json" ? (
         <RichTextEditor value={jsonValueToEditor(value)} onChange={onChange} minHeight="min-h-32" />
+      ) : field.type === "file" ? (
+        <div className="space-y-3">
+          <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center hover:border-blue-700 hover:bg-white">
+            {uploadingFile ? <Loader2 className="size-6 animate-spin text-blue-700" /> : <UploadCloud className="size-6 text-slate-500" />}
+            <span className="text-sm font-black text-slate-800">{uploadingFile ? "Téléversement..." : "Téléverser vers Cloudinary"}</span>
+            <span className="text-xs font-semibold text-slate-500">{field.placeholder || "PDF, image, DICOM ou document"}</span>
+            <input type="file" accept="application/pdf,image/*,text/plain,application/dicom,.dcm" className="hidden" disabled={uploadingFile} onChange={(event) => event.target.files?.[0] && uploadFile(event.target.files[0])} />
+          </label>
+          {value ? <div className="border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">{typeof value === "string" ? value : value.fileName || value.url || "Fichier Cloudinary attaché"}</div> : null}
+        </div>
       ) : field.type === "textarea" ? (
         <textarea value={typeof value === "string" ? value : JSON.stringify(value ?? {}, null, 2)} onChange={(event) => onChange(event.target.value)} placeholder={field.placeholder} className={`${base} h-28 text-sm`} />
       ) : field.type === "checkbox" ? (
