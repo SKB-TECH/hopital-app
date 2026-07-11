@@ -58,6 +58,10 @@ export default function HospitalResourceConsole() {
 
   const [rows, setRows] = useState<any[]>([]);
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState("");
@@ -80,7 +84,7 @@ export default function HospitalResourceConsole() {
     setLoading(true);
     setError("");
     try {
-      const response = await api.get(selected.endpoint, { params: selected.endpoint === "/appointments" ? { limit: 100 } : undefined });
+      const response = await api.get(selected.endpoint, { params: resourceQueryParams(selected.endpoint, debouncedQuery, fromDate, toDate, statusFilter) });
       const dataRows = normalizeRows(response.data);
       let nextRows = dataRows;
       if (selected.endpoint === "/hr/attendance-events") {
@@ -101,12 +105,22 @@ export default function HospitalResourceConsole() {
   useEffect(() => {
     setForm(defaultForm(selected?.fields ?? []));
     load();
-  }, [selected?.endpoint, userLoading, user?.id, canAccessModule, canAccessSelected]);
+  }, [selected?.endpoint, userLoading, user?.id, canAccessModule, canAccessSelected, debouncedQuery, fromDate, toDate, statusFilter]);
 
-  const filtered = useMemo(() => {
-    const term = query.toLowerCase();
-    return rows.filter((row) => JSON.stringify(row).toLowerCase().includes(term));
-  }, [query, rows]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedQuery(query.trim()), 350);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+
+  useEffect(() => {
+    setQuery("");
+    setDebouncedQuery("");
+    setFromDate("");
+    setToDate("");
+    setStatusFilter("");
+  }, [selected?.endpoint]);
+
+  const filtered = rows;
 
   const openCreate = () => {
     if (!canCreateSelected) return;
@@ -346,10 +360,34 @@ export default function HospitalResourceConsole() {
                       {canExportSelected && <button className="inline-flex h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-800 hover:bg-slate-50"><Download className="size-4" />{hospitalUi(locale, "export")}</button>}
                     </div>
                   </div>
-                  {!isDashboard && <label className="mt-5 flex h-12 max-w-xl items-center gap-3 border border-slate-200 bg-slate-50 px-4 focus-within:border-blue-700 focus-within:bg-white">
-                    <Search className="size-5 text-slate-400" />
-                    <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={hospitalUi(locale, "search")} className="w-full bg-transparent text-sm font-semibold outline-none" />
-                  </label>}
+                  {!isDashboard && <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(260px,1fr)_170px_170px_180px_auto]">
+                    <label className="flex h-12 items-center gap-3 border border-slate-200 bg-slate-50 px-4 focus-within:border-blue-700 focus-within:bg-white">
+                      <Search className="size-5 shrink-0 text-slate-400" />
+                      <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Recherche globale: patient, dossier, médicament, référence..." className="w-full min-w-0 bg-transparent text-sm font-semibold outline-none" />
+                    </label>
+                    <label className="h-12 border border-slate-200 bg-slate-50 px-3 py-1 focus-within:border-blue-700 focus-within:bg-white">
+                      <span className="block text-[10px] font-black uppercase tracking-wide text-slate-500">Du</span>
+                      <input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} className="w-full bg-transparent text-sm font-black text-slate-800 outline-none" />
+                    </label>
+                    <label className="h-12 border border-slate-200 bg-slate-50 px-3 py-1 focus-within:border-blue-700 focus-within:bg-white">
+                      <span className="block text-[10px] font-black uppercase tracking-wide text-slate-500">Au</span>
+                      <input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} className="w-full bg-transparent text-sm font-black text-slate-800 outline-none" />
+                    </label>
+                    <label className="h-12 border border-slate-200 bg-slate-50 px-3 py-1 focus-within:border-blue-700 focus-within:bg-white">
+                      <span className="block text-[10px] font-black uppercase tracking-wide text-slate-500">Statut</span>
+                      <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="w-full bg-transparent text-sm font-black text-slate-800 outline-none">
+                        <option value="">Tous</option>
+                        <option value="Payé">Payé</option>
+                        <option value="À encaisser">À encaisser</option>
+                        <option value="Partiel">Partiel</option>
+                        <option value="À facturer">À facturer</option>
+                        <option value="PENDING">En attente</option>
+                        <option value="COMPLETED">Terminé</option>
+                        <option value="CANCELLED">Annulé</option>
+                      </select>
+                    </label>
+                    <button onClick={() => { setQuery(""); setDebouncedQuery(""); setFromDate(""); setToDate(""); setStatusFilter(""); }} className="h-12 border border-slate-300 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50">Effacer</button>
+                  </div>}
                 </div>
                 {!canAccessSelected ? <div className="p-8 text-sm font-semibold text-amber-800">{hospitalUi(locale, "moduleNotAssigned")}</div> : isDashboard ? <DepartmentDashboard loading={loading} data={rows[0] ?? {}} columns={selected.columns} locale={locale} /> : isAppointmentsCalendar ? <AppointmentsCalendarView rows={filtered} loading={loading} onRefresh={load} onCreate={openCreate} locale={locale} /> : <div className="overflow-x-auto">
                   <table className="w-full min-w-[960px]">
@@ -436,6 +474,16 @@ export default function HospitalResourceConsole() {
       </div>
     </div>
   );
+}
+
+function resourceQueryParams(endpoint: string, search: string, from: string, to: string, status: string) {
+  return cleanObject({
+    limit: endpoint === "/appointments" ? 100 : 50,
+    search: search || undefined,
+    from: from || undefined,
+    to: to || undefined,
+    status: status || undefined,
+  });
 }
 
 function MissingPricingDialog({ state, posting, locale, onChange, onClose, onSubmit }: { state: MissingPricingState; posting: boolean; locale: string; onChange: (state: MissingPricingState) => void; onClose: () => void; onSubmit: () => void }) {
