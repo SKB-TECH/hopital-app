@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { BadgeDollarSign, CheckCircle2, CreditCard, Database, Download, Edit3, Eye, FileText, Loader2, Plus, Printer, Receipt, RefreshCcw, Search, Send, Smartphone, UserRound, X } from "lucide-react";
+import { BadgeDollarSign, CheckCircle2, CreditCard, Database, Download, Edit3, Eye, FileText, Loader2, Plus, Printer, Receipt, RefreshCcw, Search, Send, Smartphone, UploadCloud, UserRound, X } from "lucide-react";
 import DashboardNavbar from "@/components/dashboard/DashboardNavbar";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import { useSidebar } from "@/contexts/SidebarContext";
@@ -75,6 +75,7 @@ export default function HospitalResourceConsole() {
   const [missingPricing, setMissingPricing] = useState<MissingPricingState | null>(null);
   const [printDialog, setPrintDialog] = useState<{ row?: any } | null>(null);
   const [referenceLabels, setReferenceLabels] = useState<Record<string, Record<string, string>>>({});
+  const [importingWho, setImportingWho] = useState(false);
 
   const load = async () => {
     if (!selected) return;
@@ -302,6 +303,26 @@ export default function HospitalResourceConsole() {
     }
   };
 
+  const importWhoGrowthFile = async (file?: File | null) => {
+    if (!file || selected.endpoint !== "/pediatrics/who-growth-standards") return;
+    setImportingWho(true);
+    setError("");
+    try {
+      const content = await file.text();
+      const rows = parseWhoGrowthImport(content, file.name);
+      if (!rows.length) throw new Error("Le fichier ne contient aucune ligne OMS importable.");
+      const response = await api.post("/pediatrics/who-growth-standards/import", rows);
+      await load();
+      toast.success(response.data?.message || `${rows.length} lignes OMS importées.`);
+    } catch (err: any) {
+      const message = readError(err);
+      setError(message);
+      toast.error(message);
+    } finally {
+      setImportingWho(false);
+    }
+  };
+
   const moduleActions = getModuleActions(selected.endpoint).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected));
   const isDashboard = selected.key === "dashboard" || (selected.canCreate === false && selected.fields.length === 0);
   const isAppointmentsCalendar = selected.endpoint === "/appointments";
@@ -372,6 +393,11 @@ export default function HospitalResourceConsole() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {canCreateSelected && <button onClick={openCreate} className="inline-flex h-11 items-center gap-2 bg-blue-700 px-4 text-sm font-black text-white hover:bg-blue-800"><Plus className="size-4" />{hospitalUi(locale, "new")}</button>}
+                      {selected.endpoint === "/pediatrics/who-growth-standards" && canCreateSelected && <label className="inline-flex h-11 cursor-pointer items-center gap-2 border border-emerald-600 bg-emerald-50 px-4 text-sm font-black text-emerald-800 hover:bg-emerald-100">
+                        {importingWho ? <Loader2 className="size-4 animate-spin" /> : <UploadCloud className="size-4" />}
+                        Importer OMS
+                        <input type="file" accept=".json,.csv,.txt,text/csv,application/json" className="hidden" disabled={importingWho} onChange={(event) => { importWhoGrowthFile(event.target.files?.[0]); event.currentTarget.value = ""; }} />
+                      </label>}
                       {selected.endpoint === "/hr/attendance-events" && <button onClick={() => router.push(`/${locale}/attendance-kiosk`)} className="inline-flex h-11 items-center gap-2 bg-slate-950 px-4 text-sm font-black text-white hover:bg-slate-800"><Smartphone className="size-4" />Kiosque présence</button>}
                       {moduleActions.map((action) => <button key={action.kind} onClick={() => openOperation(action.kind)} className="inline-flex h-11 items-center gap-2 border border-blue-700 bg-white px-4 text-sm font-black text-blue-800 hover:bg-blue-50"><action.icon className="size-4" />{hospitalText(action.label, locale)}</button>)}
                       <button onClick={load} className="inline-flex h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-800 hover:bg-slate-50"><RefreshCcw className="size-4" />{hospitalUi(locale, "refresh")}</button>
@@ -504,6 +530,51 @@ function resourceQueryParams(endpoint: string, search: string, from: string, to:
     to: to || undefined,
     status: status || undefined,
   });
+}
+
+function parseWhoGrowthImport(content: string, fileName: string) {
+  const text = content.replace(/^\uFEFF/, "").trim();
+  if (!text) return [];
+  if (fileName.toLowerCase().endsWith(".json") || text.startsWith("[")) {
+    const parsed = JSON.parse(text);
+    if (!Array.isArray(parsed)) throw new Error("Le fichier JSON doit contenir un tableau de lignes OMS.");
+    return parsed;
+  }
+  const lines = text.split(/\r?\n/).filter((line) => line.trim());
+  if (lines.length < 2) return [];
+  const delimiter = detectWhoDelimiter(lines[0]);
+  const headers = splitWhoLine(lines[0], delimiter).map((header) => header.trim());
+  return lines.slice(1).map((line) => {
+    const values = splitWhoLine(line, delimiter);
+    return Object.fromEntries(headers.map((header, index) => [header, values[index]?.trim() ?? ""]));
+  });
+}
+
+function detectWhoDelimiter(header: string) {
+  return ["\t", ";", ","].sort((a, b) => header.split(b).length - header.split(a).length)[0];
+}
+
+function splitWhoLine(line: string, delimiter: string) {
+  const values: string[] = [];
+  let current = "";
+  let quoted = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    const next = line[index + 1];
+    if (char === '"' && next === '"') {
+      current += '"';
+      index += 1;
+    } else if (char === '"') {
+      quoted = !quoted;
+    } else if (char === delimiter && !quoted) {
+      values.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  values.push(current);
+  return values;
 }
 
 function printPayloadData(moduleTitle: string, rows: any[]) {
