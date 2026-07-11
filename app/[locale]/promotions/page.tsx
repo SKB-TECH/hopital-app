@@ -1,5 +1,6 @@
-import { PromotionsView } from "@/components/promotion";
+import { redirect } from "next/navigation";
 
-export default function PromotionsPage() {
-    return <PromotionsView />;
+export default async function PromotionsPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  redirect(`/${locale}/hospital`);
 }

@@ -1,5 +1,6 @@
-import { ReportsView } from "@/components/report";
+import { redirect } from "next/navigation";
 
-export default function ReportsPage() {
-    return <ReportsView />;
+export default async function ReportsPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  redirect(`/${locale}/hospital/reports`);
 }

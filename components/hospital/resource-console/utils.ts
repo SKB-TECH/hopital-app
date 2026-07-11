@@ -212,7 +212,23 @@ function isReadableReferencePart(value: any) {
 }
 
 export function defaultOperationForm(kind: OperationKind, row?: any, endpoint = "") {
-  if (kind === "preview-invoice" || kind === "generate-invoice") return { patientId: row?.patientId ?? "", admissionId: row?.admissionId ?? "", from: "", to: "", draftId: `INV-DRAFT-${Date.now()}`, invoiceItems: [], collectNow: false, paymentMethod: "CASH", paymentAmount: "", paymentReference: "" };
+  if (kind === "preview-invoice" || kind === "generate-invoice") {
+    const isPharmacyDispensation = endpoint === "/pharmacy/dispensations";
+    return {
+      patientId: row?.patientId ?? "",
+      admissionId: row?.admissionId ?? "",
+      from: "",
+      to: "",
+      sourceType: isPharmacyDispensation ? "DISPENSATION" : "",
+      sourceId: isPharmacyDispensation ? row?.id ?? "" : "",
+      draftId: `INV-DRAFT-${Date.now()}`,
+      invoiceItems: [],
+      collectNow: isPharmacyDispensation,
+      paymentMethod: "CASH",
+      paymentAmount: "",
+      paymentReference: isPharmacyDispensation ? "Délivrance pharmacie" : "",
+    };
+  }
   if (kind === "pay-invoice") return { amount: row?.balanceDue ?? "", method: "CASH", reference: "" };
   if (kind === "discharge") return { summary: "" };
   if (kind === "complete-consultation") return { assessment: row?.assessment ?? "", plan: row?.plan ?? "", notes: row?.notes ?? "" };

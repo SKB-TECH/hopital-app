@@ -1,7 +1,6 @@
 import {
     HelpCircle,
     ScrollText,
-    Settings,
     ShieldCheck,
 } from "lucide-react";
 
@@ -15,13 +14,12 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
                     backgroundSize: "18px 18px",
                 }}
             >
-                {/*ajouter quelque chose*/}
                 <div className="flex flex-1 items-center justify-center px-4 py-10">
                     {children}
                 </div>
 
                 <footer className="flex flex-col gap-3 px-6 pb-6 text-xs text-slate-400 md:flex-row md:items-center md:justify-between">
-                    <p>© 2026 Kongo Event. All right reserved.</p>
+                    <p>© 2026 Afia-Smart. Tous droits réservés.</p>
 
                     <div className="flex items-center gap-5">
             <span className="inline-flex items-center gap-1.5">

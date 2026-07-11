@@ -1,5 +1,6 @@
-import { PayoutsView } from "@/components/payout";
+import { redirect } from "next/navigation";
 
-export default function PayoutsPage() {
-    return <PayoutsView />;
+export default async function PayoutsPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  redirect(`/${locale}/hospital/billing`);
 }

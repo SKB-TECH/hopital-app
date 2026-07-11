@@ -73,6 +73,7 @@ function InvoiceWorkflow({ operationKind, form, setForm }: { operationKind: stri
   const previewTotal = Number(form.preview?.subtotal ?? 0);
   const estimatedManualTotal = invoiceItemsTotal(form.invoiceItems);
   const displayTotal = previewTotal || estimatedManualTotal;
+  const isPharmacyDispensation = form.sourceType === "DISPENSATION" && form.sourceId;
   return (
     <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
       <div className="space-y-5">
@@ -87,12 +88,20 @@ function InvoiceWorkflow({ operationKind, form, setForm }: { operationKind: stri
           <InvoiceItemsField value={form.invoiceItems} onChange={(value) => setForm({ ...form, invoiceItems: value })} />
         </InvoicePanel>
 
-        <InvoicePanel icon={<CalendarRange className="size-5" />} title="Période de facturation" subtitle="Filtre optionnel pour limiter les frais repris">
-          <div className="grid gap-4 md:grid-cols-2">
-            <TextField type="datetime-local" label="Du" value={form.from} onChange={(value) => setForm({ ...form, from: value })} />
-            <TextField type="datetime-local" label="Au" value={form.to} onChange={(value) => setForm({ ...form, to: value })} />
-          </div>
-        </InvoicePanel>
+        {isPharmacyDispensation ? (
+          <InvoicePanel icon={<Receipt className="size-5" />} title="Délivrance pharmacie" subtitle="La facture reprend uniquement les médicaments délivrés sur cette ordonnance">
+            <div className="border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
+              Les dates ne sont pas demandées pour la pharmacie: les lignes sont liées directement à la délivrance sélectionnée.
+            </div>
+          </InvoicePanel>
+        ) : (
+          <InvoicePanel icon={<CalendarRange className="size-5" />} title="Période de facturation" subtitle="Filtre optionnel pour limiter les frais repris">
+            <div className="grid gap-4 md:grid-cols-2">
+              <TextField type="datetime-local" label="Du" value={form.from} onChange={(value) => setForm({ ...form, from: value })} />
+              <TextField type="datetime-local" label="Au" value={form.to} onChange={(value) => setForm({ ...form, to: value })} />
+            </div>
+          </InvoicePanel>
+        )}
 
         {form.preview ? <InvoicePreview value={form.preview} /> : null}
       </div>
