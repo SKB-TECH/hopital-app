@@ -28,6 +28,9 @@ export function DepartmentDashboard({ loading, data, columns, locale = "fr" }: {
   if (columns.some((column) => column.key === "salesLines")) {
     return <PharmacySalesDashboard data={data ?? {}} columns={columns} locale={locale} />;
   }
+  if (columns.some((column) => column.key === "roomControl")) {
+    return <SurgeryControlDashboard data={data ?? {}} columns={columns} locale={locale} />;
+  }
   if (columns.some((column) => column.key === "recentPartogram")) {
     return <MaternityBirthSuiteDashboard data={data ?? {}} columns={columns} locale={locale} />;
   }
@@ -61,6 +64,122 @@ export function DepartmentDashboard({ loading, data, columns, locale = "fr" }: {
       ) : null}
     </div>
   );
+}
+
+function SurgeryControlDashboard({ data, columns, locale }: { data: Record<string, any>; columns: DashboardColumn[]; locale: string }) {
+  const metrics = columns.filter((column) => isSimpleDashboardValue(data?.[column.key])).slice(0, 5);
+  const rooms = rowsFromValue(data?.roomControl);
+  const upcoming = rowsFromValue(data?.upcomingSlots);
+  const team = rowsFromValue(data?.surgicalTeamUtilization);
+  return (
+    <div className="space-y-5 bg-[#fbfaff] p-4 sm:p-6">
+      <section className="rounded-lg border border-slate-100 bg-white p-5 shadow-[0_12px_28px_rgba(15,23,42,0.045)]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase text-blue-700">Bloc opératoire</p>
+            <h2 className="mt-1 text-2xl font-black text-slate-950">Tour de contrôle chirurgicale</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500">Salles, statuts temps réel, checklist OMS, comptage et flux ambulatoire.</p>
+          </div>
+          <button onClick={() => window.print()} className="inline-flex h-11 items-center justify-center gap-2 border border-blue-700 bg-blue-700 px-4 text-sm font-black text-white hover:bg-blue-800">
+            <Printer className="size-4" /> Imprimer la vacation
+          </button>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          {metrics.map((column, index) => <PharmacySalesMetric key={column.key} label={displayLabel(column)} value={data?.[column.key]} tone={TONES[index % TONES.length]} />)}
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-3">
+        {rooms.length ? rooms.map((room, index) => <OperatingRoomCard key={room.roomId ?? index} room={room} />) : <p className="rounded-lg border border-slate-100 bg-white p-8 text-center text-sm font-semibold text-slate-500 xl:col-span-3">Aucune salle opératoire configurée.</p>}
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+        <section className="rounded-lg border border-slate-100 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.045)]">
+          <div className="border-b border-slate-100 px-5 py-4">
+            <h3 className="text-base font-black text-slate-950">Interventions à venir</h3>
+            <p className="mt-1 text-xs font-semibold text-slate-500">Planning actif du bloc.</p>
+          </div>
+          <UpcomingSurgeryGrid rows={upcoming} />
+        </section>
+        <section className="rounded-lg border border-slate-100 bg-white p-5 shadow-[0_12px_28px_rgba(15,23,42,0.045)]">
+          <h3 className="text-base font-black text-slate-950">Utilisation équipe</h3>
+          <div className="mt-5"><KeyValueRows rows={team.slice(0, 6)} locale={locale} /></div>
+        </section>
+      </section>
+    </div>
+  );
+}
+
+function OperatingRoomCard({ room }: { room: any }) {
+  const tone = surgeryRoomTone(room.status);
+  const progress = surgeryProgress(room);
+  return (
+    <article className={`rounded-lg border p-5 shadow-[0_12px_28px_rgba(15,23,42,0.045)] ${tone.wrap}`}>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-black uppercase tracking-wide opacity-75">{room.roomCode || "Salle"}</p>
+          <h3 className="mt-1 text-xl font-black">{room.roomName || room.roomCode || "Bloc"}</h3>
+        </div>
+        <span className={`rounded-full px-3 py-1 text-xs font-black ${tone.badge}`}>{surgeryStatusLabel(room.status)}</span>
+      </div>
+      <div className="mt-5 min-h-[72px]">
+        <p className="line-clamp-2 text-sm font-black">{room.procedureName || "Salle libre"}</p>
+        <p className="mt-1 text-xs font-semibold opacity-75">{room.patientName || room.medicalRecordNumber || "Aucun patient en salle"}</p>
+      </div>
+      <div className="mt-5">
+        <div className="mb-2 flex justify-between text-[11px] font-black uppercase opacity-75"><span>Progression</span><span>{progress}%</span></div>
+        <div className="h-3 overflow-hidden rounded-full bg-white/70"><div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${progress}%` }} /></div>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2 text-xs font-bold opacity-80">
+        <span>Début</span><span className="text-right">{formatValue(room.estimatedStartAt)}</span>
+        <span>Fin estimée</span><span className="text-right">{formatValue(room.estimatedEndAt)}</span>
+      </div>
+    </article>
+  );
+}
+
+function UpcomingSurgeryGrid({ rows }: { rows: any[] }) {
+  if (!rows.length) return <p className="p-10 text-center text-sm font-semibold text-slate-500">Aucune intervention à venir.</p>;
+  return (
+    <div className="w-full">
+      <table className="w-full table-fixed border-collapse text-left">
+        <thead className="bg-slate-50 text-[11px] font-black uppercase text-slate-500">
+          <tr><th className="w-[22%] px-4 py-3">Salle</th><th className="w-[28%] px-4 py-3">Patient</th><th className="w-[32%] px-4 py-3">Acte</th><th className="w-[18%] px-4 py-3">Statut</th></tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {rows.map((row, index) => (
+            <tr key={index} className="text-sm">
+              <td className="break-words px-4 py-3 font-black text-slate-800">{row.roomCode || row.roomName || "-"}</td>
+              <td className="break-words px-4 py-3 font-bold text-slate-700">{row.patientName || row.medicalRecordNumber || "-"}</td>
+              <td className="break-words px-4 py-3 font-bold text-slate-800">{row.procedureName || "-"}</td>
+              <td className="px-4 py-3 font-black text-slate-700">{surgeryStatusLabel(row.status)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function surgeryRoomTone(status: any) {
+  const value = String(status ?? "").toUpperCase();
+  if (value === "INDUCTION") return { wrap: "border-blue-100 bg-blue-50 text-blue-950", badge: "bg-blue-700 text-white", bar: "bg-blue-700" };
+  if (value === "INCISION" || value === "SUTURE") return { wrap: "border-rose-100 bg-rose-50 text-rose-950", badge: "bg-rose-700 text-white", bar: "bg-rose-700" };
+  if (value === "CLEANING") return { wrap: "border-amber-100 bg-amber-50 text-amber-950", badge: "bg-amber-600 text-white", bar: "bg-amber-600" };
+  if (value === "RECOVERY_ROOM") return { wrap: "border-emerald-100 bg-emerald-50 text-emerald-950", badge: "bg-emerald-600 text-white", bar: "bg-emerald-600" };
+  return { wrap: "border-slate-100 bg-white text-slate-950", badge: "bg-slate-200 text-slate-700", bar: "bg-slate-400" };
+}
+
+function surgeryStatusLabel(status: any) {
+  const value = String(status ?? "AVAILABLE").toUpperCase();
+  return ({ SCHEDULED: "Planifié", INDUCTION: "Induction", INCISION: "Incision", SUTURE: "Suture", RECOVERY_ROOM: "Salle de réveil", CLEANING: "Nettoyage", COMPLETED: "Terminé", CANCELLED: "Annulé", AVAILABLE: "Libre" } as Record<string, string>)[value] ?? formatValue(status);
+}
+
+function surgeryProgress(room: any) {
+  const start = new Date(room.actualStartAt || room.estimatedStartAt || "").getTime();
+  const end = new Date(room.estimatedEndAt || "").getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return room.procedureName ? 45 : 0;
+  return Math.max(0, Math.min(100, Math.round(((Date.now() - start) / (end - start)) * 100)));
 }
 
 function MaternityBirthSuiteDashboard({ data, columns, locale }: { data: Record<string, any>; columns: DashboardColumn[]; locale: string }) {

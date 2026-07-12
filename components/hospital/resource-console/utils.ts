@@ -251,6 +251,8 @@ export function defaultOperationForm(kind: OperationKind, row?: any, endpoint = 
     cordPh: "",
     deliveryType: "VAGINAL",
   };
+  if (kind === "surgery-status") return { status: nextSurgeryStatuses(row?.status)[0] ?? "INDUCTION" };
+  if (kind === "validate-oms-step") return { step: row?.beforeInductionValidated ? row?.beforeIncisionValidated ? "before-exit" : "before-incision" : "before-induction" };
   if (kind === "stock-movement") return { stockItemId: row?.id ?? "", type: "RECEIPT", quantity: 1, reference: "" };
   if (kind === "change-status") return { status: nextStatuses(endpoint, row?.status)[0] ?? "", administeredAt: "", notes: "" };
   return {};
@@ -268,8 +270,22 @@ export function validateOperation(kind: OperationKind, form: Record<string, any>
   if (kind === "confirm-birth" && (!form.pregnancyId || !form.motherPatientId)) throw new Error("Le dossier grossesse et la mère sont obligatoires.");
   if (kind === "confirm-birth" && !String(form.deliveryAt ?? "").trim()) throw new Error("La date et heure de naissance sont obligatoires.");
   if (kind === "confirm-birth" && form.apgar5 !== "" && (!Number.isFinite(Number(form.apgar5)) || Number(form.apgar5) < 0 || Number(form.apgar5) > 10)) throw new Error("L’Apgar à 5 minutes doit être entre 0 et 10.");
+  if (kind === "surgery-status" && !String(form.status ?? "").trim()) throw new Error("Sélectionnez le statut de salle.");
+  if (kind === "validate-oms-step" && !String(form.step ?? "").trim()) throw new Error("Sélectionnez l’étape OMS à valider.");
   if (kind === "change-status" && !String(form.status ?? "").trim()) throw new Error("Sélectionnez le nouveau statut.");
   if (kind === "change-status" && form.status === "ADMINISTERED" && "administeredAt" in form && !String(form.administeredAt ?? "").trim()) throw new Error("La date d’administration est obligatoire.");
+}
+
+function nextSurgeryStatuses(current?: string) {
+  const transitions: Record<string, string[]> = {
+    SCHEDULED: ["INDUCTION", "CANCELLED"],
+    INDUCTION: ["INCISION", "CANCELLED"],
+    INCISION: ["SUTURE", "CANCELLED"],
+    SUTURE: ["RECOVERY_ROOM", "CANCELLED"],
+    RECOVERY_ROOM: ["CLEANING", "COMPLETED"],
+    CLEANING: ["COMPLETED"],
+  };
+  return transitions[String(current ?? "SCHEDULED").toUpperCase()] ?? ["INDUCTION", "INCISION", "SUTURE", "RECOVERY_ROOM", "CLEANING", "COMPLETED"];
 }
 
 export function nextStatuses(endpoint: string, current?: string) {

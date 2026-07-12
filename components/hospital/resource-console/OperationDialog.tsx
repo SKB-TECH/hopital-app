@@ -45,6 +45,20 @@ export function OperationDialog({ operation, form, setForm, posting, locale = "f
             <TextAreaField label="Notes finales" value={form.notes} onChange={(value) => setForm({ ...form, notes: value })} />
           </> : null}
           {operation.kind === "confirm-birth" ? <BirthConfirmationWorkflow form={form} setForm={setForm} row={operation.row} /> : null}
+          {operation.kind === "surgery-status" ? <>
+            <div className="border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-black uppercase tracking-wide text-slate-500">Intervention</p>
+              <p className="mt-1 text-lg font-black text-slate-950">{operation.row?.procedureName ?? operation.row?.roomName ?? "Bloc opératoire"}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-500">Statut actuel: {operation.row?.status ?? "-"}</p>
+            </div>
+            <SelectField label="Nouveau statut de salle" value={form.status} onChange={(value) => setForm({ ...form, status: value })} options={["INDUCTION", "INCISION", "SUTURE", "RECOVERY_ROOM", "CLEANING", "COMPLETED", "CANCELLED"]} />
+            <p className="border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">Le passage à INCISION est bloqué tant que la check-list avant induction n’est pas validée. Le passage à COMPLETED est bloqué si le comptage matériel n’est pas conforme.</p>
+          </> : null}
+          {operation.kind === "validate-oms-step" ? <>
+            <div className="border border-blue-200 bg-blue-50 p-4 text-sm font-bold text-blue-900">Validation nominative et horodatée de la check-list OMS. L’incision ne sera autorisée qu’après validation de l’induction.</div>
+            <SelectField label="Étape OMS" value={form.step} onChange={(value) => setForm({ ...form, step: value })} options={["before-induction", "before-incision", "before-exit"]} />
+          </> : null}
+          {operation.kind === "validate-material-count" ? <p className="border border-rose-200 bg-rose-50 p-4 text-sm font-bold text-rose-900">Confirmer le comptage opératoire. Si une compresse, aiguille ou instrument manque, le système bloquera la clôture.</p> : null}
           {operation.kind === "stock-movement" ? <>
             <ReferenceField referenceKey="stockItemId" label="Article stock" value={form.stockItemId} onChange={(value) => setForm({ ...form, stockItemId: value })} />
             <SelectField label="Type" value={form.type} onChange={(value) => setForm({ ...form, type: value })} options={["RECEIPT", "ISSUE", "TRANSFER", "ADJUSTMENT"]} />

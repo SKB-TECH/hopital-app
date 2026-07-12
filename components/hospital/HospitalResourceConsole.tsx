@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { Baby, BadgeDollarSign, CheckCircle2, CreditCard, Database, Download, Edit3, Eye, FileText, Loader2, Plus, Printer, Receipt, RefreshCcw, Search, Send, Smartphone, UploadCloud, UserRound, X } from "lucide-react";
+import { Activity, Baby, BadgeDollarSign, CheckCircle2, CreditCard, Database, Download, Edit3, Eye, FileText, Loader2, Plus, Printer, Receipt, RefreshCcw, Search, Send, Smartphone, UploadCloud, UserRound, X } from "lucide-react";
 import DashboardNavbar from "@/components/dashboard/DashboardNavbar";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import { useSidebar } from "@/contexts/SidebarContext";
@@ -274,6 +274,18 @@ export default function HospitalResourceConsole() {
       if (operation.kind === "stock-movement") {
         await api.post("/inventory/items/movements", cleanObject(operationForm));
         toast.success("Mouvement de stock enregistré.");
+      }
+      if (operation.kind === "surgery-status" && operation.row?.id) {
+        await api.patch(`/surgery/slots/${operation.row.id}/status`, { status: operationForm.status });
+        toast.success("Statut du bloc mis à jour.");
+      }
+      if (operation.kind === "validate-material-count" && operation.row?.id) {
+        await api.post(`/surgery/slots/${operation.row.id}/validate-count`, {});
+        toast.success("Comptage chirurgical conforme.");
+      }
+      if (operation.kind === "validate-oms-step" && operation.row?.id) {
+        await api.patch(`/surgery/checklists/${operation.row.id}/${operationForm.step}`, {});
+        toast.success("Étape OMS validée.");
       }
       if (operation.kind === "change-status" && operation.row?.id && operation.endpoint) {
         const payload: Record<string, any> = { status: operationForm.status };
@@ -1114,6 +1126,9 @@ function getRowActions(endpoint: string, row: any): OperationAction[] {
   if (endpoint === "/laboratory/results" && !row?.validatedAt) actions.push({ kind: "validate-lab", label: "Valider résultat", icon: CheckCircle2 });
   if (endpoint === "/consultations" && row?.status !== "COMPLETED") actions.push({ kind: "complete-consultation", label: "Terminer consultation", icon: CheckCircle2 });
   if (endpoint === "/maternity/pregnancy-records" && String(row?.status ?? "").toUpperCase() === "ACTIVE") actions.push({ kind: "confirm-birth", label: "Confirmer naissance", icon: Baby });
+  if (endpoint === "/surgery/slots" && !["COMPLETED", "CANCELLED"].includes(String(row?.status ?? "").toUpperCase())) actions.push({ kind: "surgery-status", label: "Statut salle", icon: Activity });
+  if (endpoint === "/surgery/slots") actions.push({ kind: "validate-material-count", label: "Valider comptage", icon: CheckCircle2 });
+  if (endpoint === "/surgery/checklists") actions.push({ kind: "validate-oms-step", label: "Valider OMS", icon: CheckCircle2 });
   if (endpoint === "/admissions" && row?.status !== "DISCHARGED") actions.push({ kind: "discharge", label: "Sortie patient", icon: FileText });
   if (row?.status && nextStatuses(endpoint, row.status).length) actions.push({ kind: "change-status", label: "Changer statut", icon: CheckCircle2 });
   return actions;
@@ -1146,6 +1161,7 @@ function canRunOperation(kind: OperationKind, canCreate: boolean, canUpdate: boo
   if (kind === "stock-movement") return canCreate;
   if (kind === "patient-record") return true;
   if (kind === "confirm-birth") return canUpdate;
+  if (kind === "surgery-status" || kind === "validate-material-count" || kind === "validate-oms-step") return canUpdate;
   return canUpdate;
 }
 
