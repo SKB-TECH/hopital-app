@@ -7,6 +7,7 @@ export type OperationKind =
   | "stock-movement"
   | "complete-consultation"
   | "confirm-birth"
+  | "send-to-surgery"
   | "surgery-status"
   | "validate-material-count"
   | "validate-oms-step"

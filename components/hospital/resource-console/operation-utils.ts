@@ -10,6 +10,7 @@ export function operationTitle(kind: OperationKind) {
     "stock-movement": "Mouvement de stock",
     "complete-consultation": "Terminer la consultation",
     "confirm-birth": "Confirmer la naissance",
+    "send-to-surgery": "Envoyer au bloc",
     "surgery-status": "Statut salle de bloc",
     "validate-material-count": "Valider le comptage",
     "validate-oms-step": "Valider checklist OMS",

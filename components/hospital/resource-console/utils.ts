@@ -251,6 +251,21 @@ export function defaultOperationForm(kind: OperationKind, row?: any, endpoint = 
     cordPh: "",
     deliveryType: "VAGINAL",
   };
+  if (kind === "send-to-surgery") {
+    const start = new Date(Date.now() + 30 * 60_000);
+    const end = new Date(start.getTime() + 90 * 60_000);
+    return {
+      operatingRoomId: "",
+      surgeonId: "",
+      anesthesiologistId: "",
+      estimatedStartAt: start.toISOString().slice(0, 16),
+      estimatedEndAt: end.toISOString().slice(0, 16),
+      procedureName: "Césarienne / intervention obstétricale",
+      procedureCode: "OBSTETRIC_SURGERY",
+      priority: "URGENT",
+      reason: "",
+    };
+  }
   if (kind === "surgery-status") return { status: nextSurgeryStatuses(row?.status)[0] ?? "INDUCTION" };
   if (kind === "validate-oms-step") return { step: row?.beforeInductionValidated ? row?.beforeIncisionValidated ? "before-exit" : "before-incision" : "before-induction" };
   if (kind === "stock-movement") return { stockItemId: row?.id ?? "", type: "RECEIPT", quantity: 1, reference: "" };
@@ -270,6 +285,10 @@ export function validateOperation(kind: OperationKind, form: Record<string, any>
   if (kind === "confirm-birth" && (!form.pregnancyId || !form.motherPatientId)) throw new Error("Le dossier grossesse et la mère sont obligatoires.");
   if (kind === "confirm-birth" && !String(form.deliveryAt ?? "").trim()) throw new Error("La date et heure de naissance sont obligatoires.");
   if (kind === "confirm-birth" && form.apgar5 !== "" && (!Number.isFinite(Number(form.apgar5)) || Number(form.apgar5) < 0 || Number(form.apgar5) > 10)) throw new Error("L’Apgar à 5 minutes doit être entre 0 et 10.");
+  if (kind === "send-to-surgery" && (!form.operatingRoomId || !form.surgeonId)) throw new Error("Sélectionnez la salle de bloc et le chirurgien.");
+  if (kind === "send-to-surgery" && (!String(form.estimatedStartAt ?? "").trim() || !String(form.estimatedEndAt ?? "").trim())) throw new Error("Renseignez le créneau opératoire.");
+  if (kind === "send-to-surgery" && new Date(form.estimatedEndAt).getTime() <= new Date(form.estimatedStartAt).getTime()) throw new Error("La fin prévue doit être après le début prévu.");
+  if (kind === "send-to-surgery" && !String(form.procedureName ?? "").trim()) throw new Error("Renseignez la procédure opératoire.");
   if (kind === "surgery-status" && !String(form.status ?? "").trim()) throw new Error("Sélectionnez le statut de salle.");
   if (kind === "validate-oms-step" && !String(form.step ?? "").trim()) throw new Error("Sélectionnez l’étape OMS à valider.");
   if (kind === "change-status" && !String(form.status ?? "").trim()) throw new Error("Sélectionnez le nouveau statut.");

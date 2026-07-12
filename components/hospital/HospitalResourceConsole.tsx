@@ -271,6 +271,10 @@ export default function HospitalResourceConsole() {
         }
         toast.success("Naissance confirmée, dossier nouveau-né créé et constat généré.");
       }
+      if (operation.kind === "send-to-surgery" && operation.row?.id) {
+        await api.post(`/maternity/pregnancy-records/${operation.row.id}/send-to-surgery`, cleanObject(operationForm));
+        toast.success("Patiente envoyée au bloc opératoire.");
+      }
       if (operation.kind === "stock-movement") {
         await api.post("/inventory/items/movements", cleanObject(operationForm));
         toast.success("Mouvement de stock enregistré.");
@@ -1125,7 +1129,10 @@ function getRowActions(endpoint: string, row: any): OperationAction[] {
   if (endpoint === "/pharmacy/dispensations" && row?.patientId && canBillDispensation(row)) actions.push({ kind: "generate-invoice", label: "Facturer / encaisser", icon: Receipt });
   if (endpoint === "/laboratory/results" && !row?.validatedAt) actions.push({ kind: "validate-lab", label: "Valider résultat", icon: CheckCircle2 });
   if (endpoint === "/consultations" && row?.status !== "COMPLETED") actions.push({ kind: "complete-consultation", label: "Terminer consultation", icon: CheckCircle2 });
-  if (endpoint === "/maternity/pregnancy-records" && String(row?.status ?? "").toUpperCase() === "ACTIVE") actions.push({ kind: "confirm-birth", label: "Confirmer naissance", icon: Baby });
+  if (endpoint === "/maternity/pregnancy-records" && String(row?.status ?? "").toUpperCase() === "ACTIVE") {
+    if (!row?.surgerySlotId && !row?.surgery_slot_id) actions.push({ kind: "send-to-surgery", label: "Envoyer au bloc", icon: Activity });
+    actions.push({ kind: "confirm-birth", label: "Confirmer naissance", icon: Baby });
+  }
   if (endpoint === "/surgery/slots" && !["COMPLETED", "CANCELLED"].includes(String(row?.status ?? "").toUpperCase())) actions.push({ kind: "surgery-status", label: "Statut salle", icon: Activity });
   if (endpoint === "/surgery/slots") actions.push({ kind: "validate-material-count", label: "Valider comptage", icon: CheckCircle2 });
   if (endpoint === "/surgery/checklists") actions.push({ kind: "validate-oms-step", label: "Valider OMS", icon: CheckCircle2 });
@@ -1161,6 +1168,7 @@ function canRunOperation(kind: OperationKind, canCreate: boolean, canUpdate: boo
   if (kind === "stock-movement") return canCreate;
   if (kind === "patient-record") return true;
   if (kind === "confirm-birth") return canUpdate;
+  if (kind === "send-to-surgery") return canUpdate;
   if (kind === "surgery-status" || kind === "validate-material-count" || kind === "validate-oms-step") return canUpdate;
   return canUpdate;
 }

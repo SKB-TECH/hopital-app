@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Baby, CalendarRange, CheckCircle2, CreditCard, Loader2, Pill, Plus, Receipt, Send, Trash2, UserRound, WalletCards, X } from "lucide-react";
+import { Activity, Baby, CalendarRange, CheckCircle2, CreditCard, Loader2, Pill, Plus, Receipt, Send, Trash2, UserRound, WalletCards, X } from "lucide-react";
 import { hospitalText } from "@/shared/config/hospital-i18n";
 import { api } from "@/shared/lib/http/api";
 import type { OperationState } from "./types";
@@ -45,6 +45,7 @@ export function OperationDialog({ operation, form, setForm, posting, locale = "f
             <TextAreaField label="Notes finales" value={form.notes} onChange={(value) => setForm({ ...form, notes: value })} />
           </> : null}
           {operation.kind === "confirm-birth" ? <BirthConfirmationWorkflow form={form} setForm={setForm} row={operation.row} /> : null}
+          {operation.kind === "send-to-surgery" ? <SendToSurgeryWorkflow form={form} setForm={setForm} row={operation.row} /> : null}
           {operation.kind === "surgery-status" ? <>
             <div className="border border-slate-200 bg-slate-50 p-4">
               <p className="text-xs font-black uppercase tracking-wide text-slate-500">Intervention</p>
@@ -80,6 +81,46 @@ export function OperationDialog({ operation, form, setForm, posting, locale = "f
             <button disabled={posting} onClick={onSubmit} className="inline-flex h-12 items-center justify-center gap-2 bg-blue-700 px-6 text-sm font-black text-white hover:bg-blue-800 disabled:opacity-50">{posting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}{isPharmacySale ? "Valider la vente" : isInvoiceFlow ? operation.kind === "generate-invoice" ? "Générer la facture" : "Calculer l’aperçu" : "Confirmer"}</button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function SendToSurgeryWorkflow({ form, setForm, row }: { form: Record<string, any>; setForm: (form: Record<string, any>) => void; row?: any }) {
+  return (
+    <div className="space-y-5">
+      <section className="border border-slate-200 bg-slate-950 p-5 text-white">
+        <div className="flex items-start gap-3">
+          <div className="flex size-11 items-center justify-center bg-rose-600"><Activity className="size-5" /></div>
+          <div>
+            <p className="text-xs font-black uppercase tracking-wide text-rose-100">Passerelle maternité → bloc opératoire</p>
+            <h3 className="mt-1 text-xl font-black">Envoyer au bloc</h3>
+            <p className="mt-1 text-sm font-semibold text-slate-300">{row?.patientName ?? "Patiente"} · {row?.medicalRecordNumber ?? "Dossier grossesse"}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="border border-slate-200 bg-white">
+        <div className="border-b border-slate-100 bg-slate-50 px-5 py-4">
+          <h3 className="font-black text-slate-950">Planification opératoire</h3>
+          <p className="mt-1 text-xs font-semibold text-slate-500">Le bloc recevra automatiquement l’intervention et la checklist OMS sera créée.</p>
+        </div>
+        <div className="grid gap-4 p-5 md:grid-cols-2">
+          <ReferenceField referenceKey="operatingRoomId" label="Salle de bloc" value={form.operatingRoomId} onChange={(value) => setForm({ ...form, operatingRoomId: value })} />
+          <ReferenceField referenceKey="surgeonId" label="Chirurgien / gynécologue" value={form.surgeonId} onChange={(value) => setForm({ ...form, surgeonId: value })} />
+          <ReferenceField referenceKey="anesthesiologistId" label="Anesthésiste" value={form.anesthesiologistId} onChange={(value) => setForm({ ...form, anesthesiologistId: value })} />
+          <SelectField label="Priorité" value={form.priority} onChange={(value) => setForm({ ...form, priority: value })} options={["SCHEDULED", "URGENT", "EMERGENCY"]} />
+          <TextField type="datetime-local" label="Début prévu" value={form.estimatedStartAt} onChange={(value) => setForm({ ...form, estimatedStartAt: value })} />
+          <TextField type="datetime-local" label="Fin prévue" value={form.estimatedEndAt} onChange={(value) => setForm({ ...form, estimatedEndAt: value })} />
+          <TextField label="Procédure" value={form.procedureName} onChange={(value) => setForm({ ...form, procedureName: value })} />
+          <TextField label="Code procédure" value={form.procedureCode} onChange={(value) => setForm({ ...form, procedureCode: value })} />
+        </div>
+      </section>
+
+      <TextAreaField label="Motif opératoire / contexte obstétrical" value={form.reason} onChange={(value) => setForm({ ...form, reason: value })} />
+
+      <div className="border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-900">
+        Cette action crée un créneau au bloc, relie le dossier grossesse à l’intervention et rend la patiente visible dans la tour de contrôle chirurgie.
       </div>
     </div>
   );
