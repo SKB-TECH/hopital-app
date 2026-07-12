@@ -16,16 +16,30 @@ type WaitingPatient = {
 type Option = { id: string; label: string; description?: string };
 
 export default function DoctorWaitingRoomPage() {
+  const [queueMode, setQueueMode] = useState<"practitioner" | "service">("practitioner");
   const [practitionerId, setPractitionerId] = useState("");
+  const [service, setService] = useState("");
   const [rows, setRows] = useState<WaitingPatient[]>([]);
   const [practitioners, setPractitioners] = useState<Option[]>([]);
+  const [services, setServices] = useState<Option[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   async function load() {
+    if (queueMode === "service" && !service) {
+      setRows([]);
+      return;
+    }
     setLoading(true);
     try {
-      const response = await api.get("/reception/waiting-room", { params: { practitionerId: practitionerId || undefined, page: 1, limit: 50 } });
+      const response = await api.get("/reception/waiting-room", {
+        params: {
+          practitionerId: queueMode === "practitioner" ? practitionerId || undefined : undefined,
+          service: queueMode === "service" ? service || undefined : undefined,
+          page: 1,
+          limit: 50,
+        },
+      });
       setRows(response.data?.data || []);
       setError("");
     } catch (err: any) {
@@ -38,6 +52,8 @@ export default function DoctorWaitingRoomPage() {
   async function loadOptions() {
     const response = await api.get("/reception/options").catch(() => null);
     setPractitioners(response?.data?.practitioners || []);
+    setServices(response?.data?.services || []);
+    if (!service && response?.data?.services?.[0]?.id) setService(response.data.services[0].id);
   }
 
   useEffect(() => {
@@ -45,12 +61,16 @@ export default function DoctorWaitingRoomPage() {
     void load();
     const timer = setInterval(() => void load(), 5000);
     return () => clearInterval(timer);
-  }, [practitionerId]);
+  }, [queueMode, practitionerId, service]);
 
   async function callNext() {
+    if (queueMode === "service" && !service) return;
     setLoading(true);
     try {
-      await api.post("/reception/call-next", { practitionerId: practitionerId || undefined });
+      await api.post("/reception/call-next", {
+        practitionerId: queueMode === "practitioner" ? practitionerId || undefined : undefined,
+        service: queueMode === "service" ? service || undefined : undefined,
+      });
       await load();
     } catch (err: any) {
       setError(err?.response?.data?.message || "Aucun patient à appeler");
@@ -77,7 +97,7 @@ export default function DoctorWaitingRoomPage() {
             </div>
             <div>
               <h1 className="text-3xl font-black tracking-normal">Salle d’attente médecin</h1>
-              <p className="text-sm font-bold text-slate-500">Chaque médecin gère uniquement ses patients en attente.</p>
+              <p className="text-sm font-bold text-slate-500">Appel par médecin ou par service, sans mélanger les files.</p>
             </div>
           </div>
           <button onClick={load} className="inline-flex h-12 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-700">
@@ -90,14 +110,29 @@ export default function DoctorWaitingRoomPage() {
       <div className="mx-auto grid max-w-7xl gap-6 p-8 lg:grid-cols-[420px_1fr]">
         <aside className="grid content-start gap-6">
           <div className="border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="mb-4 grid grid-cols-2 border border-slate-200 bg-slate-50 p-1">
+              <button type="button" onClick={() => setQueueMode("practitioner")} className={`h-11 text-sm font-black ${queueMode === "practitioner" ? "bg-blue-700 text-white" : "text-slate-600"}`}>
+                Médecin
+              </button>
+              <button type="button" onClick={() => setQueueMode("service")} className={`h-11 text-sm font-black ${queueMode === "service" ? "bg-blue-700 text-white" : "text-slate-600"}`}>
+                Service
+              </button>
+            </div>
+
             <label className="grid gap-2">
-              <span className="text-xs font-black uppercase text-slate-500">Filtrer un spécialiste</span>
-              <select value={practitionerId} onChange={(event) => setPractitionerId(event.target.value)} className="h-12 border border-slate-300 bg-white px-4 font-bold outline-none focus:border-blue-700">
-                <option value="">Mon compte</option>
-                {practitioners.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-              </select>
+              <span className="text-xs font-black uppercase text-slate-500">{queueMode === "service" ? "File service" : "File médecin"}</span>
+              {queueMode === "service" ? (
+                <select value={service} onChange={(event) => setService(event.target.value)} className="h-12 border border-slate-300 bg-white px-4 font-bold outline-none focus:border-blue-700">
+                  {services.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+                </select>
+              ) : (
+                <select value={practitionerId} onChange={(event) => setPractitionerId(event.target.value)} className="h-12 border border-slate-300 bg-white px-4 font-bold outline-none focus:border-blue-700">
+                  <option value="">Mon compte</option>
+                  {practitioners.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+                </select>
+              )}
             </label>
-            <button onClick={callNext} disabled={loading} className="mt-5 flex h-14 w-full items-center justify-center gap-3 bg-blue-700 text-lg font-black text-white disabled:opacity-60">
+            <button onClick={callNext} disabled={loading || (queueMode === "service" && !service)} className="mt-5 flex h-14 w-full items-center justify-center gap-3 bg-blue-700 text-lg font-black text-white disabled:opacity-60">
               <BellRing className="h-6 w-6" />
               Appeler suivant
             </button>
@@ -136,7 +171,7 @@ export default function DoctorWaitingRoomPage() {
                   <p className="text-sm font-bold text-slate-500">{row.medicalRecordNumber}</p>
                 </div>
                 <p className="text-sm font-black text-slate-600">{index === 0 ? "Prochain" : `${index + 1}e position`}</p>
-                <button onClick={callNext} className="flex h-11 items-center justify-center gap-2 border border-slate-300 text-sm font-black text-slate-700">
+                <button onClick={callNext} disabled={loading || (queueMode === "service" && !service)} className="flex h-11 items-center justify-center gap-2 border border-slate-300 text-sm font-black text-slate-700 disabled:opacity-50">
                   <ArrowRight className="h-4 w-4" />
                   Appeler
                 </button>
