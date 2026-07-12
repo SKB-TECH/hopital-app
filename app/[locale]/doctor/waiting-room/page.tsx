@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowRight, BellRing, CheckCircle2, RefreshCw, Stethoscope } from "lucide-react";
+import { toast } from "sonner";
 import { api } from "@/shared/lib/http/api";
 
 type WaitingPatient = {
@@ -67,10 +68,23 @@ export default function DoctorWaitingRoomPage() {
     if (queueMode === "service" && !service) return;
     setLoading(true);
     try {
-      await api.post("/reception/call-next", {
+      const response = await api.post("/reception/call-next", {
         practitionerId: queueMode === "practitioner" ? practitionerId || undefined : undefined,
         service: queueMode === "service" ? service || undefined : undefined,
       });
+      const ticket = response.data?.ticketNumber || "ticket";
+      const smsStatus = String(response.data?.smsStatus || "");
+      if (smsStatus === "SENT") {
+        toast.success("Patient appelé", { description: `SMS envoyé pour ${ticket}.` });
+      } else if (smsStatus === "SKIPPED") {
+        toast.warning("Patient appelé, SMS non envoyé", { description: "Configurez SMS_API_URL et SMS_API_KEY côté API." });
+      } else if (smsStatus === "NO_PHONE") {
+        toast.warning("Patient appelé, SMS non envoyé", { description: "Aucun téléphone enregistré pour ce patient." });
+      } else if (smsStatus === "FAILED") {
+        toast.error("Patient appelé, SMS échoué", { description: response.data?.smsError || "Le fournisseur SMS a refusé l’envoi." });
+      } else {
+        toast.success("Patient appelé", { description: `Ticket ${ticket}.` });
+      }
       await load();
     } catch (err: any) {
       setError(err?.response?.data?.message || "Aucun patient à appeler");
