@@ -159,6 +159,23 @@ export default function HospitalResourceConsole() {
     setViewRow(row);
   };
 
+  const closeQueueEncounter = async (row: any) => {
+    if (!row?.id) return;
+    setPosting(true);
+    setError("");
+    try {
+      await api.patch(`/reception/waiting-room/${row.id}/close`);
+      toast.success("Passage patient clôturé.");
+      await load();
+    } catch (err: any) {
+      const message = readError(err);
+      setError(message);
+      toast.error(message);
+    } finally {
+      setPosting(false);
+    }
+  };
+
   const submit = async () => {
     if (!selected) return;
     if (editingRow?.id && !canUpdateSelected) return;
@@ -449,6 +466,8 @@ export default function HospitalResourceConsole() {
                         <input type="file" accept=".xlsx,.xls,.json,.csv,.txt,text/csv,application/json" className="hidden" disabled={importingWho} onChange={(event) => { importWhoGrowthFile(event.target.files?.[0]); event.currentTarget.value = ""; }} />
                       </label>}
                       {selected.endpoint === "/hr/attendance-events" && <button onClick={() => router.push(`/${locale}/attendance-kiosk`)} className="inline-flex h-11 items-center gap-2 bg-slate-950 px-4 text-sm font-black text-white hover:bg-slate-800"><Smartphone className="size-4" />Kiosque présence</button>}
+                      {module.key === "reception" && <button onClick={() => router.push(`/${locale}/doctor/waiting-room`)} className="inline-flex h-11 items-center gap-2 bg-slate-950 px-4 text-sm font-black text-white hover:bg-slate-800"><Activity className="size-4" />Gérer les appels</button>}
+                      {module.key === "reception" && <button onClick={() => router.push(`/${locale}/ticket-kiosk`)} className="inline-flex h-11 items-center gap-2 border border-blue-700 bg-white px-4 text-sm font-black text-blue-800 hover:bg-blue-50"><Printer className="size-4" />Guichet tickets</button>}
                       {moduleActions.map((action) => <button key={action.kind} onClick={() => openOperation(action.kind)} className="inline-flex h-11 items-center gap-2 border border-blue-700 bg-white px-4 text-sm font-black text-blue-800 hover:bg-blue-50"><action.icon className="size-4" />{hospitalText(action.label, locale)}</button>)}
                       <button onClick={load} className="inline-flex h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-800 hover:bg-slate-50"><RefreshCcw className="size-4" />{hospitalUi(locale, "refresh")}</button>
                       {canPrintSelected && <button onClick={() => setPrintDialog({})} className="inline-flex h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-800 hover:bg-slate-50"><Printer className="size-4" />{hospitalUi(locale, "documents")}</button>}
@@ -492,7 +511,7 @@ export default function HospitalResourceConsole() {
                     </thead>
                     <tbody>
                       {loading ? <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center text-sm font-semibold text-slate-500"><Loader2 className="mx-auto mb-3 size-6 animate-spin text-blue-700" />{hospitalUi(locale, "loadingData")}</td></tr> :
-                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs truncate px-5 py-4 text-sm font-semibold text-slate-700">{safeCellText(displayCell(row, column.key, referenceLabels))}</td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => openView(row)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title="Voir"><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Documents"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : openOperation(action.kind, row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title={action.label}><action.icon className="size-4" /></button>)}</div></td></tr>) :
+                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs truncate px-5 py-4 text-sm font-semibold text-slate-700">{safeCellText(displayCell(row, column.key, referenceLabels))}</td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => openView(row)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title="Voir"><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Documents"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : action.kind === "close-queue" ? closeQueueEncounter(row) : openOperation(action.kind, row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title={action.label}><action.icon className="size-4" /></button>)}</div></td></tr>) :
                       <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center"><Database className="mx-auto mb-3 size-8 text-slate-300" /><p className="font-black text-slate-800">{hospitalUi(locale, "noData")}</p><p className="mt-1 text-sm text-slate-500">{hospitalUi(locale, "noDataHint")}</p></td></tr>}
                     </tbody>
                     </table>
@@ -1137,6 +1156,7 @@ function getRowActions(endpoint: string, row: any): OperationAction[] {
   if (endpoint === "/surgery/slots") actions.push({ kind: "validate-material-count", label: "Valider comptage", icon: CheckCircle2 });
   if (endpoint === "/surgery/checklists") actions.push({ kind: "validate-oms-step", label: "Valider OMS", icon: CheckCircle2 });
   if (endpoint === "/admissions" && row?.status !== "DISCHARGED") actions.push({ kind: "discharge", label: "Sortie patient", icon: FileText });
+  if ((endpoint === "/reception/check-in" || endpoint === "/reception/walk-in-ticket") && String(row?.status ?? "").toUpperCase() === "IN_PROGRESS") actions.push({ kind: "close-queue", label: "Clôturer le passage", icon: CheckCircle2 });
   if (row?.status && nextStatuses(endpoint, row.status).length) actions.push({ kind: "change-status", label: "Changer statut", icon: CheckCircle2 });
   return actions;
 }
@@ -1167,6 +1187,7 @@ function canRunOperation(kind: OperationKind, canCreate: boolean, canUpdate: boo
   if (kind === "preview-invoice" || kind === "generate-invoice") return true;
   if (kind === "stock-movement") return canCreate;
   if (kind === "patient-record") return true;
+  if (kind === "close-queue") return true;
   if (kind === "confirm-birth") return canUpdate;
   if (kind === "send-to-surgery") return canUpdate;
   if (kind === "surgery-status" || kind === "validate-material-count" || kind === "validate-oms-step") return canUpdate;

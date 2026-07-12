@@ -84,8 +84,13 @@ export default function DoctorWaitingRoomPage() {
     await load();
   }
 
-  const called = rows.find((row) => row.status === "CALLED");
-  const waiting = rows.filter((row) => row.status !== "CALLED");
+  async function closeConsultation(id: string) {
+    await api.patch(`/reception/waiting-room/${id}/close`);
+    await load();
+  }
+
+  const currentPatient = rows.find((row) => row.status === "IN_PROGRESS") || rows.find((row) => row.status === "CALLED");
+  const waiting = rows.filter((row) => row.status === "WAITING");
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
@@ -96,8 +101,8 @@ export default function DoctorWaitingRoomPage() {
               <Stethoscope className="h-8 w-8" />
             </div>
             <div>
-              <h1 className="text-3xl font-black tracking-normal">Salle d’attente médecin</h1>
-              <p className="text-sm font-bold text-slate-500">Appel par médecin ou par service, sans mélanger les files.</p>
+              <h1 className="text-3xl font-black tracking-normal">Appel des patients</h1>
+              <p className="text-sm font-bold text-slate-500">Choisissez une file, puis appelez le prochain ticket.</p>
             </div>
           </div>
           <button onClick={load} className="inline-flex h-12 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-700">
@@ -112,15 +117,15 @@ export default function DoctorWaitingRoomPage() {
           <div className="border border-slate-200 bg-white p-6 shadow-sm">
             <div className="mb-4 grid grid-cols-2 border border-slate-200 bg-slate-50 p-1">
               <button type="button" onClick={() => setQueueMode("practitioner")} className={`h-11 text-sm font-black ${queueMode === "practitioner" ? "bg-blue-700 text-white" : "text-slate-600"}`}>
-                Médecin
+                Par médecin
               </button>
               <button type="button" onClick={() => setQueueMode("service")} className={`h-11 text-sm font-black ${queueMode === "service" ? "bg-blue-700 text-white" : "text-slate-600"}`}>
-                Service
+                Par service
               </button>
             </div>
 
             <label className="grid gap-2">
-              <span className="text-xs font-black uppercase text-slate-500">{queueMode === "service" ? "File service" : "File médecin"}</span>
+              <span className="text-xs font-black uppercase text-slate-500">{queueMode === "service" ? "Service à appeler" : "Médecin à appeler"}</span>
               {queueMode === "service" ? (
                 <select value={service} onChange={(event) => setService(event.target.value)} className="h-12 border border-slate-300 bg-white px-4 font-bold outline-none focus:border-blue-700">
                   {services.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
@@ -136,20 +141,28 @@ export default function DoctorWaitingRoomPage() {
               <BellRing className="h-6 w-6" />
               Appeler suivant
             </button>
+            <p className="mt-3 text-sm font-bold text-slate-500">Ce bouton appelle uniquement le prochain patient de la file sélectionnée.</p>
             {error && <p className="mt-4 border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">{error}</p>}
           </div>
 
           <div className="border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-black uppercase text-slate-500">Patient appelé</p>
-            {called ? (
+            <p className="text-sm font-black uppercase text-slate-500">Ticket appelé maintenant</p>
+            {currentPatient ? (
               <div className="mt-4 border border-blue-200 bg-blue-50 p-5">
-                <p className="text-5xl font-black text-blue-700">{called.queueNumber}</p>
-                <p className="mt-3 text-xl font-black">{called.patientName}</p>
-                <p className="text-sm font-bold text-slate-500">{called.medicalRecordNumber}</p>
-                <button onClick={() => startConsultation(called.id)} className="mt-5 flex h-12 w-full items-center justify-center gap-2 bg-slate-950 text-sm font-black text-white">
-                  <CheckCircle2 className="h-5 w-5" />
-                  Commencer consultation
-                </button>
+                <p className="text-5xl font-black text-blue-700">{currentPatient.queueNumber}</p>
+                <p className="mt-3 text-xl font-black">{currentPatient.patientName}</p>
+                <p className="text-sm font-bold text-slate-500">{currentPatient.medicalRecordNumber}</p>
+                {currentPatient.status === "CALLED" ? (
+                  <button onClick={() => startConsultation(currentPatient.id)} className="mt-5 flex h-12 w-full items-center justify-center gap-2 bg-slate-950 text-sm font-black text-white">
+                    <CheckCircle2 className="h-5 w-5" />
+                    Commencer prise en charge
+                  </button>
+                ) : (
+                  <button onClick={() => closeConsultation(currentPatient.id)} className="mt-5 flex h-12 w-full items-center justify-center gap-2 bg-emerald-700 text-sm font-black text-white">
+                    <CheckCircle2 className="h-5 w-5" />
+                    Clôturer le passage
+                  </button>
+                )}
               </div>
             ) : (
               <p className="mt-4 text-sm font-bold text-slate-500">Aucun patient appelé.</p>
@@ -173,7 +186,7 @@ export default function DoctorWaitingRoomPage() {
                 <p className="text-sm font-black text-slate-600">{index === 0 ? "Prochain" : `${index + 1}e position`}</p>
                 <button onClick={callNext} disabled={loading || (queueMode === "service" && !service)} className="flex h-11 items-center justify-center gap-2 border border-slate-300 text-sm font-black text-slate-700 disabled:opacity-50">
                   <ArrowRight className="h-4 w-4" />
-                  Appeler
+                  Appeler suivant
                 </button>
               </div>
             ))}

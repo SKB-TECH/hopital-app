@@ -12,6 +12,7 @@ export type OperationKind =
   | "validate-material-count"
   | "validate-oms-step"
   | "change-status"
+  | "close-queue"
   | "print-invoice"
   | "patient-record";
 
