@@ -953,9 +953,42 @@ function DetailValue({ value }: { value: any }) {
       </div>
     );
   }
+  if (isFileAttachment(value)) return <FileAttachmentDetail file={value} />;
   if (value && typeof value === "object" && typeof value.content === "string") return <div className="min-h-16 border border-slate-200 bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-800" dangerouslySetInnerHTML={{ __html: value.content }} />;
   if (value && typeof value === "object") return <div className="min-h-16 border border-slate-200 bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-800">{objectDetailText(value)}</div>;
   return <div className="min-h-12 border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold leading-6 text-slate-800">{formatValue(value)}</div>;
+}
+
+function FileAttachmentDetail({ file }: { file: Record<string, any> }) {
+  const url = String(file.url || file.secureUrl || "");
+  const fileName = String(file.fileName || file.originalFilename || "Document médical");
+  const contentType = String(file.contentType || file.mimeType || "Document");
+  return (
+    <div className="flex min-h-20 items-center justify-between gap-4 border border-slate-200 bg-slate-50 p-4">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-black text-slate-900">{fileName}</p>
+        <p className="mt-1 text-xs font-semibold text-slate-500">{cleanContentType(contentType)} · {formatFileSize(file.size)}</p>
+      </div>
+      {url ? <a href={url} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-2 border border-blue-700 bg-blue-700 px-3 py-2 text-xs font-black text-white hover:bg-blue-800"><FileText className="size-4" />Ouvrir</a> : null}
+    </div>
+  );
+}
+
+function isFileAttachment(value: any) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value) && (value.url || value.secureUrl) && (value.fileName || value.contentType || value.provider === "cloudinary"));
+}
+
+function cleanContentType(value: string) {
+  if (value === "application/pdf") return "PDF";
+  if (value.startsWith("image/")) return "Image";
+  return value || "Document";
+}
+
+function formatFileSize(value: any) {
+  const bytes = Number(value || 0);
+  if (!Number.isFinite(bytes) || bytes <= 0) return "taille non renseignée";
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} Ko`;
+  return `${Math.round((bytes / (1024 * 1024)) * 10) / 10} Mo`;
 }
 
 const hiddenDetailKeys = new Set([
@@ -992,6 +1025,7 @@ function displayDetailValue(row: any, key: string, referenceLabels: Record<strin
 }
 
 function objectDetailText(value: Record<string, any>) {
+  if (isFileAttachment(value)) return [value.fileName || "Document médical", cleanContentType(String(value.contentType || "")), formatFileSize(value.size)].filter(Boolean).join(" · ");
   if (typeof value.content === "string") return value.content.replace(/<[^>]+>/g, "").trim() || "-";
   const text = Object.entries(value)
     .filter(([key, item]) => key !== "format" && !isTechnicalDetailKey(key) && item !== null && item !== undefined && item !== "")
