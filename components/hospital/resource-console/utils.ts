@@ -237,6 +237,20 @@ export function defaultOperationForm(kind: OperationKind, row?: any, endpoint = 
   if (kind === "pay-invoice") return { amount: row?.balanceDue ?? row?.balance_due ?? "", method: "CASH", reference: "" };
   if (kind === "discharge") return { summary: "" };
   if (kind === "complete-consultation") return { assessment: row?.assessment ?? "", plan: row?.plan ?? "", notes: row?.notes ?? "" };
+  if (kind === "confirm-birth") return {
+    pregnancyId: row?.id ?? "",
+    motherPatientId: row?.patientId ?? row?.patient_id ?? "",
+    deliveryAt: new Date().toISOString().slice(0, 16),
+    firstName: "",
+    lastName: "",
+    gender: "UNKNOWN",
+    birthWeightGrams: "",
+    apgar1: "",
+    apgar5: "",
+    apgar10: "",
+    cordPh: "",
+    deliveryType: "VAGINAL",
+  };
   if (kind === "stock-movement") return { stockItemId: row?.id ?? "", type: "RECEIPT", quantity: 1, reference: "" };
   if (kind === "change-status") return { status: nextStatuses(endpoint, row?.status)[0] ?? "", administeredAt: "", notes: "" };
   return {};
@@ -251,6 +265,9 @@ export function validateOperation(kind: OperationKind, form: Record<string, any>
   if (kind === "stock-movement" && (!Number.isFinite(Number(form.quantity)) || Number(form.quantity) <= 0)) throw new Error("La quantité du mouvement de stock doit être supérieure à 0.");
   if (kind === "discharge" && !String(form.summary ?? "").trim()) throw new Error("Le résumé de sortie est obligatoire.");
   if (kind === "complete-consultation" && (!String(form.assessment ?? "").trim() || !String(form.plan ?? "").trim())) throw new Error("Le diagnostic et le plan de traitement sont obligatoires.");
+  if (kind === "confirm-birth" && (!form.pregnancyId || !form.motherPatientId)) throw new Error("Le dossier grossesse et la mère sont obligatoires.");
+  if (kind === "confirm-birth" && !String(form.deliveryAt ?? "").trim()) throw new Error("La date et heure de naissance sont obligatoires.");
+  if (kind === "confirm-birth" && form.apgar5 !== "" && (!Number.isFinite(Number(form.apgar5)) || Number(form.apgar5) < 0 || Number(form.apgar5) > 10)) throw new Error("L’Apgar à 5 minutes doit être entre 0 et 10.");
   if (kind === "change-status" && !String(form.status ?? "").trim()) throw new Error("Sélectionnez le nouveau statut.");
   if (kind === "change-status" && form.status === "ADMINISTERED" && "administeredAt" in form && !String(form.administeredAt ?? "").trim()) throw new Error("La date d’administration est obligatoire.");
 }

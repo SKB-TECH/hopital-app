@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { CalendarRange, CheckCircle2, CreditCard, Loader2, Pill, Plus, Receipt, Send, Trash2, UserRound, WalletCards, X } from "lucide-react";
+import { Baby, CalendarRange, CheckCircle2, CreditCard, Loader2, Pill, Plus, Receipt, Send, Trash2, UserRound, WalletCards, X } from "lucide-react";
 import { hospitalText } from "@/shared/config/hospital-i18n";
 import { api } from "@/shared/lib/http/api";
 import type { OperationState } from "./types";
@@ -44,6 +44,7 @@ export function OperationDialog({ operation, form, setForm, posting, locale = "f
             <TextAreaField label="Plan de traitement" value={form.plan} onChange={(value) => setForm({ ...form, plan: value })} />
             <TextAreaField label="Notes finales" value={form.notes} onChange={(value) => setForm({ ...form, notes: value })} />
           </> : null}
+          {operation.kind === "confirm-birth" ? <BirthConfirmationWorkflow form={form} setForm={setForm} row={operation.row} /> : null}
           {operation.kind === "stock-movement" ? <>
             <ReferenceField referenceKey="stockItemId" label="Article stock" value={form.stockItemId} onChange={(value) => setForm({ ...form, stockItemId: value })} />
             <SelectField label="Type" value={form.type} onChange={(value) => setForm({ ...form, type: value })} options={["RECEIPT", "ISSUE", "TRANSFER", "ADJUSTMENT"]} />
@@ -65,6 +66,55 @@ export function OperationDialog({ operation, form, setForm, posting, locale = "f
             <button disabled={posting} onClick={onSubmit} className="inline-flex h-12 items-center justify-center gap-2 bg-blue-700 px-6 text-sm font-black text-white hover:bg-blue-800 disabled:opacity-50">{posting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}{isPharmacySale ? "Valider la vente" : isInvoiceFlow ? operation.kind === "generate-invoice" ? "Générer la facture" : "Calculer l’aperçu" : "Confirmer"}</button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function BirthConfirmationWorkflow({ form, setForm, row }: { form: Record<string, any>; setForm: (form: Record<string, any>) => void; row?: any }) {
+  return (
+    <div className="space-y-5">
+      <section className="border border-slate-200 bg-slate-950 p-5 text-white">
+        <div className="flex items-start gap-3">
+          <div className="flex size-11 items-center justify-center bg-blue-700"><Baby className="size-5" /></div>
+          <div>
+            <p className="text-xs font-black uppercase tracking-wide text-blue-200">Naissance et identitovigilance</p>
+            <h3 className="mt-1 text-xl font-black">Confirmer la naissance</h3>
+            <p className="mt-1 text-sm font-semibold text-slate-300">{row?.patientName ?? "Mère"} · {row?.medicalRecordNumber ?? "Dossier grossesse"}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="border border-slate-200 bg-white">
+        <div className="border-b border-slate-100 bg-slate-50 px-5 py-4">
+          <h3 className="font-black text-slate-950">Données de naissance</h3>
+          <p className="mt-1 text-xs font-semibold text-slate-500">Le système créera le dossier nouveau-né, le lien mère-enfant et le constat imprimable.</p>
+        </div>
+        <div className="grid gap-4 p-5 md:grid-cols-2">
+          <TextField type="datetime-local" label="Date et heure naissance" value={form.deliveryAt} onChange={(value) => setForm({ ...form, deliveryAt: value })} />
+          <SelectField label="Type de délivrance" value={form.deliveryType} onChange={(value) => setForm({ ...form, deliveryType: value })} options={["VAGINAL", "CESAREAN", "ASSISTED", "EMERGENCY_CESAREAN"]} />
+          <TextField label="Prénom nouveau-né" value={form.firstName} onChange={(value) => setForm({ ...form, firstName: value })} />
+          <TextField label="Nom nouveau-né" value={form.lastName} onChange={(value) => setForm({ ...form, lastName: value })} />
+          <SelectField label="Sexe" value={form.gender} onChange={(value) => setForm({ ...form, gender: value })} options={["FEMALE", "MALE", "UNKNOWN"]} />
+          <TextField type="number" label="Poids naissance g" value={form.birthWeightGrams} onChange={(value) => setForm({ ...form, birthWeightGrams: value })} />
+        </div>
+      </section>
+
+      <section className="border border-slate-200 bg-white">
+        <div className="border-b border-slate-100 bg-slate-50 px-5 py-4">
+          <h3 className="font-black text-slate-950">Évaluation néonatale</h3>
+          <p className="mt-1 text-xs font-semibold text-slate-500">Apgar et pH cordon seront imprimés sur le constat.</p>
+        </div>
+        <div className="grid gap-4 p-5 md:grid-cols-4">
+          <TextField type="number" label="Apgar 1 min" value={form.apgar1} onChange={(value) => setForm({ ...form, apgar1: value })} />
+          <TextField type="number" label="Apgar 5 min" value={form.apgar5} onChange={(value) => setForm({ ...form, apgar5: value })} />
+          <TextField type="number" label="Apgar 10 min" value={form.apgar10} onChange={(value) => setForm({ ...form, apgar10: value })} />
+          <TextField type="number" label="pH cordon" value={form.cordPh} onChange={(value) => setForm({ ...form, cordPh: value })} />
+        </div>
+      </section>
+
+      <div className="border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
+        Après confirmation, le dossier obstétrique sera verrouillé comme accouché et le constat de naissance sera imprimé automatiquement.
       </div>
     </div>
   );

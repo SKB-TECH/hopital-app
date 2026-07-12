@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, AlertTriangle, BarChart3, CircleDollarSign, Clock3, Loader2, Printer, TrendingUp, UsersRound } from "lucide-react";
+import { Activity, AlertTriangle, Baby, BarChart3, CircleDollarSign, Clock3, HeartPulse, Loader2, Printer, TrendingUp, UsersRound } from "lucide-react";
 import { hospitalMetricLabel } from "@/shared/config/hospital-modules";
 import { formatValue } from "./utils";
 
@@ -27,6 +27,9 @@ export function DepartmentDashboard({ loading, data, columns, locale = "fr" }: {
 
   if (columns.some((column) => column.key === "salesLines")) {
     return <PharmacySalesDashboard data={data ?? {}} columns={columns} locale={locale} />;
+  }
+  if (columns.some((column) => column.key === "recentPartogram")) {
+    return <MaternityBirthSuiteDashboard data={data ?? {}} columns={columns} locale={locale} />;
   }
 
   const simple = columns.filter((column) => isSimpleDashboardValue(data?.[column.key]));
@@ -56,6 +59,121 @@ export function DepartmentDashboard({ loading, data, columns, locale = "fr" }: {
           {secondary.slice(1, 4).map((column) => <CompactDataPanel key={column.key} title={displayLabel(column)} value={data?.[column.key]} locale={locale} />)}
         </section>
       ) : null}
+    </div>
+  );
+}
+
+function MaternityBirthSuiteDashboard({ data, columns, locale }: { data: Record<string, any>; columns: DashboardColumn[]; locale: string }) {
+  const metrics = columns.filter((column) => isSimpleDashboardValue(data?.[column.key])).slice(0, 5);
+  const partogram = rowsFromValue(data?.recentPartogram).slice().reverse();
+  const fetalAlerts = rowsFromValue(data?.fetalAlerts);
+  const recentBirths = rowsFromValue(data?.recentBirths);
+  return (
+    <div className="space-y-5 bg-[#fbfaff] p-4 sm:p-6">
+      <section className="rounded-lg border border-slate-100 bg-white p-5 shadow-[0_12px_28px_rgba(15,23,42,0.045)]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase text-blue-700">Gyn-Obs</p>
+            <h2 className="mt-1 text-2xl font-black text-slate-950">Salle de naissance</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500">Partogramme, RCF/Toco, alertes et transitions mère-enfant.</p>
+          </div>
+          <button onClick={() => window.print()} className="inline-flex h-11 items-center justify-center gap-2 border border-blue-700 bg-blue-700 px-4 text-sm font-black text-white hover:bg-blue-800">
+            <Printer className="size-4" /> Imprimer la garde
+          </button>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          {metrics.map((column, index) => <PharmacySalesMetric key={column.key} label={displayLabel(column)} value={data?.[column.key]} tone={TONES[index % TONES.length]} />)}
+        </div>
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
+        <BirthPartogramPanel rows={partogram} />
+        <section className="rounded-lg border border-slate-100 bg-white p-5 shadow-[0_12px_28px_rgba(15,23,42,0.045)]">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-base font-black text-slate-950">Alertes RCF</h3>
+              <p className="mt-1 text-xs font-semibold text-slate-400">Bradycardie ou tachycardie détectée</p>
+            </div>
+            <HeartPulse className="size-5 text-rose-600" />
+          </div>
+          <div className="mt-5 space-y-3">
+            {fetalAlerts.length ? fetalAlerts.slice(0, 6).map((row, index) => (
+              <article key={index} className="border border-rose-100 bg-rose-50 p-3">
+                <p className="text-sm font-black text-rose-950">{row.patientName || row.medicalRecordNumber || "Patiente"}</p>
+                <p className="mt-1 text-xs font-bold text-rose-700">{row.status} · {row.fetalBpm} bpm · {formatValue(row.sampledAt)}</p>
+              </article>
+            )) : <p className="border border-emerald-100 bg-emerald-50 p-4 text-sm font-bold text-emerald-800">Aucune alerte RCF active.</p>}
+          </div>
+        </section>
+      </section>
+
+      <section className="rounded-lg border border-slate-100 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.045)]">
+        <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4">
+          <Baby className="size-5 text-blue-700" />
+          <div>
+            <h3 className="text-base font-black text-slate-950">Naissances récentes</h3>
+            <p className="mt-1 text-xs font-semibold text-slate-500">Contrôle identitovigilance mère-enfant.</p>
+          </div>
+        </div>
+        <RecentBirthsGrid rows={recentBirths} />
+      </section>
+    </div>
+  );
+}
+
+function BirthPartogramPanel({ rows }: { rows: any[] }) {
+  const chartRows = rows.length >= 2 ? rows : [{ cervicalDilationCm: 0, occurredAt: "Début" }, { cervicalDilationCm: 10, occurredAt: "Action" }];
+  const values = chartRows.map((row) => Number(row.cervicalDilationCm ?? 0));
+  const points = values.map((value, index) => ({ x: 50 + (index * 710) / Math.max(values.length - 1, 1), y: 250 - (Math.max(0, Math.min(10, value)) / 10) * 205 }));
+  return (
+    <section className="rounded-lg border border-slate-100 bg-white p-5 shadow-[0_12px_28px_rgba(15,23,42,0.045)]">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <div>
+          <h3 className="text-base font-black text-slate-950">Partogramme électronique</h3>
+          <p className="mt-1 text-xs font-semibold text-slate-400">Dilatation du col, ligne d’alerte et ligne d’action.</p>
+        </div>
+        <BarChart3 className="size-5 text-blue-700" />
+      </div>
+      <div className="relative h-[330px] overflow-hidden rounded-lg bg-gradient-to-b from-blue-50 to-white">
+        <svg viewBox="0 0 820 320" className="h-full w-full" role="img" aria-label="Partogramme">
+          {[0, 2, 4, 6, 8, 10].map((value) => {
+            const y = 250 - (value / 10) * 205;
+            return <g key={value}><line x1="50" x2="780" y1={y} y2={y} stroke="#e7edf7" /><text x="20" y={y + 4} className="fill-slate-500 text-[11px] font-bold">{value}</text></g>;
+          })}
+          <line x1="135" y1="250" x2="610" y2="45" stroke="#f59e0b" strokeWidth="3" strokeDasharray="8 8" />
+          <line x1="240" y1="250" x2="715" y2="45" stroke="#dc2626" strokeWidth="3" strokeDasharray="8 8" />
+          <path d={smoothPath(points)} fill="none" stroke="#1d4ed8" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+          {points.map((point, index) => <circle key={index} cx={point.x} cy={point.y} r="5" fill="#1d4ed8" stroke="white" strokeWidth="3" />)}
+        </svg>
+        <div className="absolute bottom-4 left-5 flex gap-4 text-[11px] font-black text-slate-600">
+          <span className="text-blue-700">Dilatation</span>
+          <span className="text-amber-600">Ligne alerte</span>
+          <span className="text-rose-700">Ligne action</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function RecentBirthsGrid({ rows }: { rows: any[] }) {
+  if (!rows.length) return <p className="p-10 text-center text-sm font-semibold text-slate-500">Aucune naissance récente à afficher.</p>;
+  return (
+    <div className="w-full">
+      <table className="w-full table-fixed border-collapse text-left">
+        <thead className="bg-slate-50 text-[11px] font-black uppercase text-slate-500">
+          <tr><th className="w-[28%] px-4 py-3">Mère</th><th className="w-[28%] px-4 py-3">Nouveau-né</th><th className="w-[18%] px-4 py-3">Apgar 5</th><th className="w-[26%] px-4 py-3">Constat</th></tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {rows.map((row, index) => (
+            <tr key={index} className="text-sm">
+              <td className="break-words px-4 py-3 font-bold text-slate-800">{row.motherName || row.motherMrn || "-"}</td>
+              <td className="break-words px-4 py-3 font-bold text-slate-800">{row.newbornName || row.newbornMrn || "-"}</td>
+              <td className="px-4 py-3 font-black text-slate-950">{formatValue(row.apgar5)}</td>
+              <td className="break-words px-4 py-3 font-semibold text-slate-600">{row.serialNumber || "-"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

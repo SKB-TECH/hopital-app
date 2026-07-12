@@ -6,6 +6,7 @@ export type OperationKind =
   | "discharge"
   | "stock-movement"
   | "complete-consultation"
+  | "confirm-birth"
   | "change-status"
   | "print-invoice"
   | "patient-record";

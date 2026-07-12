@@ -9,6 +9,7 @@ export function operationTitle(kind: OperationKind) {
     discharge: "Sortie hospitalisation",
     "stock-movement": "Mouvement de stock",
     "complete-consultation": "Terminer la consultation",
+    "confirm-birth": "Confirmer la naissance",
     "change-status": "Changer le statut",
     "print-invoice": "Impression",
     "patient-record": "Dossier patient",

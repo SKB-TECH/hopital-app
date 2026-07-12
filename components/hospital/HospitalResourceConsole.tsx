@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { BadgeDollarSign, CheckCircle2, CreditCard, Database, Download, Edit3, Eye, FileText, Loader2, Plus, Printer, Receipt, RefreshCcw, Search, Send, Smartphone, UploadCloud, UserRound, X } from "lucide-react";
+import { Baby, BadgeDollarSign, CheckCircle2, CreditCard, Database, Download, Edit3, Eye, FileText, Loader2, Plus, Printer, Receipt, RefreshCcw, Search, Send, Smartphone, UploadCloud, UserRound, X } from "lucide-react";
 import DashboardNavbar from "@/components/dashboard/DashboardNavbar";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import { useSidebar } from "@/contexts/SidebarContext";
@@ -246,6 +246,30 @@ export default function HospitalResourceConsole() {
       if (operation.kind === "complete-consultation" && operation.row?.id) {
         await api.patch(`/consultations/${operation.row.id}/complete`, cleanObject(operationForm));
         toast.success("Consultation clôturée.");
+      }
+      if (operation.kind === "confirm-birth") {
+        const payload = cleanObject({
+          pregnancyId: operationForm.pregnancyId,
+          motherPatientId: operationForm.motherPatientId,
+          deliveryAt: operationForm.deliveryAt,
+          newborns: [{
+            firstName: operationForm.firstName,
+            lastName: operationForm.lastName,
+            gender: operationForm.gender,
+            birthWeightGrams: operationForm.birthWeightGrams === "" ? undefined : Number(operationForm.birthWeightGrams),
+            apgar1: operationForm.apgar1 === "" ? undefined : Number(operationForm.apgar1),
+            apgar5: operationForm.apgar5 === "" ? undefined : Number(operationForm.apgar5),
+            apgar10: operationForm.apgar10 === "" ? undefined : Number(operationForm.apgar10),
+            cordPh: operationForm.cordPh === "" ? undefined : Number(operationForm.cordPh),
+            deliveryType: operationForm.deliveryType,
+          }],
+        });
+        const response = await api.post("/maternity/births/confirm", payload);
+        const documentId = normalizeRows(response.data?.documents)[0]?.id;
+        if (documentId) {
+          await printService.print({ template: "birth-statement", module: "maternity/birth-documents", recordId: documentId, locale: printLocale, includeQr: true, includeBarcode: true });
+        }
+        toast.success("Naissance confirmée, dossier nouveau-né créé et constat généré.");
       }
       if (operation.kind === "stock-movement") {
         await api.post("/inventory/items/movements", cleanObject(operationForm));
@@ -1089,6 +1113,7 @@ function getRowActions(endpoint: string, row: any): OperationAction[] {
   if (endpoint === "/pharmacy/dispensations" && row?.patientId && canBillDispensation(row)) actions.push({ kind: "generate-invoice", label: "Facturer / encaisser", icon: Receipt });
   if (endpoint === "/laboratory/results" && !row?.validatedAt) actions.push({ kind: "validate-lab", label: "Valider résultat", icon: CheckCircle2 });
   if (endpoint === "/consultations" && row?.status !== "COMPLETED") actions.push({ kind: "complete-consultation", label: "Terminer consultation", icon: CheckCircle2 });
+  if (endpoint === "/maternity/pregnancy-records" && String(row?.status ?? "").toUpperCase() === "ACTIVE") actions.push({ kind: "confirm-birth", label: "Confirmer naissance", icon: Baby });
   if (endpoint === "/admissions" && row?.status !== "DISCHARGED") actions.push({ kind: "discharge", label: "Sortie patient", icon: FileText });
   if (row?.status && nextStatuses(endpoint, row.status).length) actions.push({ kind: "change-status", label: "Changer statut", icon: CheckCircle2 });
   return actions;
@@ -1120,6 +1145,7 @@ function canRunOperation(kind: OperationKind, canCreate: boolean, canUpdate: boo
   if (kind === "preview-invoice" || kind === "generate-invoice") return true;
   if (kind === "stock-movement") return canCreate;
   if (kind === "patient-record") return true;
+  if (kind === "confirm-birth") return canUpdate;
   return canUpdate;
 }
 
