@@ -140,7 +140,7 @@
     @apply mx-auto max-w-7xl px-4 md:px-8;
   }
 
-  .bg-kongo-gradient {
+  .bg-afia-gradient {
     background: linear-gradient(
       135deg,
       oklch(0.23 0.08 255),
@@ -148,11 +148,23 @@
     );
   }
 
-  .bg-kongo-warm-gradient {
+  .bg-afia-warm-gradient {
     background: linear-gradient(
       135deg,
       oklch(0.86 0.18 88),
       oklch(0.58 0.23 28)
     );
+  }
+}
+
+@keyframes loader-slide {
+  0% {
+    transform: translateX(-120%);
+  }
+  50% {
+    transform: translateX(80%);
+  }
+  100% {
+    transform: translateX(240%);
   }
 }

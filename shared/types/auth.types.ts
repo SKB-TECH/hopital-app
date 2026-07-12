@@ -33,33 +33,6 @@ export type RegisterPayload = {
     password: string;
 };
 
-export type OrganizerBusinessType =
-    | "EVENT_ORGANIZER"
-    | "TICKETING_SELLER"
-    | "TRAVEL_SELLER"
-    | "HOTEL_SELLER"
-    | "VOUCHER_SELLER"
-    | "FULL_PLATFORM";
-
-export type RegisterOrganizerPayload = RegisterPayload & {
-    businessName: string;
-    businessType: OrganizerBusinessType;
-    enabledModules?: Partial<Record<
-        | "events"
-        | "ticketing"
-        | "marketplace"
-        | "buses"
-        | "flights"
-        | "vouchers"
-        | "stay"
-        | "sponsors"
-        | "reports"
-        | "payouts"
-        | "reviews",
-        boolean
-    >>;
-};
-
 export type ForgotPasswordPayload = {
     identifier: string;
 };

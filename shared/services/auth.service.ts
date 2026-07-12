@@ -30,7 +30,6 @@ export const authService = {
     return res.data;
   },
   async register(_payload?: any): Promise<never> { throw new Error("La création des comptes se fait par Administration > Utilisateurs."); },
-  async registerOrganizer(_payload?: any): Promise<never> { throw new Error("Module événementiel désactivé pour l’application hôpital."); },
   async forgotPassword(_payload?: any): Promise<{ message: string }> { return { message: "Réinitialisation à connecter au service mail hôpital." }; },
   async sendOtp(_payload?: any): Promise<{ message: string }> { return { message: "OTP non activé." }; },
   async verifyOtp(_payload?: any): Promise<any> { return { verified: false }; },

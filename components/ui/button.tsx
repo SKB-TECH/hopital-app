@@ -13,7 +13,7 @@ const buttonVariants = cva(
         outline: "border bg-background hover:bg-accent hover:text-accent-foreground",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         destructive: "bg-destructive text-white hover:bg-destructive/90",
-        warm: "bg-kongo-warm-gradient text-white hover:opacity-90",
+        warm: "bg-afia-warm-gradient text-white hover:opacity-90",
       },
       size: {
         default: "h-10 px-4 py-2",
