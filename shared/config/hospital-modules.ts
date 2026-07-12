@@ -104,6 +104,12 @@ const HOSPITAL_LABELS: Record<string, string> = {
   confirmationCode: "Code confirmation",
   checkedInAt: "Arrivée",
   queueNumber: "Ticket",
+  ticketNumber: "Ticket",
+  destination: "Destination",
+  patientsBefore: "Patients avant",
+  nowCalling: "Tickets appelés",
+  waiting: "En attente",
+  practitionerLabel: "Cabinet",
   admissionType: "Type admission",
   triagePriority: "Priorité tri",
   prescriptionId: "Prescription",
@@ -554,6 +560,8 @@ export const HOSPITAL_MODULES: HospitalModule[] = [
   { key: "reception", title: "Réception & Admission", description: "Accueil, check-in rapide, file d’attente et orientation.", group: "operations", resources: [
     resource("check-in", "Check-in rendez-vous", "/reception/check-in", [ref("appointmentId", "Rendez-vous"), select("admissionType", "Type admission", ["AMBULATORY", "EMERGENCY", "PLANNED_HOSPITALIZATION"]), num("triagePriority", "Priorité tri")], cols("queueNumber", "patientName", "medicalRecordNumber", "status", "checkedInAt"), { description: "Valide la présence, crée l’admission d’accueil et notifie le praticien." }),
     resource("waiting-room", "Salle d’attente médecin", "/reception/waiting-room", [], cols("queueNumber", "patientName", "medicalRecordNumber", "triagePriority", "checkedInAt", "status"), { canCreate: false, canUpdate: false }),
+    resource("call-next", "Appeler prochain ticket", "/reception/call-next", [ref("practitionerId", "Praticien")], cols("ticketNumber", "patientName", "medicalRecordNumber", "status", "calledAt"), { description: "Appelle le prochain patient, met à jour l’écran public et envoie un SMS." }),
+    resource("public-display", "Écran salle d’attente", "/reception/public-queue", [ref("facilityId", "Site"), ref("practitionerId", "Praticien")], cols("nowCalling", "waiting", "updatedAt"), { canCreate: false, canUpdate: false, description: "Flux public sans identité patient pour TV ou tablette d’accueil." }),
     resource("queue", "File d’attente", "/reception/queue", [id("patientId", "Patient"), select("service", "Service", HOSPITAL_SERVICES, true), num("priority", "Priorité")], cols("id", "patientId", "priority", "status", "createdAt")),
   ] },
   { key: "appointments", title: "Rendez-vous", description: "Agenda, réservation sécurisée, grilles praticiens et rappels.", group: "operations", resources: [
