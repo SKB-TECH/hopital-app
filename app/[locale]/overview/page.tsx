@@ -128,7 +128,8 @@ export default function OverviewPage() {
 
 function StatusPill({ health }: { health: string }) {
   const online = health === "online";
-  return <span className={`inline-flex h-11 items-center gap-2 border px-4 text-sm font-black ${online ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-amber-300 bg-amber-50 text-amber-700"}`}><Activity className="size-4" />{online ? "API connectée" : "API indisponible"}</span>;
+  if (online) return null;
+  return <span className="inline-flex h-11 items-center gap-2 border border-amber-300 bg-amber-50 px-4 text-sm font-black text-amber-700"><Activity className="size-4" />API indisponible</span>;
 }
 
 function KpiCard({ label, value, detail, icon: Icon, tone, loading }: any) {
