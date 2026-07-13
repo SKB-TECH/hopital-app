@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { Activity, Baby, BadgeDollarSign, CheckCircle2, CreditCard, Database, Download, Edit3, Eye, FileText, Loader2, Monitor, Plus, Printer, Receipt, RefreshCcw, Search, Send, Smartphone, UploadCloud, UserRound, X } from "lucide-react";
+import { Activity, Baby, BadgeDollarSign, CheckCircle2, CreditCard, Database, Download, Edit3, Eye, FileText, IdCard, Loader2, Monitor, Plus, Printer, Receipt, RefreshCcw, Search, Send, Smartphone, UploadCloud, UserRound, X } from "lucide-react";
 import DashboardNavbar from "@/components/dashboard/DashboardNavbar";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import { useSidebar } from "@/contexts/SidebarContext";
@@ -76,6 +76,7 @@ export default function HospitalResourceConsole() {
   const [operationForm, setOperationForm] = useState<Record<string, any>>({});
   const [missingPricing, setMissingPricing] = useState<MissingPricingState | null>(null);
   const [printDialog, setPrintDialog] = useState<{ row?: any } | null>(null);
+  const [badgeDialog, setBadgeDialog] = useState<{ row: any } | null>(null);
   const [referenceLabels, setReferenceLabels] = useState<Record<string, Record<string, string>>>({});
   const [importingWho, setImportingWho] = useState(false);
 
@@ -601,7 +602,7 @@ export default function HospitalResourceConsole() {
                     </thead>
                     <tbody>
                       {loading ? <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center text-sm font-semibold text-slate-500"><Loader2 className="mx-auto mb-3 size-6 animate-spin text-blue-700" />{hospitalUi(locale, "loadingData")}</td></tr> :
-                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs truncate px-5 py-4 text-sm font-semibold text-slate-700">{safeCellText(displayCell(row, column.key, referenceLabels))}</td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => openView(row)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title="Voir"><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Documents"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "download-backup" ? downloadBackup(row) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : action.kind === "close-queue" ? closeQueueEncounter(row) : openOperation(action.kind, row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title={action.label}><action.icon className="size-4" /></button>)}</div></td></tr>) :
+                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs truncate px-5 py-4 text-sm font-semibold text-slate-700">{safeCellText(displayCell(row, column.key, referenceLabels))}</td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => openView(row)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title="Voir"><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Documents"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "download-backup" ? downloadBackup(row) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : action.kind === "close-queue" ? closeQueueEncounter(row) : action.kind === "print-employee-badge" ? setBadgeDialog({ row }) : openOperation(action.kind, row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title={action.label}><action.icon className="size-4" /></button>)}</div></td></tr>) :
                       <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center"><Database className="mx-auto mb-3 size-8 text-slate-300" /><p className="font-black text-slate-800">{hospitalUi(locale, "noData")}</p><p className="mt-1 text-sm text-slate-500">{hospitalUi(locale, "noDataHint")}</p></td></tr>}
                     </tbody>
                     </table>
@@ -643,6 +644,13 @@ export default function HospitalResourceConsole() {
               row={printDialog.row}
               data={printDialog.row ? undefined : printPayloadData(selected.title, rows)}
               onClose={() => setPrintDialog(null)}
+            />
+          )}
+
+          {badgeDialog && (
+            <EmployeeBadgeDialog
+              row={badgeDialog.row}
+              onClose={() => setBadgeDialog(null)}
             />
           )}
 
@@ -1092,6 +1100,206 @@ function MissingPricingDialog({ state, posting, locale, onChange, onClose, onSub
   );
 }
 
+function EmployeeBadgeDialog({ row, onClose }: { row: any; onClose: () => void }) {
+  const [primaryColor, setPrimaryColor] = useState("#0f4c9f");
+  const [accentColor, setAccentColor] = useState("#0ea5c6");
+  const fullName = employeeFullName(row);
+  const photo = employeePhotoUrl(row);
+
+  const printBadge = () => {
+    const html = employeeBadgeHtml(row, { primaryColor, accentColor });
+    const frame = document.createElement("iframe");
+    frame.style.position = "fixed";
+    frame.style.right = "0";
+    frame.style.bottom = "0";
+    frame.style.width = "0";
+    frame.style.height = "0";
+    frame.style.border = "0";
+    document.body.appendChild(frame);
+    const doc = frame.contentDocument || frame.contentWindow?.document;
+    if (!doc) return;
+    doc.open();
+    doc.write(html);
+    doc.close();
+    frame.onload = () => {
+      frame.contentWindow?.focus();
+      frame.contentWindow?.print();
+      window.setTimeout(() => document.body.contains(frame) && document.body.removeChild(frame), 1500);
+    };
+  };
+
+  return (
+    <div className="fixed inset-0 z-[90] bg-slate-950/50">
+      <div className="ml-auto h-full w-full max-w-5xl overflow-y-auto border-l border-slate-300 bg-white">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-7 py-5">
+          <div>
+            <h2 className="text-2xl font-black text-slate-950">Badge employé</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500">{fullName} · {row.employeeNumber || row.badgeNumber || "Matricule non renseigné"}</p>
+          </div>
+          <button onClick={onClose} className="border border-slate-300 p-2 text-slate-600 hover:bg-slate-50"><X className="size-5" /></button>
+        </div>
+
+        <div className="grid gap-6 p-7 lg:grid-cols-[1fr_320px]">
+          <div className="grid gap-5 md:grid-cols-2">
+            <BadgePreviewSide row={row} primaryColor={primaryColor} accentColor={accentColor} side="front" photo={photo} />
+            <BadgePreviewSide row={row} primaryColor={primaryColor} accentColor={accentColor} side="back" photo={photo} />
+          </div>
+          <aside className="h-fit border border-slate-200 bg-slate-50 p-5">
+            <h3 className="text-lg font-black text-slate-950">Couleurs d’impression</h3>
+            <p className="mt-1 text-sm font-semibold text-slate-500">Adaptez le badge à la charte du service ou de l’hôpital.</p>
+            <div className="mt-5 grid gap-4">
+              <label className="grid gap-2">
+                <span className="text-xs font-black uppercase text-slate-500">Couleur principale</span>
+                <div className="flex items-center gap-3">
+                  <input type="color" value={primaryColor} onChange={(event) => setPrimaryColor(event.target.value)} className="h-12 w-16 border border-slate-300 bg-white p-1" />
+                  <input value={primaryColor} onChange={(event) => setPrimaryColor(event.target.value)} className="h-12 flex-1 border border-slate-300 bg-white px-3 text-sm font-black outline-none focus:border-blue-700" />
+                </div>
+              </label>
+              <label className="grid gap-2">
+                <span className="text-xs font-black uppercase text-slate-500">Couleur accent</span>
+                <div className="flex items-center gap-3">
+                  <input type="color" value={accentColor} onChange={(event) => setAccentColor(event.target.value)} className="h-12 w-16 border border-slate-300 bg-white p-1" />
+                  <input value={accentColor} onChange={(event) => setAccentColor(event.target.value)} className="h-12 flex-1 border border-slate-300 bg-white px-3 text-sm font-black outline-none focus:border-blue-700" />
+                </div>
+              </label>
+              <div className="grid grid-cols-4 gap-2">
+                {["#0f4c9f", "#1d4ed8", "#0f766e", "#7c3aed", "#be123c", "#111827", "#ea580c", "#0891b2"].map((color) => (
+                  <button key={color} type="button" onClick={() => setPrimaryColor(color)} className="h-10 border border-slate-200" style={{ background: color }} title={color} />
+                ))}
+              </div>
+              <button onClick={printBadge} className="mt-2 inline-flex h-12 items-center justify-center gap-2 bg-blue-700 px-5 text-sm font-black text-white hover:bg-blue-800">
+                <Printer className="size-4" />
+                Imprimer en recto-verso
+              </button>
+              <p className="text-xs font-bold leading-5 text-slate-500">Le fichier place le recto et le verso au même emplacement. Activez l’option recto-verso dans la fenêtre d’impression.</p>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BadgePreviewSide({ row, primaryColor, accentColor, side, photo }: { row: any; primaryColor: string; accentColor: string; side: "front" | "back"; photo: string }) {
+  const fullName = employeeFullName(row);
+  const initials = fullName.split(/\s+/).map((part: string) => part[0]).join("").slice(0, 2).toUpperCase();
+  return (
+    <div className="mx-auto aspect-[54/86] w-full max-w-[310px] overflow-hidden border border-slate-200 bg-white shadow-xl" style={{ ["--badge-primary" as any]: primaryColor, ["--badge-accent" as any]: accentColor }}>
+      {side === "front" ? (
+        <div className="relative h-full p-5 text-white" style={{ background: `linear-gradient(145deg, ${primaryColor} 0 58%, ${accentColor} 58% 76%, #fff 76%)` }}>
+          <div className="absolute -left-12 top-8 h-40 w-40 rounded-full border-[18px] border-white/95" />
+          <div className="relative z-10 flex justify-center pt-6">
+            <div className="grid h-28 w-28 place-items-center overflow-hidden rounded-full border-[8px] border-white bg-slate-100 text-2xl font-black text-slate-700">
+              {photo ? <img src={photo} alt={fullName} className="h-full w-full object-cover" /> : initials}
+            </div>
+          </div>
+          <div className="relative z-10 mt-5 bg-white/95 px-4 py-3 text-center text-slate-950">
+            <p className="text-xl font-black uppercase leading-tight">{fullName}</p>
+            <p className="mt-1 text-xs font-black uppercase" style={{ color: primaryColor }}>{row.position || row.department || "Personnel hospitalier"}</p>
+          </div>
+          <div className="relative z-10 mt-5 grid gap-1 text-xs font-bold">
+            <p>ID : {row.employeeNumber || row.badgeNumber || "-"}</p>
+            <p>Tél : {row.phone || "-"}</p>
+            <p>Email : {row.email || "-"}</p>
+          </div>
+          <div className="absolute bottom-5 left-5 right-5 h-9 border border-white bg-white">
+            <div className="h-full w-full" style={{ background: barcodeBackground(primaryColor) }} />
+          </div>
+        </div>
+      ) : (
+        <div className="relative h-full p-6 text-slate-950">
+          <div className="absolute left-0 top-0 h-24 w-24" style={{ background: accentColor, clipPath: "polygon(0 0, 100% 0, 0 100%)" }} />
+          <div className="absolute bottom-0 right-0 h-28 w-28" style={{ background: primaryColor, clipPath: "polygon(100% 0, 100% 100%, 0 100%)" }} />
+          <div className="relative z-10 text-right">
+            <p className="text-xl font-black">Afia-Smart</p>
+            <p className="text-[10px] font-black uppercase text-slate-500">Hospital Staff</p>
+          </div>
+          <div className="relative z-10 mt-14">
+            <p className="text-sm font-black uppercase text-slate-500">Conditions</p>
+            <ul className="mt-4 grid gap-3 text-xs font-semibold leading-5 text-slate-600">
+              <li>Badge personnel obligatoire dans les zones hospitalières.</li>
+              <li>En cas de perte, informer immédiatement l’administration.</li>
+              <li>Ce badge reste propriété de l’établissement.</li>
+            </ul>
+          </div>
+          <div className="relative z-10 mt-10 grid gap-2 text-xs font-bold text-slate-700">
+            <p>Date d’émission: {new Date().toLocaleDateString("fr-FR")}</p>
+            <p>Expiration: {badgeExpiryDate()}</p>
+          </div>
+          <div className="relative z-10 mt-10 border-t border-slate-300 pt-3 text-center text-xs font-semibold">Signature autorisée</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function employeeBadgeHtml(row: any, theme: { primaryColor: string; accentColor: string }) {
+  const fullName = employeeFullName(row);
+  const photo = employeePhotoUrl(row);
+  const initials = fullName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+  const primary = safeColor(theme.primaryColor, "#0f4c9f");
+  const accent = safeColor(theme.accentColor, "#0ea5c6");
+  const issued = new Date().toLocaleDateString("fr-FR");
+  const expires = badgeExpiryDate();
+  const barcode = barcodeBackground(primary);
+  return `<!doctype html><html><head><meta charset="utf-8" /><title>Badge ${escapeHtml(fullName)}</title><style>
+    @page{size:A4;margin:0}
+    *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#fff;color:#0f172a}
+    .print-page{width:210mm;height:297mm;display:grid;place-items:center;break-after:page;page-break-after:always}
+    .print-page:last-child{break-after:auto;page-break-after:auto}
+    .badge{width:54mm;height:86mm;overflow:hidden;position:relative;background:#fff;border:1px solid #d8dee9;box-shadow:0 8px 24px rgba(15,23,42,.16);page-break-inside:avoid}
+    .front{padding:5mm;color:#fff;background:linear-gradient(145deg,${primary} 0 58%,${accent} 58% 76%,#fff 76%)}
+    .ring{position:absolute;left:-14mm;top:9mm;width:42mm;height:42mm;border-radius:999px;border:5mm solid rgba(255,255,255,.96)}
+    .photo{position:relative;z-index:2;margin:8mm auto 0;width:28mm;height:28mm;border-radius:999px;border:2.4mm solid #fff;background:#e2e8f0;display:grid;place-items:center;overflow:hidden;color:#334155;font-weight:900;font-size:18pt}
+    .photo img{width:100%;height:100%;object-fit:cover}
+    .name{position:relative;z-index:2;margin-top:5mm;background:rgba(255,255,255,.96);color:#06143d;text-align:center;padding:3mm}
+    .name strong{display:block;font-size:13pt;line-height:1.05;text-transform:uppercase}.name span{display:block;margin-top:1mm;color:${primary};font-size:7pt;font-weight:900;text-transform:uppercase}
+    .infos{position:relative;z-index:2;margin-top:6mm;font-size:7pt;line-height:1.8;font-weight:700}
+    .barcode{position:absolute;left:5mm;right:5mm;bottom:5mm;height:9mm;border:1px solid #fff;background:#fff}.barcode div{height:100%;background:${barcode}}
+    .back{padding:6mm}.corner-a{position:absolute;left:0;top:0;width:23mm;height:23mm;background:${accent};clip-path:polygon(0 0,100% 0,0 100%)}.corner-b{position:absolute;right:0;bottom:0;width:28mm;height:28mm;background:${primary};clip-path:polygon(100% 0,100% 100%,0 100%)}
+    .brand{position:relative;z-index:2;text-align:right}.brand strong{font-size:14pt}.brand span{display:block;font-size:6pt;font-weight:900;text-transform:uppercase;color:#64748b}
+    .terms{position:relative;z-index:2;margin-top:18mm}.terms h3{margin:0;font-size:8pt;text-transform:uppercase;color:#64748b}.terms ul{margin:4mm 0 0 0;padding:0;list-style:none;font-size:6.8pt;line-height:1.45;color:#475569}.terms li{margin-bottom:2.3mm}.dates{position:relative;z-index:2;margin-top:9mm;font-size:7pt;line-height:1.7;font-weight:700;color:#334155}.sign{position:relative;z-index:2;margin-top:9mm;padding-top:3mm;border-top:1px solid #cbd5e1;text-align:center;font-size:6.8pt}
+    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.badge{box-shadow:none}}
+  </style></head><body>
+    <main class="print-page">
+    <section class="badge front"><div class="ring"></div><div class="photo">${photo ? `<img src="${escapeAttr(photo)}" />` : escapeHtml(initials)}</div><div class="name"><strong>${escapeHtml(fullName)}</strong><span>${escapeHtml(row.position || row.department || "Personnel hospitalier")}</span></div><div class="infos"><div>ID : ${escapeHtml(row.employeeNumber || row.badgeNumber || "-")}</div><div>Tél : ${escapeHtml(row.phone || "-")}</div><div>Email : ${escapeHtml(row.email || "-")}</div></div><div class="barcode"><div></div></div></section>
+    </main>
+    <main class="print-page">
+    <section class="badge back"><div class="corner-a"></div><div class="corner-b"></div><div class="brand"><strong>Afia-Smart</strong><span>Hospital Staff</span></div><div class="terms"><h3>Conditions</h3><ul><li>Badge personnel obligatoire dans les zones hospitalières.</li><li>En cas de perte, informer immédiatement l’administration.</li><li>Ce badge reste propriété de l’établissement.</li></ul></div><div class="dates"><div>Date d’émission: ${escapeHtml(issued)}</div><div>Expiration: ${escapeHtml(expires)}</div></div><div class="sign">Signature autorisée</div></section>
+    </main>
+  <script>window.onload=function(){setTimeout(function(){window.print()},250)}</script></body></html>`;
+}
+
+function employeeFullName(row: any): string {
+  return String([row?.firstName, row?.lastName].filter(Boolean).join(" ").trim() || row?.employeeName || row?.fullName || "Employé");
+}
+
+function employeePhotoUrl(row: any) {
+  const value = row?.photoUrl || row?.photo || row?.imageUrl || row?.avatarUrl;
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "object") return attachmentUrl(value);
+  return "";
+}
+
+function badgeExpiryDate() {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() + 3);
+  return date.toLocaleDateString("fr-FR");
+}
+
+function barcodeBackground(color: string) {
+  return `repeating-linear-gradient(90deg,${safeColor(color, "#0f4c9f")} 0 2px,#fff 2px 4px,${safeColor(color, "#0f4c9f")} 4px 5px,#fff 5px 8px)`;
+}
+
+function safeColor(value: string, fallback: string) {
+  return /^#[0-9a-fA-F]{6}$/.test(String(value || "")) ? value : fallback;
+}
+
+function escapeAttr(value: any) {
+  return escapeHtml(value).replace(/`/g, "&#96;");
+}
+
 async function buildReferenceLabels(keys: string[], rows: any[]) {
   const maps: Record<string, Record<string, string>> = {};
   const referenceKeys = [...new Set(keys.filter((key) => hospitalReferences[key] && rows.some((row) => row?.[key])))];
@@ -1243,7 +1451,7 @@ function RecordDetailsDrawer({ title, row, columns, referenceLabels, onClose }: 
             return (
               <section key={key} className={detailWide(value) ? "md:col-span-2" : ""}>
                 <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">{labels.get(key) ?? detailLabel(key)}</p>
-                <DetailValue value={displayDetailValue(row, key, referenceLabels)} />
+                <DetailValue value={displayDetailValue(row, key, referenceLabels)} fieldKey={key} />
               </section>
             );
           })}
@@ -1253,7 +1461,7 @@ function RecordDetailsDrawer({ title, row, columns, referenceLabels, onClose }: 
   );
 }
 
-function DetailValue({ value }: { value: any }) {
+function DetailValue({ value, fieldKey = "" }: { value: any; fieldKey?: string }) {
   if (Array.isArray(value) && value.every((item) => item && typeof item === "object" && !Array.isArray(item))) {
     const columns = Array.from(new Set(value.flatMap((item) => Object.keys(item).filter((key) => !isTechnicalDetailKey(key))))).slice(0, 6);
     return (
@@ -1265,14 +1473,45 @@ function DetailValue({ value }: { value: any }) {
       </div>
     );
   }
+  if (isImageUrl(value)) return <ImageAttachmentDetail url={String(value)} label="Photo" />;
+  if (isImageAttachment(value)) return <ImageAttachmentDetail url={attachmentUrl(value)} label={String(value.fileName || value.originalFilename || "Photo")} />;
+  if (isVisualDocumentUrl(value, fieldKey)) return <DocumentUrlDetail url={String(value)} label={documentUrlLabel(fieldKey)} />;
   if (isFileAttachment(value)) return <FileAttachmentDetail file={value} />;
   if (value && typeof value === "object" && typeof value.content === "string") return <div className="min-h-16 border border-slate-200 bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-800" dangerouslySetInnerHTML={{ __html: value.content }} />;
   if (value && typeof value === "object") return <div className="min-h-16 border border-slate-200 bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-800">{objectDetailText(value)}</div>;
   return <div className="min-h-12 border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold leading-6 text-slate-800">{formatValue(value)}</div>;
 }
 
+function DocumentUrlDetail({ url, label }: { url: string; label: string }) {
+  const isPdf = /\.pdf(\?|#|$)/i.test(url) || url.includes("/raw/upload/");
+  return (
+    <div className="grid gap-3 border border-slate-200 bg-slate-50 p-4">
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-black text-slate-900">{label}</p>
+          <p className="mt-1 text-xs font-semibold text-slate-500">{isPdf ? "PDF / diplôme" : "Document attaché"}</p>
+        </div>
+        <a href={url} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-2 border border-blue-700 bg-blue-700 px-3 py-2 text-xs font-black text-white hover:bg-blue-800"><FileText className="size-4" />Visualiser</a>
+      </div>
+      {isPdf ? <iframe src={url} title={label} className="h-80 w-full border border-slate-200 bg-white" /> : null}
+    </div>
+  );
+}
+
+function ImageAttachmentDetail({ url, label }: { url: string; label: string }) {
+  return (
+    <div className="flex items-center gap-4 border border-slate-200 bg-slate-50 p-4">
+      <img src={url} alt={label} className="h-32 w-32 border border-slate-200 bg-white object-cover" />
+      <div className="min-w-0">
+        <p className="text-sm font-black text-slate-900">{label}</p>
+        <a href={url} target="_blank" rel="noreferrer" className="mt-3 inline-flex border border-blue-700 bg-blue-700 px-3 py-2 text-xs font-black text-white hover:bg-blue-800">Ouvrir la photo</a>
+      </div>
+    </div>
+  );
+}
+
 function FileAttachmentDetail({ file }: { file: Record<string, any> }) {
-  const url = String(file.url || file.secureUrl || "");
+  const url = attachmentUrl(file);
   const fileName = String(file.fileName || file.originalFilename || "Document médical");
   const contentType = String(file.contentType || file.mimeType || "Document");
   return (
@@ -1288,6 +1527,35 @@ function FileAttachmentDetail({ file }: { file: Record<string, any> }) {
 
 function isFileAttachment(value: any) {
   return Boolean(value && typeof value === "object" && !Array.isArray(value) && (value.url || value.secureUrl) && (value.fileName || value.contentType || value.provider === "cloudinary"));
+}
+
+function attachmentUrl(value: Record<string, any>) {
+  return String(value.url || value.secureUrl || value.secure_url || "");
+}
+
+function isImageAttachment(value: any) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const contentType = String(value.contentType || value.mimeType || "");
+  return Boolean(attachmentUrl(value) && (contentType.startsWith("image/") || isImageUrl(attachmentUrl(value))));
+}
+
+function isImageUrl(value: any) {
+  const text = String(value || "");
+  return /^https?:\/\//i.test(text) && /\.(png|jpe?g|webp|gif|avif)(\?|#|$)/i.test(text);
+}
+
+function isVisualDocumentUrl(value: any, key: string) {
+  const text = String(value || "");
+  if (!/^https?:\/\//i.test(text)) return false;
+  const normalized = key.toLowerCase();
+  return normalized.includes("url") || normalized.includes("document") || normalized.includes("file") || /\.pdf(\?|#|$)/i.test(text);
+}
+
+function documentUrlLabel(key: string) {
+  const normalized = key.toLowerCase();
+  if (normalized.includes("dipl") || normalized.includes("credential") || normalized.includes("documenturl")) return "Diplôme / justificatif";
+  if (normalized.includes("photo")) return "Photo";
+  return "Document attaché";
 }
 
 function cleanContentType(value: string) {
@@ -1329,11 +1597,17 @@ function isTechnicalDetailKey(key: string) {
 
 function displayDetailValue(row: any, key: string, referenceLabels: Record<string, Record<string, string>>) {
   const value = row?.[key];
+  if (isPhotoDetailKey(key) || isImageAttachment(value) || isImageUrl(value) || isVisualDocumentUrl(value, key)) return value;
   const cell = displayCell(row, key, referenceLabels);
   if (cell !== "-" && cell !== formatValue(value)) return cell;
   if (isUuid(value)) return "Référence interne";
   if (Array.isArray(value) && value.every((item) => isUuid(item))) return `${value.length} référence${value.length > 1 ? "s" : ""} interne${value.length > 1 ? "s" : ""}`;
   return value;
+}
+
+function isPhotoDetailKey(key: string) {
+  const normalized = key.toLowerCase();
+  return normalized.includes("photo") || normalized.includes("image") || normalized === "avatarurl";
 }
 
 function objectDetailText(value: Record<string, any>) {
@@ -1392,6 +1666,7 @@ function getModuleActions(endpoint: string): OperationAction[] {
 }
 
 function getRowActions(endpoint: string, row: any): OperationAction[] {
+  if (endpoint === "/hr/employees") return [{ kind: "print-employee-badge", label: "Imprimer badge", icon: IdCard }];
   if (endpoint === "/billing/invoices") return [
     { kind: "print-invoice", label: "Imprimer PDF", icon: Printer },
     ...(canPayInvoice(row) ? [{ kind: "pay-invoice" as const, label: "Encaisser", icon: CreditCard }] : []),
@@ -1441,6 +1716,7 @@ function moneyNumber(value: any) {
 
 function canRunOperation(kind: OperationKind, canCreate: boolean, canUpdate: boolean, canPrint: boolean) {
   if (kind === "print-invoice") return canPrint;
+  if (kind === "print-employee-badge") return canPrint;
   if (kind === "download-backup") return true;
   if (kind === "preview-invoice" || kind === "generate-invoice") return true;
   if (kind === "stock-movement") return canCreate;

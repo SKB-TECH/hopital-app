@@ -18,6 +18,7 @@ export type OperationKind =
   | "close-queue"
   | "print-invoice"
   | "download-backup"
+  | "print-employee-badge"
   | "patient-record";
 
 export type OperationState = { kind: OperationKind; row?: any; endpoint?: string };
