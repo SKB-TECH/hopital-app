@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bell, CheckCircle2, Clock, Droplets, HeartPulse, Maximize2, Monitor, Settings, ShieldCheck, Volume2 } from "lucide-react";
+import { Bell, CheckCircle2, Clock, Maximize2, Monitor, Plus, Settings, Trash2, Volume2 } from "lucide-react";
 
 type QueuePayload = {
   nowCalling: Array<{ ticketNumber: string; destination?: string; status: string }>;
@@ -9,30 +9,28 @@ type QueuePayload = {
   updatedAt: string;
 };
 type Option = { id: string; label: string; description?: string };
+type TvSlide = { title: string; subtitle: string; advice: string; image: string };
 
 const storageKey = "afia.waitingRoom.display";
 
-const slides = [
+const defaultSlides: TvSlide[] = [
   {
     title: "Bienvenue à Afia-Smart",
     subtitle: "Notre équipe vous appellera par votre numéro de ticket.",
     advice: "Gardez votre ticket visible et restez proche de l’écran.",
     image: "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=1600&q=80",
-    icon: HeartPulse,
   },
   {
     title: "Pendant l’attente",
     subtitle: "Préparez vos documents médicaux et votre pièce d’identité.",
     advice: "Si votre état s’aggrave, signalez-le immédiatement à la réception.",
     image: "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1600&q=80",
-    icon: ShieldCheck,
   },
   {
     title: "Hydratation et hygiène",
     subtitle: "Lavez-vous les mains ou utilisez du gel hydroalcoolique.",
     advice: "Pour protéger les autres patients, couvrez la bouche en cas de toux.",
     image: "https://images.unsplash.com/photo-1584515933487-779824d29309?auto=format&fit=crop&w=1600&q=80",
-    icon: Droplets,
   },
 ];
 
@@ -45,6 +43,7 @@ export default function WaitingRoomDisplayPage() {
   const [data, setData] = useState<QueuePayload>({ nowCalling: [], waiting: [], updatedAt: new Date().toISOString() });
   const [error, setError] = useState("");
   const [slideIndex, setSlideIndex] = useState(0);
+  const [slides, setSlides] = useState<TvSlide[]>(defaultSlides);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const lastAnnouncedTicket = useRef("");
@@ -57,6 +56,7 @@ export default function WaitingRoomDisplayPage() {
     const parsed = saved ? JSON.parse(saved) : {};
     const nextFacilityId = params.get("facilityId") || parsed.facilityId || "";
     const nextPractitionerId = params.get("practitionerId") || parsed.practitionerId || "";
+    if (Array.isArray(parsed.slides) && parsed.slides.length) setSlides(normalizeSlides(parsed.slides));
     setFacilityId(nextFacilityId);
     setPractitionerId(nextPractitionerId);
     setConfigured(Boolean(nextFacilityId || nextPractitionerId));
@@ -64,8 +64,8 @@ export default function WaitingRoomDisplayPage() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify({ facilityId, practitionerId }));
-  }, [facilityId, practitionerId]);
+    localStorage.setItem(storageKey, JSON.stringify({ facilityId, practitionerId, slides }));
+  }, [facilityId, practitionerId, slides]);
 
   const query = useMemo(() => {
     const params = new URLSearchParams();
@@ -109,7 +109,7 @@ export default function WaitingRoomDisplayPage() {
   useEffect(() => {
     const timer = setInterval(() => setSlideIndex((current) => (current + 1) % slides.length), 9000);
     return () => clearInterval(timer);
-  }, []);
+  }, [slides.length]);
 
   useEffect(() => {
     if (!("speechSynthesis" in window)) return;
@@ -122,8 +122,38 @@ export default function WaitingRoomDisplayPage() {
   }, []);
 
   const mainTicket = data.nowCalling[0];
-  const currentSlide = slides[slideIndex];
-  const SlideIcon = currentSlide.icon;
+  const currentSlide = slides[slideIndex] || defaultSlides[0];
+
+  function normalizeSlides(value: unknown[]): TvSlide[] {
+    const normalized = value
+      .map((item) => item && typeof item === "object" ? item as Partial<TvSlide> : null)
+      .filter(Boolean)
+      .map((item) => ({
+        title: String(item?.title || "Information hôpital"),
+        subtitle: String(item?.subtitle || "Merci de surveiller votre numéro de ticket."),
+        advice: String(item?.advice || ""),
+        image: String(item?.image || defaultSlides[0].image),
+      }));
+    return normalized.length ? normalized : defaultSlides;
+  }
+
+  function updateSlide(index: number, key: keyof TvSlide, value: string) {
+    setSlides((current) => current.map((slide, slideIndex) => slideIndex === index ? { ...slide, [key]: value } : slide));
+  }
+
+  function addSlide() {
+    setSlides((current) => [...current, { title: "Partenaire santé", subtitle: "Votre message publicitaire ou institutionnel.", advice: "Ajoutez ici le texte court à afficher sur la TV.", image: defaultSlides[0].image }]);
+  }
+
+  function removeSlide(index: number) {
+    setSlides((current) => current.length <= 1 ? current : current.filter((_, slideIndex) => slideIndex !== index));
+    setSlideIndex(0);
+  }
+
+  function resetSlides() {
+    setSlides(defaultSlides);
+    setSlideIndex(0);
+  }
 
   function startDisplay() {
     setConfigured(Boolean(facilityId || practitionerId));
@@ -233,7 +263,7 @@ export default function WaitingRoomDisplayPage() {
   return (
     <main className="min-h-screen bg-[#07111f] text-white">
       {!configured && (
-        <section className="mx-auto flex min-h-screen max-w-4xl flex-col justify-center px-8">
+        <section className="mx-auto flex min-h-screen max-w-6xl flex-col justify-center px-8 py-10">
           <div className="mb-8 flex items-center gap-4">
             <div className="flex h-16 w-16 items-center justify-center bg-blue-600">
               <Monitor className="h-9 w-9" />
@@ -256,6 +286,41 @@ export default function WaitingRoomDisplayPage() {
               <Maximize2 className="h-5 w-5" />
               Lancer en plein écran
             </button>
+          </div>
+
+          <div className="mt-6 border border-white/10 bg-white/5 p-6">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-black">Images et textes TV</h2>
+                <p className="mt-1 text-sm font-semibold text-slate-300">Ajoutez les messages de l’hôpital, partenaires ou publicités qui défileront à l’écran.</p>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={addSlide} className="inline-flex h-11 items-center gap-2 bg-white px-4 text-sm font-black text-slate-950">
+                  <Plus className="h-4 w-4" />
+                  Ajouter
+                </button>
+                <button onClick={resetSlides} className="h-11 border border-white/15 px-4 text-sm font-black text-white">
+                  Réinitialiser
+                </button>
+              </div>
+            </div>
+
+            <div className="grid max-h-[46vh] gap-4 overflow-y-auto pr-2">
+              {slides.map((slide, index) => (
+                <div key={`${slide.title}-${index}`} className="grid gap-3 border border-white/10 bg-slate-950/40 p-4 lg:grid-cols-[180px_1fr_auto]">
+                  <div className="min-h-32 bg-cover bg-center" style={{ backgroundImage: `url(${slide.image || defaultSlides[0].image})` }} />
+                  <div className="grid gap-3">
+                    <input value={slide.title} onChange={(event) => updateSlide(index, "title", event.target.value)} className="h-11 bg-white px-3 font-bold text-slate-950" placeholder="Titre affiché" />
+                    <input value={slide.subtitle} onChange={(event) => updateSlide(index, "subtitle", event.target.value)} className="h-11 bg-white px-3 font-bold text-slate-950" placeholder="Texte principal" />
+                    <input value={slide.advice} onChange={(event) => updateSlide(index, "advice", event.target.value)} className="h-11 bg-white px-3 font-bold text-slate-950" placeholder="Message court / publicité" />
+                    <input value={slide.image} onChange={(event) => updateSlide(index, "image", event.target.value)} className="h-11 bg-white px-3 font-bold text-slate-950" placeholder="URL image partenaire ou hôpital" />
+                  </div>
+                  <button onClick={() => removeSlide(index)} disabled={slides.length <= 1} className="flex h-11 w-11 items-center justify-center border border-white/15 text-white disabled:opacity-30" title="Supprimer">
+                    <Trash2 className="h-5 w-5" />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       )}
@@ -309,11 +374,7 @@ export default function WaitingRoomDisplayPage() {
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,.35),transparent_35%),radial-gradient(circle_at_80%_10%,rgba(16,185,129,.20),transparent_28%)]" />
 
               <div className="relative z-10 flex min-h-full flex-col justify-between p-10 xl:p-12">
-                <div className="flex items-center justify-between gap-6">
-                  <div className="inline-flex items-center gap-3 rounded-full bg-white/12 px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-blue-100 ring-1 ring-white/15 backdrop-blur">
-                    <SlideIcon className="h-5 w-5" />
-                    Conseil santé
-                  </div>
+                <div className="flex items-center justify-end gap-6">
                   <div className="flex gap-2">
                     {slides.map((slide, index) => (
                       <button
@@ -398,11 +459,6 @@ export default function WaitingRoomDisplayPage() {
                     <p className="text-2xl font-black text-slate-500">Aucun patient en attente.</p>
                   </div>
                 )}
-              </div>
-
-              <div className="mt-6 rounded-xl bg-slate-950 p-5 text-white">
-                <p className="text-sm font-black uppercase tracking-[0.16em] text-blue-200">Message</p>
-                <p className="mt-2 text-xl font-black">Merci de garder le calme et de laisser passer les urgences.</p>
               </div>
             </aside>
           </section>

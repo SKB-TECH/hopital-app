@@ -402,6 +402,7 @@ const HOSPITAL_LABELS: Record<string, string> = {
   contentHash: "Hash SHA-256",
   verificationPayload: "Payload vérification",
   binaryUrl: "Fichier sécurisé",
+  contentType: "Type fichier",
   storageProvider: "Stockage",
   versionLabel: "Version",
   duplicateReason: "Motif duplicata",
@@ -757,7 +758,7 @@ export const HOSPITAL_MODULES: HospitalModule[] = [
     dashboard("workforce", "Rapport RH", "/reports/workforce", ["activeEmployees", "attendanceToday", "attendanceRate", "staffByDepartment", "staffByPosition", "pendingLeaveApprovals", "expiringContracts", "payrollCost"], "Effectifs, présence, contrats et coût salarial."),
   ] },
   { key: "document-security", title: "Imprimés de valeur", description: "Registre officiel, duplicata, audit immuable et bacs d’impression sécurisés.", group: "admin", resources: [
-    resource("registry", "Registre documentaire", "/value-documents/registry", [select("documentType", "Type document", ["FACTURE", "RECU_CAISSE", "ORDONNANCE_STUPEFIANT", "CONSTAT_NAISSANCE", "CERTIFICAT_DECES"], true), ref("patientId", "Patient"), text("sourceModule", "Module source"), text("sourceId", "Référence source"), json("payload", "Données critiques", '{"patientId":"","amount":0,"date":""}'), text("binaryUrl", "Fichier sécurisé"), text("storageProvider", "Stockage")], cols("officialSequence", "documentType", "patientName", "medicalRecordNumber", "versionLabel", "integrityStatus", "status", "issuedByName", "issuedAt")),
+    resource("registry", "Registre documentaire", "/value-documents/registry", [select("documentType", "Type document", ["FACTURE", "RECU_CAISSE", "ORDONNANCE_STUPEFIANT", "CONSTAT_NAISSANCE", "CERTIFICAT_DECES"], true), ref("patientId", "Patient"), text("sourceModule", "Module source"), text("sourceId", "Référence source"), json("payload", "Données critiques", '{"patientId":"","amount":0,"date":""}'), text("binaryUrl", "PDF officiel sécurisé"), text("storageProvider", "Stockage")], cols("officialSequence", "documentType", "patientName", "medicalRecordNumber", "versionLabel", "contentType", "integrityStatus", "status", "issuedByName", "issuedAt")),
     resource("audit", "Audit immuable", "/value-documents/audit", [], cols("officialSequence", "action", "userName", "ipAddress", "actionFingerprint", "occurredAt"), { canCreate: false, canUpdate: false }),
     resource("hardware-triggers", "Imprimantes sécurisées", "/value-documents/hardware-triggers", [text("printerId", "ID imprimante", true), text("printerName", "Nom imprimante", true), text("secureTrayName", "Bac sécurisé", true), select("documentType", "Type document", ["FACTURE", "RECU_CAISSE", "ORDONNANCE_STUPEFIANT", "CONSTAT_NAISSANCE", "CERTIFICAT_DECES"], true), text("authorizedRole", "Rôle autorisé", true), text("cupsQueue", "File CUPS"), text("networkUri", "URI réseau"), select("active", "Actif", ["true", "false"])], cols("printerName", "secureTrayName", "documentType", "authorizedRole", "cupsQueue", "active")),
   ] },
