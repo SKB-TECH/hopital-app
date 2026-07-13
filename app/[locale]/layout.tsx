@@ -5,11 +5,21 @@ import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { siteConfig } from "@/config/site";
 import { SidebarProvider } from "@/contexts/SidebarContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import "../globals.css";
 import {ReactQueryProvider} from "@/providers";
 import { TenantConfigProvider } from "@/providers/TenantConfigProvider";
 import {Toaster} from "sonner";
 import PWARegister from "@/components/PWARegister";
+
+const themeBootstrap = `
+try {
+  var stored = localStorage.getItem('afia-theme');
+  var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if (stored === 'dark' || (!stored && prefersDark)) document.documentElement.classList.add('dark');
+  document.documentElement.style.colorScheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+} catch (_) {}
+`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
@@ -81,32 +91,35 @@ export default async function LocaleLayout({
           suppressHydrationWarning
       >
       <body className="min-h-full bg-background text-foreground">
+      <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
       <NextIntlClientProvider messages={messages}>
         <TenantConfigProvider>
-          <SidebarProvider>
-            <div className="flex min-h-screen flex-col">
-              <main className="flex-1">
-                <ReactQueryProvider>
-                  <PWARegister />
-                  {children}
-                </ReactQueryProvider>
-                <Toaster
-                    position="top-right"
-                    richColors
-                    closeButton
-                    toastOptions={{
-                      classNames: {
-                        toast: "rounded border border-slate-200 bg-white shadow-lg",
-                        title: "text-sm font-semibold text-slate-900",
-                        description: "text-sm text-slate-500",
-                        error: "border-red-200 bg-red-50",
-                        success: "border-green-200 bg-green-50",
-                      },
-                    }}
-                />
-              </main>
-            </div>
-          </SidebarProvider>
+          <ThemeProvider>
+            <SidebarProvider>
+              <div className="flex min-h-screen flex-col">
+                <main className="flex-1">
+                  <ReactQueryProvider>
+                    <PWARegister />
+                    {children}
+                  </ReactQueryProvider>
+                  <Toaster
+                      position="top-right"
+                      richColors
+                      closeButton
+                      toastOptions={{
+                        classNames: {
+                          toast: "rounded border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900",
+                          title: "text-sm font-semibold text-slate-900 dark:text-slate-50",
+                          description: "text-sm text-slate-500 dark:text-slate-300",
+                          error: "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950",
+                          success: "border-green-200 bg-green-50 dark:border-emerald-900 dark:bg-emerald-950",
+                        },
+                      }}
+                  />
+                </main>
+              </div>
+            </SidebarProvider>
+          </ThemeProvider>
         </TenantConfigProvider>
       </NextIntlClientProvider>
       </body>

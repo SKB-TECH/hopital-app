@@ -464,12 +464,12 @@ export default function HospitalResourceConsole() {
 
   if (userLoading || !user) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
         <DashboardSidebar />
         <div className={`transition-all duration-300 ${isCollapsed ? "lg:ml-[84px]" : "lg:ml-[340px]"}`}>
           <DashboardNavbar />
           <main className="p-8">
-            <div className="border border-slate-200 bg-white p-16 text-center text-sm font-semibold text-slate-500">
+            <div className="border border-slate-200 bg-white p-16 text-center text-sm font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
               <Loader2 className="mx-auto mb-3 size-6 animate-spin text-blue-700" />
               {hospitalUi(locale, "checkingAccess")}
             </div>
@@ -481,7 +481,7 @@ export default function HospitalResourceConsole() {
 
   if (!canAccessModule) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
         <DashboardSidebar />
         <div className={`transition-all duration-300 ${isCollapsed ? "lg:ml-[84px]" : "lg:ml-[340px]"}`}>
           <DashboardNavbar />
@@ -497,7 +497,7 @@ export default function HospitalResourceConsole() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <DashboardSidebar />
       <div className={`transition-all duration-300 ${isCollapsed ? "lg:ml-[84px]" : "lg:ml-[340px]"}`}>
         <DashboardNavbar />
@@ -505,12 +505,12 @@ export default function HospitalResourceConsole() {
           {error && <ProfessionalError message={error} />}
 
           <div className="space-y-6">
-              <section className="overflow-hidden border border-slate-200 bg-white">
-                <div className="border-b border-slate-200 px-6 py-5">
+              <section className="overflow-hidden border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+                <div className="border-b border-slate-200 px-6 py-5 dark:border-slate-800">
                   <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
                     <div>
-                      <h2 className="text-2xl font-black text-slate-950">{selected.title}</h2>
-                      <p className="mt-1 text-sm font-medium text-slate-500">{selected.description}</p>
+                      <h2 className="text-2xl font-black text-slate-950 dark:text-white">{selected.title}</h2>
+                      <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">{selected.description}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {canCreateSelected && <button onClick={openCreate} className="inline-flex h-11 items-center gap-2 bg-blue-700 px-4 text-sm font-black text-white hover:bg-blue-800"><Plus className="size-4" />{hospitalUi(locale, "new")}</button>}

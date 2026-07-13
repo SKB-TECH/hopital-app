@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, ChevronDown, CircleUserRound, LogOut, Menu, Trash2, X } from "lucide-react";
+import { Bell, ChevronDown, CircleUserRound, LogOut, Menu, Moon, Settings, Sun, Trash2, X } from "lucide-react";
 import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import LanguageSwitcher from "@/shared/language-switcher";
@@ -9,6 +9,7 @@ import { useLogout, useMe } from "@/shared/hooks/auth.hooks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notificationsService } from "@/shared/services/notifications.service";
 import { useSidebar } from "@/contexts/SidebarContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function DashboardNavbar() {
     const locale = useLocale();
@@ -18,6 +19,7 @@ export default function DashboardNavbar() {
     const [profileOpen, setProfileOpen] = useState(false);
     const queryClient = useQueryClient();
     const { isMobileOpen, openMobileSidebar, closeMobileSidebar } = useSidebar();
+    const { isDark, toggleTheme } = useTheme();
 
     const { data: user, isLoading, isError } = useMe();
     const logout = useLogout();
@@ -63,6 +65,14 @@ export default function DashboardNavbar() {
                     <h1 className="text-base font-semibold text-slate-900 sm:text-xl lg:hidden">Afia-Smart</h1>
 
                     <div className="flex items-center gap-4 ml-auto">
+                        <button
+                            onClick={toggleTheme}
+                            className="inline-flex size-10 items-center justify-center border border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-100 dark:text-slate-200 dark:hover:border-slate-700 dark:hover:bg-slate-800"
+                            title={isDark ? (isEn ? "Light mode" : "Mode clair") : (isEn ? "Dark mode" : "Mode sombre")}
+                        >
+                            {isDark ? <Sun className="size-5" /> : <Moon className="size-5" />}
+                        </button>
+
                         <button onClick={() => setNotificationsOpen((value) => !value)} className="relative p-2 rounded hover:bg-slate-100">
                             <Bell className="size-5 text-slate-600" />
                             {Number(unreadCount) > 0 && <span className="absolute -right-1 -top-1 flex min-w-5 items-center justify-center bg-red-600 px-1.5 py-0.5 text-[10px] font-black text-white">{Number(unreadCount) > 99 ? "99+" : unreadCount}</span>}
@@ -141,6 +151,13 @@ export default function DashboardNavbar() {
                                     <p className="mt-1 break-all text-xs text-slate-500">{user?.email}</p>
                                     {roles && <p className="mt-2 text-[11px] font-medium uppercase tracking-wide text-blue-700">{roles}</p>}
                                 </div>
+                                <button
+                                    onClick={() => { setProfileOpen(false); router.push(`/${locale}/settings`); }}
+                                    className="flex w-full items-center gap-3 border-b border-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-800"
+                                >
+                                    <Settings className="size-4" />
+                                    {isEn ? "My account" : "Mon compte"}
+                                </button>
                                 <button
                                     onClick={handleLogout}
                                     disabled={logout.isPending}

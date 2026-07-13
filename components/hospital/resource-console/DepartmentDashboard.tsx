@@ -18,7 +18,7 @@ const toneClass: Record<Tone, { icon: string; line: string; text: string; soft: 
 export function DepartmentDashboard({ loading, data, columns, locale = "fr" }: { loading: boolean; data: Record<string, any>; columns: DashboardColumn[]; locale?: string }) {
   if (loading) {
     return (
-      <div className="rounded-lg bg-[#fbfaff] p-16 text-center text-sm font-semibold text-slate-500">
+      <div className="rounded-lg bg-[#fbfaff] p-16 text-center text-sm font-semibold text-slate-500 dark:bg-slate-950 dark:text-slate-300">
         <Loader2 className="mx-auto mb-3 size-6 animate-spin text-violet-700" />
         {locale === "en" ? "Loading dashboard..." : "Chargement du tableau de bord..."}
       </div>
@@ -45,7 +45,7 @@ export function DepartmentDashboard({ loading, data, columns, locale = "fr" }: {
   const hasSidePanel = alerts.length > 0 || Boolean(sideColumn && rowsFromValue(data?.[sideColumn.key]).length > 0);
 
   return (
-    <div className="space-y-5 bg-[#fbfaff] p-4 sm:p-6">
+    <div className="space-y-5 bg-[#fbfaff] p-4 dark:bg-slate-950 sm:p-6">
       <section className={metricGridClass(metrics.length)}>
         {metrics.map((column, index) => (
           <DashboardMetric key={column.key} label={displayLabel(column)} name={column.key} value={data?.[column.key]} tone={TONES[index % TONES.length]} index={index} />
@@ -445,18 +445,18 @@ function DashboardMetric({ label, name, value, tone, index }: { label: string; n
   const trend = trendValue(name, numeric, index);
 
   return (
-    <article className="rounded-lg border border-slate-100 bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.045)]">
+    <article className="rounded-lg border border-slate-100 bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.045)] dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
       <div className="flex items-start justify-between gap-4">
         <div className={`flex size-11 items-center justify-center rounded-lg ${toneClass[tone].icon}`}>{metricIcon(name)}</div>
         <MiniSparkline value={numeric} tone={tone} index={index} negative={negative} />
       </div>
-      <p className="mt-4 line-clamp-1 text-xs font-bold text-slate-500">{label}</p>
+      <p className="mt-4 line-clamp-1 text-xs font-bold text-slate-500 dark:text-slate-300">{label}</p>
       <div className="mt-1 flex items-end justify-between gap-3">
-        <p className="truncate text-2xl font-black tracking-tight text-slate-950">{formatDashboardNumber(metricValue)}{percentage ? <span className="ml-1 text-sm text-slate-400">%</span> : null}</p>
+        <p className="truncate text-2xl font-black tracking-tight text-slate-950 dark:text-white">{formatDashboardNumber(metricValue)}{percentage ? <span className="ml-1 text-sm text-slate-400 dark:text-slate-500">%</span> : null}</p>
       </div>
       <div className="mt-4 flex items-center gap-2 text-[11px] font-bold">
         <span className={negative ? "text-rose-600" : "text-emerald-600"}>{negative ? "↓" : "↑"} {trend}%</span>
-        <span className="text-slate-400">{index % 2 ? "vs période précédente" : "sur la période"}</span>
+        <span className="text-slate-400 dark:text-slate-500">{index % 2 ? "vs période précédente" : "sur la période"}</span>
       </div>
     </article>
   );
@@ -469,17 +469,17 @@ function MainChartPanel({ column, data, fallbackColumns, locale }: { column?: Da
   const title = column ? displayLabel(column) : (locale === "en" ? "Operational overview" : "Vue opérationnelle");
 
   return (
-    <section className="rounded-lg border border-slate-100 bg-white p-5 shadow-[0_12px_28px_rgba(15,23,42,0.045)]">
+    <section className="rounded-lg border border-slate-100 bg-white p-5 shadow-[0_12px_28px_rgba(15,23,42,0.045)] dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-base font-black text-slate-950">{title}</h3>
-          <p className="mt-1 text-xs font-semibold text-slate-400">{locale === "en" ? "Consolidated trend" : "Tendance consolidée"}</p>
+          <h3 className="text-base font-black text-slate-950 dark:text-white">{title}</h3>
+          <p className="mt-1 text-xs font-semibold text-slate-400 dark:text-slate-500">{locale === "en" ? "Consolidated trend" : "Tendance consolidée"}</p>
         </div>
-        <button className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600">{locale === "en" ? "Monthly" : "Mensuel"}</button>
+        <button className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">{locale === "en" ? "Monthly" : "Mensuel"}</button>
       </div>
-      <div className="relative h-[300px] overflow-hidden rounded-lg bg-gradient-to-b from-violet-50/80 to-white">
+      <div className="relative h-[300px] overflow-hidden rounded-lg bg-gradient-to-b from-violet-50/80 to-white dark:from-slate-800/80 dark:to-slate-950">
         <svg viewBox="0 0 820 300" className="h-full w-full" role="img" aria-label={title}>
-          {[0, 1, 2, 3].map((line) => <line key={line} x1="45" x2="790" y1={56 + line * 58} y2={56 + line * 58} stroke="#e8e5f2" strokeWidth="1" />)}
+          {[0, 1, 2, 3].map((line) => <line key={line} x1="45" x2="790" y1={56 + line * 58} y2={56 + line * 58} className="stroke-slate-200 dark:stroke-slate-800" strokeWidth="1" />)}
           <defs>
             <linearGradient id="hospital-dashboard-area" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#7c3aed" stopOpacity="0.26" />
@@ -488,9 +488,9 @@ function MainChartPanel({ column, data, fallbackColumns, locale }: { column?: Da
           </defs>
           <path d={`${areaPath(points)} L ${points.at(-1)?.x ?? 45} 265 L ${points[0]?.x ?? 45} 265 Z`} fill="url(#hospital-dashboard-area)" />
           <path d={smoothPath(points)} fill="none" stroke="#7c3aed" strokeWidth="4" strokeLinecap="round" />
-          {points.map((point, index) => index % Math.ceil(points.length / 6 || 1) === 0 ? <circle key={index} cx={point.x} cy={point.y} r="4" fill="#7c3aed" stroke="white" strokeWidth="3" /> : null)}
+          {points.map((point, index) => index % Math.ceil(points.length / 6 || 1) === 0 ? <circle key={index} cx={point.x} cy={point.y} r="4" fill="#7c3aed" className="stroke-white dark:stroke-slate-950" strokeWidth="3" /> : null)}
         </svg>
-        <div className="absolute inset-x-5 bottom-4 grid grid-cols-4 gap-2 text-[11px] font-bold text-slate-400 md:grid-cols-6">
+        <div className="absolute inset-x-5 bottom-4 grid grid-cols-4 gap-2 text-[11px] font-bold text-slate-400 dark:text-slate-500 md:grid-cols-6">
           {(rows.length ? rows : fallbackColumns).slice(0, 6).map((row, index) => <span key={index} className="truncate">{shortLabel(rowLabel(row))}</span>)}
         </div>
       </div>
@@ -501,21 +501,21 @@ function MainChartPanel({ column, data, fallbackColumns, locale }: { column?: Da
 function SidePanel({ alerts, column, data, locale }: { alerts: DashboardColumn[]; column?: DashboardColumn; data: Record<string, any>; locale: string }) {
   const rows = column ? rowsFromValue(data?.[column.key]).slice(0, 6) : alerts.map((item) => ({ indicateur: displayLabel(item), valeur: data?.[item.key], status: "A surveiller" }));
   return (
-    <section className="rounded-lg border border-slate-100 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.045)]">
-      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-        <h3 className="text-base font-black text-slate-950">{column ? displayLabel(column) : (locale === "en" ? "Priority items" : "Points prioritaires")}</h3>
+    <section className="rounded-lg border border-slate-100 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.045)] dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+        <h3 className="text-base font-black text-slate-950 dark:text-white">{column ? displayLabel(column) : (locale === "en" ? "Priority items" : "Points prioritaires")}</h3>
         <span className="text-xs font-black text-violet-700">{locale === "en" ? "View all" : "Tout voir"}</span>
       </div>
       <div className="overflow-hidden">
         <table className="w-full">
-          <thead className="bg-slate-50 text-left text-[11px] font-black uppercase text-slate-400">
+          <thead className="bg-slate-50 text-left text-[11px] font-black uppercase text-slate-400 dark:bg-slate-950 dark:text-slate-500">
             <tr><th className="px-5 py-3">{locale === "en" ? "Item" : "Élément"}</th><th className="px-3 py-3 text-right">Valeur</th><th className="px-5 py-3 text-right">Statut</th></tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {rows.length ? rows.map((row, index) => {
               const value = findNumericValue(row);
-              return <tr key={index} className="text-sm"><td className="max-w-[180px] truncate px-5 py-3 font-bold text-slate-700">{rowLabel(row)}</td><td className="px-3 py-3 text-right font-black text-slate-950">{formatDashboardNumber(value ?? "-")}</td><td className="px-5 py-3 text-right"><StatusPill warning={Boolean(value && Number(value) > 0 && alerts.length)} /></td></tr>;
-            }) : <tr><td colSpan={3} className="px-5 py-12 text-center text-sm font-semibold text-slate-400">{locale === "en" ? "No data available." : "Aucune donnée disponible."}</td></tr>}
+              return <tr key={index} className="text-sm"><td className="max-w-[180px] truncate px-5 py-3 font-bold text-slate-700 dark:text-slate-200">{rowLabel(row)}</td><td className="px-3 py-3 text-right font-black text-slate-950 dark:text-white">{formatDashboardNumber(value ?? "-")}</td><td className="px-5 py-3 text-right"><StatusPill warning={Boolean(value && Number(value) > 0 && alerts.length)} /></td></tr>;
+            }) : <tr><td colSpan={3} className="px-5 py-12 text-center text-sm font-semibold text-slate-400 dark:text-slate-500">{locale === "en" ? "No data available." : "Aucune donnée disponible."}</td></tr>}
           </tbody>
         </table>
       </div>

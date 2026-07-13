@@ -29,6 +29,14 @@ export const authService = {
     const res = await api.get("/auth/me");
     return res.data;
   },
+  async updateProfile(payload: { email?: string; firstName?: string; lastName?: string; phone?: string; department?: string }): Promise<any> {
+    const res = await api.patch("/auth/me", payload);
+    return res.data;
+  },
+  async changePassword(payload: { currentPassword: string; newPassword: string }): Promise<{ changed: boolean }> {
+    const res = await api.post("/auth/change-password", payload);
+    return res.data;
+  },
   async register(_payload?: any): Promise<never> { throw new Error("La création des comptes se fait par Administration > Utilisateurs."); },
   async forgotPassword(_payload?: any): Promise<{ message: string }> { return { message: "Réinitialisation à connecter au service mail hôpital." }; },
   async sendOtp(_payload?: any): Promise<{ message: string }> { return { message: "OTP non activé." }; },
