@@ -10,6 +10,7 @@ const SUPPORTED_LOCALES = new Set<string>(routing.locales);
 
 const PUBLIC_LOCALE_PATHS = new Set([
   "",
+  "login",
   "forgot-password",
   "login-error",
   "otp-verification",
@@ -77,7 +78,7 @@ export function proxy(request: NextRequest) {
   }
 
   if (!accessToken && !isPublicPath) {
-    const loginUrl = new URL(`/${locale}`, request.url);
+    const loginUrl = new URL(`/${locale}/login`, request.url);
     if (pathWithoutLocale) {
       loginUrl.searchParams.set("next", `${pathname}${search}`);
     }
