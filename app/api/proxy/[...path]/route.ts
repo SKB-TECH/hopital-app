@@ -15,6 +15,7 @@ function buildHeaders(req: NextRequest) {
     const value = req.headers.get(key);
     if (value) headers.set(key, value);
   }
+  headers.set("x-forwarded-host", req.headers.get("host") || req.nextUrl.host);
   return headers;
 }
 type ProxyCtx = { params: { path: string[] } } | { params: Promise<{ path: string[] }> };
