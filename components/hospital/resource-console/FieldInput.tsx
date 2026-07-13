@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { BadgeDollarSign, Loader2, Plus, Trash2, UploadCloud } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { BadgeDollarSign, Camera, Loader2, Plus, Trash2, UploadCloud } from "lucide-react";
 import type { HospitalField } from "@/shared/types/hospital.types";
 import { api } from "@/shared/lib/http/api";
 import Autocomplete, { type AutocompleteOption } from "@/components/ui/autocomplete";
@@ -15,6 +15,10 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
   const [options, setOptions] = useState<AutocompleteOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraStarting, setCameraStarting] = useState(false);
+  const [cameraError, setCameraError] = useState("");
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     if (!field.reference) return;
@@ -36,6 +40,12 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
 
   const datalistId = `list-${field.name}`;
   const selectedValues = Array.isArray(value) ? value : typeof value === "string" && value ? [value] : [];
+
+  useEffect(() => {
+    if (videoRef.current && cameraStream) videoRef.current.srcObject = cameraStream;
+  }, [cameraStream]);
+
+  useEffect(() => () => stopCamera(), []);
 
   const uploadFile = async (file: File) => {
     setUploadingFile(true);
@@ -62,6 +72,46 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
     } finally {
       setUploadingFile(false);
     }
+  };
+
+  const startCamera = async () => {
+    setCameraError("");
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError("Caméra non disponible dans ce navigateur.");
+      return;
+    }
+    setCameraStarting(true);
+    try {
+      stopCamera();
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 960 }, height: { ideal: 960 } }, audio: false });
+      setCameraStream(stream);
+    } catch {
+      setCameraError("Autorisez l'accès caméra pour capturer la photo.");
+    } finally {
+      setCameraStarting(false);
+    }
+  };
+
+  const stopCamera = () => {
+    setCameraStream((stream) => {
+      stream?.getTracks().forEach((track) => track.stop());
+      return null;
+    });
+  };
+
+  const captureCameraPhoto = async () => {
+    const video = videoRef.current;
+    if (!video) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth || 720;
+    canvas.height = video.videoHeight || 720;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+    if (!blob) return;
+    stopCamera();
+    await uploadFile(new File([blob], `${field.name}-${Date.now()}.jpg`, { type: "image/jpeg" }));
   };
 
   return (
@@ -105,15 +155,47 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
         </select>
       ) : field.type === "json" ? (
         <RichTextEditor value={jsonValueToEditor(value)} onChange={onChange} minHeight="min-h-32" />
-      ) : field.type === "file" ? (
+      ) : field.type === "file" || field.type === "image" ? (
         <div className="space-y-3">
           <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center hover:border-blue-700 hover:bg-white">
-            {uploadingFile ? <Loader2 className="size-6 animate-spin text-blue-700" /> : <UploadCloud className="size-6 text-slate-500" />}
-            <span className="text-sm font-black text-slate-800">{uploadingFile ? "Téléversement..." : "Téléverser vers Cloudinary"}</span>
-            <span className="text-xs font-semibold text-slate-500">{field.placeholder || "PDF, image, DICOM ou document"}</span>
-            <input type="file" accept="application/pdf,image/*,text/plain,application/dicom,.dcm" className="hidden" disabled={uploadingFile} onChange={(event) => event.target.files?.[0] && uploadFile(event.target.files[0])} />
+            {imagePreview(value) ? (
+              <img src={imagePreview(value)} alt={field.label} className="h-28 w-28 border border-slate-200 object-cover" />
+            ) : uploadingFile ? (
+              <Loader2 className="size-6 animate-spin text-blue-700" />
+            ) : field.type === "image" ? (
+              <Camera className="size-7 text-slate-500" />
+            ) : (
+              <UploadCloud className="size-6 text-slate-500" />
+            )}
+            <span className="text-sm font-black text-slate-800">{uploadingFile ? "Téléversement..." : field.type === "image" ? "Capturer ou importer la photo" : "Téléverser vers Cloudinary"}</span>
+            <span className="text-xs font-semibold text-slate-500">{field.placeholder || (field.type === "image" ? "Caméra, PNG ou JPG" : "PDF, image, DICOM ou document")}</span>
+            <input type="file" accept={field.type === "image" ? "image/*" : "application/pdf,image/*,text/plain,application/dicom,.dcm"} capture={field.type === "image" ? "user" : undefined} className="hidden" disabled={uploadingFile} onChange={(event) => event.target.files?.[0] && uploadFile(event.target.files[0])} />
           </label>
-          {value ? <div className="border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">{typeof value === "string" ? value : value.fileName || value.url || "Fichier Cloudinary attaché"}</div> : null}
+          {field.type === "image" ? (
+            <div className="space-y-3">
+              {!cameraStream ? (
+                <button type="button" onClick={startCamera} disabled={cameraStarting || uploadingFile} className="inline-flex w-full items-center justify-center gap-2 border border-blue-700 bg-white px-4 py-3 text-sm font-black text-blue-800 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60">
+                  {cameraStarting ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
+                  Prendre une photo avec la caméra
+                </button>
+              ) : (
+                <div className="grid gap-3 border border-slate-200 bg-slate-950 p-3">
+                  <video ref={videoRef} autoPlay playsInline muted className="max-h-72 w-full bg-black object-cover" />
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <button type="button" onClick={captureCameraPhoto} disabled={uploadingFile} className="inline-flex items-center justify-center gap-2 bg-blue-700 px-4 py-3 text-sm font-black text-white hover:bg-blue-800">
+                      {uploadingFile ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
+                      Capturer
+                    </button>
+                    <button type="button" onClick={stopCamera} className="border border-white/30 px-4 py-3 text-sm font-black text-white hover:bg-white/10">
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              )}
+              {cameraError ? <p className="border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-black text-amber-800">{cameraError}</p> : null}
+            </div>
+          ) : null}
+          {value ? <div className="border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">{field.type === "image" ? "Photo employé attachée" : typeof value === "string" ? value : value.fileName || value.url || "Fichier Cloudinary attaché"}</div> : null}
         </div>
       ) : field.type === "color" ? (
         <div className="flex items-center gap-3">
@@ -129,6 +211,13 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
       )}
     </label>
   );
+}
+
+function imagePreview(value: any) {
+  if (!value) return "";
+  if (typeof value === "string" && /^https?:\/\//i.test(value)) return value;
+  if (typeof value === "object") return value.secureUrl || value.secure_url || value.url || "";
+  return "";
 }
 
 function PrescriptionItemsField({ value, onChange, locale }: { value: any; onChange: (value: any) => void; locale: string }) {

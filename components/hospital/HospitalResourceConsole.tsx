@@ -224,9 +224,10 @@ export default function HospitalResourceConsole() {
     setPosting(true);
     setError("");
     try {
-      const effectiveFields = editingRow?.id && selected.endpoint === "/users" ? selected.fields.filter((field) => field.name !== "password") : selected.fields;
+      const effectiveFields = editingRow?.id && selected.endpoint === "/users" ? selected.fields.filter((field) => !["email", "password"].includes(field.name)) : selected.fields;
       const payload = cleanPayload(form, effectiveFields);
       if (editingRow?.id && selected.endpoint === "/users") {
+        delete payload.email;
         delete payload.password;
       }
       let savedRow: any = null;
@@ -444,6 +445,45 @@ export default function HospitalResourceConsole() {
     }
   };
 
+  const printCurrentList = async () => {
+    if (!selected || isDashboard) return;
+    setPosting(true);
+    setError("");
+    try {
+      const { rows: fetchedRows, total } = await fetchPrintableRows(selected.endpoint, debouncedQuery, fromDate, toDate, statusFilter);
+      let printableRows = fetchedRows;
+      if (selected.endpoint === "/hr/attendance-events") {
+        const employees = await fetchPrintableRows("/hr/employees", "", "", "", "");
+        printableRows = buildAttendanceRegister(printableRows, employees.rows);
+      }
+      const printableTotal = selected.endpoint === "/hr/attendance-events" ? printableRows.length : total;
+      const printableLabels = await buildReferenceLabels(referenceKeysForRows(selected.columns.map((column) => column.key), printableRows), printableRows);
+      const filters = [
+        debouncedQuery ? `Recherche: ${debouncedQuery}` : "",
+        fromDate ? `Du: ${formatReportDate(fromDate, locale)}` : "",
+        toDate ? `Au: ${formatReportDate(toDate, locale)}` : "",
+        statusFilter ? `Statut: ${statusOptions.find((option) => option.value === statusFilter)?.label ?? statusFilter}` : "",
+      ].filter(Boolean);
+      printListDocument({
+        title: selected.title,
+        description: selected.description,
+        locale,
+        filters,
+        total: printableTotal,
+        rows: printableRows,
+        columns: selected.columns,
+        referenceLabels: printableLabels,
+      });
+      toast.success("Liste prête pour impression PDF.");
+    } catch (err: any) {
+      const message = readError(err);
+      setError(message);
+      toast.error(message);
+    } finally {
+      setPosting(false);
+    }
+  };
+
   const moduleActions = getModuleActions(selected.endpoint).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected));
   const isDashboard = selected.key === "dashboard" || (selected.canCreate === false && selected.fields.length === 0);
   const isAppointmentsCalendar = selected.endpoint === "/appointments";
@@ -524,6 +564,7 @@ export default function HospitalResourceConsole() {
                       {module.key === "reception" && <button onClick={() => window.open(`/${locale}/waiting-room/display`, "_blank", "noopener,noreferrer")} className="inline-flex h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-800 hover:bg-slate-50"><Monitor className="size-4" />Écran TV</button>}
                       {module.key === "reception" && <button onClick={() => window.open(`/${locale}/ticket-kiosk`, "_blank", "noopener,noreferrer")} className="inline-flex h-11 items-center gap-2 border border-blue-700 bg-white px-4 text-sm font-black text-blue-800 hover:bg-blue-50"><Printer className="size-4" />Impression tickets</button>}
                       {moduleActions.map((action) => <button key={action.kind} onClick={() => openOperation(action.kind)} className="inline-flex h-11 items-center gap-2 border border-blue-700 bg-white px-4 text-sm font-black text-blue-800 hover:bg-blue-50"><action.icon className="size-4" />{hospitalText(action.label, locale)}</button>)}
+                      {!isDashboard && <button onClick={printCurrentList} disabled={posting || loading} className="inline-flex h-11 items-center gap-2 border border-blue-700 bg-white px-4 text-sm font-black text-blue-800 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50">{posting ? <Loader2 className="size-4 animate-spin" /> : <Printer className="size-4" />}Imprimer la liste</button>}
                       <button onClick={load} className="inline-flex h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-800 hover:bg-slate-50"><RefreshCcw className="size-4" />{hospitalUi(locale, "refresh")}</button>
                     </div>
                   </div>
@@ -637,7 +678,7 @@ export default function HospitalResourceConsole() {
                   <button onClick={() => setFormOpen(false)} className="border border-slate-300 p-2 text-slate-600 hover:bg-slate-50"><X className="size-5" /></button>
                 </div>
                 <div className="p-7">
-                  {(!editingRow && !canCreateSelected) || (editingRow && !canUpdateSelected) ? <p className="bg-slate-50 p-4 text-sm text-slate-500">{hospitalUi(locale, "readOnlyResource")}</p> : <div className="grid gap-5 md:grid-cols-2">{selected.fields.map((field) => <FieldInput key={field.name} locale={locale} field={field} form={form} value={form[field.name]} onChange={(value) => setForm((current) => ({ ...current, [field.name]: value }))} />)}</div>}
+                  {(!editingRow && !canCreateSelected) || (editingRow && !canUpdateSelected) ? <p className="bg-slate-50 p-4 text-sm text-slate-500">{hospitalUi(locale, "readOnlyResource")}</p> : <div className="grid gap-5 md:grid-cols-2">{editableFields(selected.fields, selected.endpoint, Boolean(editingRow?.id)).map((field) => <FieldInput key={field.name} locale={locale} field={field} form={form} value={form[field.name]} onChange={(value) => setForm((current) => ({ ...current, [field.name]: value }))} />)}</div>}
 
                   <div className="mt-8 flex justify-end gap-3 border-t border-slate-200 pt-5">
                     <button onClick={() => setFormOpen(false)} className="h-12 border border-slate-300 bg-white px-5 text-sm font-black text-slate-800 hover:bg-slate-50">{hospitalUi(locale, "cancel")}</button>
@@ -664,6 +705,11 @@ function resourceQueryParams(endpoint: string, search: string, from: string, to:
     to: to || undefined,
     status: status || undefined,
   });
+}
+
+function editableFields(fields: any[], endpoint: string, editing: boolean) {
+  if (endpoint !== "/users" || !editing) return fields;
+  return fields.filter((field) => !["email", "password"].includes(field.name));
 }
 
 function readTotalRows(responseData: any, fallback: number) {
@@ -812,6 +858,164 @@ function splitWhoLine(line: string, delimiter: string) {
 function printPayloadData(moduleTitle: string, rows: any[]) {
   if (rows.length === 1 && rows[0] && typeof rows[0] === "object" && !Array.isArray(rows[0])) return { title: moduleTitle, ...rows[0] };
   return { title: moduleTitle, rows, rowsCount: rows.length };
+}
+
+async function fetchPrintableRows(endpoint: string, search: string, from: string, to: string, status: string) {
+  const limit = 100;
+  const maxRows = 1000;
+  let page = 1;
+  let total = 0;
+  const rows: any[] = [];
+
+  while (rows.length < maxRows) {
+    const response = await api.get(endpoint, { params: resourceQueryParams(endpoint, search, from, to, status, page, limit) });
+    const pageRows = normalizeRows(response.data);
+    total = readTotalRows(response.data, rows.length + pageRows.length);
+    rows.push(...pageRows);
+    if (!pageRows.length || rows.length >= total || pageRows.length < limit) break;
+    page += 1;
+  }
+
+  return { rows: rows.slice(0, maxRows), total };
+}
+
+function printListDocument({ title, description, locale, filters, total, rows, columns, referenceLabels }: { title: string; description: string; locale: string; filters: string[]; total: number; rows: any[]; columns: { key: string; label: string }[]; referenceLabels: Record<string, Record<string, string>> }) {
+  const printedAt = new Intl.DateTimeFormat(locale === "en" ? "en-US" : "fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(new Date());
+  const visibleColumns = printableColumns(columns, rows).slice(0, 10);
+  const bodyRows = rows.map((row) => visibleColumns.map((column) => escapeHtml(safeCellText(displayCell(row, column.key, referenceLabels)))));
+  const totalLabel = `${escapeHtml(String(total || rows.length))} ligne${(total || rows.length) > 1 ? "s" : ""}`;
+  const filtersLabel = filters.length ? filters.map(escapeHtml).join(" · ") : "Aucun filtre appliqué";
+  const html = `<!doctype html>
+<html lang="${escapeHtml(locale)}">
+<head>
+  <meta charset="utf-8" />
+  <title>${escapeHtml(title)}</title>
+  <style>
+    @page { size: A4 landscape; margin: 12mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: #0f172a; font-family: Arial, Helvetica, sans-serif; background: white; }
+    .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; border-bottom: 3px solid #1d4ed8; padding-bottom: 16px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand img { width: 48px; height: 48px; object-fit: contain; }
+    .brand h1 { margin: 0; color: #0b43b5; font-size: 24px; line-height: 1; }
+    .brand p { margin: 5px 0 0; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .meta { text-align: right; font-size: 11px; color: #475569; font-weight: 700; line-height: 1.7; }
+    .title { margin: 18px 0 8px; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+    .title h2 { margin: 0; font-size: 26px; color: #020617; }
+    .title p { margin: 6px 0 0; color: #64748b; font-size: 12px; font-weight: 700; }
+    .summary { margin: 12px 0 14px; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; padding: 9px 0; color: #475569; font-size: 11px; font-weight: 700; display: flex; justify-content: space-between; gap: 18px; }
+    .summary strong { color: #0f172a; }
+    .summary span:last-child { text-align: right; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 12px; }
+    th { background: #1d4ed8; color: white; border: 1px solid #1e40af; padding: 8px 7px; text-align: left; font-size: 10px; line-height: 1.25; text-transform: uppercase; }
+    td { border: 1px solid #dbe3ef; padding: 7px; vertical-align: top; font-size: 10.5px; line-height: 1.35; word-break: break-word; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    .empty { margin-top: 28px; border: 1px solid #dbe3ef; background: #f8fafc; padding: 24px; text-align: center; color: #64748b; font-weight: 800; }
+    .footer { position: fixed; bottom: 0; left: 0; right: 0; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 7px; font-size: 10px; display: flex; justify-content: space-between; }
+    @media print { button { display: none; } }
+  </style>
+</head>
+<body>
+  <section class="header">
+    <div class="brand">
+      <img src="/logo.png" alt="Afia-Smart" />
+      <div>
+        <h1>Afia-Smart</h1>
+        <p>Système d'information hospitalier</p>
+      </div>
+    </div>
+    <div class="meta">
+      <div>Document: ${escapeHtml(title)}</div>
+      <div>Généré le: ${escapeHtml(printedAt)}</div>
+      <div>Source: données filtrées de l'application</div>
+    </div>
+  </section>
+  <section class="title">
+    <div>
+      <h2>${escapeHtml(title)}</h2>
+      <p>${escapeHtml(description || "Liste imprimable")}</p>
+    </div>
+  </section>
+  <section class="summary"><span><strong>Total:</strong> ${totalLabel}</span><span><strong>Filtres:</strong> ${filtersLabel}</span></section>
+  ${bodyRows.length ? `<table><thead><tr>${visibleColumns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}</tr></thead><tbody>${bodyRows.map((cells) => `<tr>${cells.map((cell) => `<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody></table>` : `<div class="empty">Aucune donnée à imprimer.</div>`}
+  <section class="footer"><span>Afia-Smart Hospital OS</span><span>Page imprimée depuis le navigateur</span></section>
+</body>
+</html>`;
+  printHtmlInFrame(html);
+}
+
+function printableColumns(columns: { key: string; label: string }[], rows: any[]) {
+  const configured = new Map(columns.map((column) => [column.key, column.label]));
+  const existingKeys = new Set(rows.flatMap((row) => Object.keys(row ?? {})));
+  const preferred = [
+    ["id", "Référence"],
+    ["displayReference", "Référence"],
+    ["invoiceNumber", "N° facture"],
+    ["saleNumber", "N° vente"],
+    ["queueNumber", "Ticket"],
+    ["medicalRecordNumber", "N° dossier"],
+    ["patientName", "Patient"],
+    ["patientId", "Patient"],
+    ["practitionerName", "Médecin"],
+    ["practitionerId", "Médecin"],
+    ["prescriberName", "Prescripteur"],
+    ["prescriberId", "Prescripteur"],
+    ["attendingPractitionerName", "Médecin responsable"],
+    ["attendingPractitionerId", "Médecin responsable"],
+    ["serviceName", "Service"],
+    ["department", "Service"],
+    ["billingServiceCode", "Prestation"],
+    ["chiefComplaint", "Motif"],
+    ["assessment", "Diagnostic"],
+    ["status", "Statut"],
+    ["createdAt", "Créé le"],
+    ["consultedAt", "Consulté le"],
+  ] as const;
+  const result: { key: string; label: string }[] = [];
+  const push = (key: string, label: string) => {
+    if (result.some((column) => column.key === key)) return;
+    if (existingKeys.has(key) || configured.has(key) || key === "id") result.push({ key, label: configured.get(key) ?? label });
+  };
+  preferred.forEach(([key, label]) => push(key, label));
+  columns.forEach((column) => {
+    if (result.some((item) => item.key === column.key)) return;
+    if (isTechnicalKey(column.key)) return;
+    result.push(column);
+  });
+  return result.length ? result : columns.slice(0, 10);
+}
+
+function printHtmlInFrame(html: string) {
+  document.getElementById("afia-list-print-frame")?.remove();
+  const frame = document.createElement("iframe");
+  frame.id = "afia-list-print-frame";
+  frame.setAttribute("aria-hidden", "true");
+  frame.style.position = "fixed";
+  frame.style.right = "0";
+  frame.style.bottom = "0";
+  frame.style.width = "0";
+  frame.style.height = "0";
+  frame.style.border = "0";
+  frame.style.opacity = "0";
+  frame.srcdoc = html;
+  document.body.appendChild(frame);
+  frame.onload = () => {
+    const target = frame.contentWindow;
+    target?.focus();
+    target?.print();
+    window.setTimeout(() => frame.remove(), 3000);
+  };
+}
+
+function formatReportDate(value: string, locale: string) {
+  if (!value) return "";
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(locale === "en" ? "en-US" : "fr-FR", { dateStyle: "medium" }).format(date);
+}
+
+function escapeHtml(value: any) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char] ?? char));
 }
 
 function MissingPricingDialog({ state, posting, locale, onChange, onClose, onSubmit }: { state: MissingPricingState; posting: boolean; locale: string; onChange: (state: MissingPricingState) => void; onClose: () => void; onSubmit: () => void }) {
