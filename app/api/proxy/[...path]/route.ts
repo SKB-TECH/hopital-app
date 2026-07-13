@@ -26,7 +26,10 @@ async function proxy(method: string, req: NextRequest, ctx: ProxyCtx) {
   try {
     const upstream = await fetch(buildUpstreamUrl(path, req.nextUrl.search), init);
     const body = await upstream.arrayBuffer();
-    const res = new NextResponse(body, { status: upstream.status, headers: { "content-type": upstream.headers.get("content-type") || "application/json", "cache-control": "no-store" } });
+    const responseHeaders: Record<string, string> = { "content-type": upstream.headers.get("content-type") || "application/json", "cache-control": "no-store" };
+    const contentDisposition = upstream.headers.get("content-disposition");
+    if (contentDisposition) responseHeaders["content-disposition"] = contentDisposition;
+    const res = new NextResponse(body, { status: upstream.status, headers: responseHeaders });
     const setCookie = upstream.headers.get("set-cookie");
     if (setCookie) setCookie.split(/,(?=\s*[^;]+?=)/).forEach((c) => res.headers.append("set-cookie", c.trim()));
     return res;
