@@ -37,7 +37,7 @@ const defaultSlides: TvSlide[] = [
 export default function WaitingRoomDisplayPage() {
   const [facilityId, setFacilityId] = useState("");
   const [practitionerId, setPractitionerId] = useState("");
-  const [configured, setConfigured] = useState(false);
+  const [configured, setConfigured] = useState(true);
   const [facilities, setFacilities] = useState<Option[]>([]);
   const [practitioners, setPractitioners] = useState<Option[]>([]);
   const [data, setData] = useState<QueuePayload>({ nowCalling: [], waiting: [], updatedAt: new Date().toISOString() });
@@ -59,7 +59,6 @@ export default function WaitingRoomDisplayPage() {
     if (Array.isArray(parsed.slides) && parsed.slides.length) setSlides(normalizeSlides(parsed.slides));
     setFacilityId(nextFacilityId);
     setPractitionerId(nextPractitionerId);
-    setConfigured(Boolean(nextFacilityId || nextPractitionerId));
     void loadOptions(nextFacilityId);
   }, []);
 
