@@ -268,6 +268,8 @@ export function defaultOperationForm(kind: OperationKind, row?: any, endpoint = 
   }
   if (kind === "surgery-status") return { status: nextSurgeryStatuses(row?.status)[0] ?? "INDUCTION" };
   if (kind === "validate-oms-step") return { step: row?.beforeInductionValidated ? row?.beforeIncisionValidated ? "before-exit" : "before-incision" : "before-induction" };
+  if (kind === "administer-medication") return { scannedBarcode: "", administeredAt: new Date().toISOString().slice(0, 16), notes: "" };
+  if (kind === "complete-nursing-task") return { status: "DONE", executedAt: new Date().toISOString().slice(0, 16), notes: "" };
   if (kind === "stock-movement") return { stockItemId: row?.id ?? "", type: "RECEIPT", quantity: 1, reference: "" };
   if (kind === "change-status") return { status: nextStatuses(endpoint, row?.status)[0] ?? "", administeredAt: "", notes: "" };
   return {};
@@ -291,6 +293,8 @@ export function validateOperation(kind: OperationKind, form: Record<string, any>
   if (kind === "send-to-surgery" && !String(form.procedureName ?? "").trim()) throw new Error("Renseignez la procédure opératoire.");
   if (kind === "surgery-status" && !String(form.status ?? "").trim()) throw new Error("Sélectionnez le statut de salle.");
   if (kind === "validate-oms-step" && !String(form.step ?? "").trim()) throw new Error("Sélectionnez l’étape OMS à valider.");
+  if (kind === "administer-medication" && !String(form.scannedBarcode ?? "").trim()) throw new Error("Scannez le code-barres du médicament.");
+  if (kind === "complete-nursing-task" && !String(form.status ?? "").trim()) throw new Error("Sélectionnez le statut de clôture.");
   if (kind === "change-status" && !String(form.status ?? "").trim()) throw new Error("Sélectionnez le nouveau statut.");
   if (kind === "change-status" && form.status === "ADMINISTERED" && "administeredAt" in form && !String(form.administeredAt ?? "").trim()) throw new Error("La date d’administration est obligatoire.");
 }

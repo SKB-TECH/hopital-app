@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, ChevronDown, CircleUserRound, LogOut, Menu, X } from "lucide-react";
+import { Bell, ChevronDown, CircleUserRound, LogOut, Menu, Trash2, X } from "lucide-react";
 import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import LanguageSwitcher from "@/shared/language-switcher";
@@ -24,6 +24,7 @@ export default function DashboardNavbar() {
     const { data: notifications = [] } = useQuery({ queryKey: ["notifications", "list"], queryFn: notificationsService.list, enabled: Boolean(user) });
     const { data: unreadCount = 0 } = useQuery({ queryKey: ["notifications", "unread-count"], queryFn: notificationsService.unreadCount, enabled: Boolean(user), refetchInterval: 60_000 });
     const markAllRead = useMutation({ mutationFn: notificationsService.markAllRead, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["notifications"] }); } });
+    const removeNotification = useMutation({ mutationFn: notificationsService.remove, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["notifications"] }); } });
 
     useEffect(() => {
         if (!isLoading && (!user || isError)) {
@@ -74,18 +75,33 @@ export default function DashboardNavbar() {
                                         <p className="text-sm font-black text-slate-950">{isEn ? "Notifications" : "Notifications"}</p>
                                         <p className="text-xs font-semibold text-slate-500">{Number(unreadCount)} {isEn ? "unread" : "non lue(s)"}</p>
                                     </div>
-                                    <button onClick={() => markAllRead.mutate()} className="text-xs font-black text-blue-700 hover:underline">{isEn ? "Mark all read" : "Tout marquer lu"}</button>
+                                    <button disabled={markAllRead.isPending || Number(unreadCount) === 0} onClick={() => markAllRead.mutate()} className="text-xs font-black text-blue-700 hover:underline disabled:text-slate-300 disabled:no-underline">{isEn ? "Mark all read" : "Tout marquer lu"}</button>
                                 </div>
                                 <div className="max-h-[420px] overflow-y-auto">
                                     {notifications.length ? notifications.map((item: any) => (
                                         <div key={item.id} className="border-b border-slate-100 px-4 py-3 last:border-b-0">
                                             <div className="flex items-start justify-between gap-3">
-                                                <div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => item.status !== "READ" && notificationsService.markRead(item.id).then(() => queryClient.invalidateQueries({ queryKey: ["notifications"] }))}
+                                                    className="min-w-0 flex-1 text-left"
+                                                >
                                                     <p className="text-sm font-black text-slate-900">{item.subject || "Notification"}</p>
                                                     <p className="mt-1 line-clamp-2 text-xs font-medium text-slate-500">{stripHtml(item.body)}</p>
                                                     <p className="mt-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">{item.channel} · {formatDate(item.createdAt, locale)}</p>
+                                                </button>
+                                                <div className="flex shrink-0 items-center gap-2">
+                                                    {item.status !== "READ" && <span className="size-2 bg-blue-700" />}
+                                                    <button
+                                                        type="button"
+                                                        disabled={removeNotification.isPending}
+                                                        onClick={() => removeNotification.mutate(item.id)}
+                                                        className="p-1 text-slate-400 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+                                                        title={isEn ? "Delete" : "Supprimer"}
+                                                    >
+                                                        <Trash2 className="size-4" />
+                                                    </button>
                                                 </div>
-                                                {item.status !== "READ" && <span className="mt-1 size-2 shrink-0 bg-blue-700" />}
                                             </div>
                                         </div>
                                     )) : <p className="p-5 text-sm font-semibold text-slate-500">{isEn ? "No notification." : "Aucune notification."}</p>}

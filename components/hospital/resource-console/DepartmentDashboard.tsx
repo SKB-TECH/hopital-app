@@ -625,8 +625,22 @@ function isPercentageMetric(name: string) { return /(rate|occupancy|compliance|r
 function isSimpleDashboardValue(value: any) { return value === null || value === undefined || ["string", "number", "boolean"].includes(typeof value); }
 function objectToRows(value: any) { if (!value || typeof value !== "object") return []; return Object.entries(value).map(([key, val]) => ({ indicateur: humanize(key), valeur: val })); }
 function findNumericValue(row: any): any { if (typeof row === "number") return row; if (!row || typeof row !== "object") return undefined; const entry = Object.entries(row).find(([, value]) => Number.isFinite(Number(value))); if (entry) return entry[1]; return metricNumber(row); }
-function rowLabel(row: any) { if (!row || typeof row !== "object") return formatValue(row); const fullName = [row.firstName ?? row.first_name, row.lastName ?? row.last_name].filter(Boolean).join(" ").trim(); if (fullName) return row.medicalRecordNumber || row.medical_record_number ? `${fullName} · ${row.medicalRecordNumber ?? row.medical_record_number}` : fullName; const preferred = ["medicine", "invoiceNumber", "patientName", "label", "name", "medicalRecordNumber", "practitionerName", "prescriberName", "cashierName", "department", "position", "method", "sourceType", "source_type", "serviceCode", "service_code", "description", "bloodGroup", "blood_group", "componentType", "component_type", "ward", "type", "day", "indicateur"]; const key = preferred.find((item) => isReadableLabelValue(row[item])) ?? Object.keys(row).find((item) => isReadableLabelValue(row[item])); return key ? formatValue(row[key]) : "-"; }
-function isReadableLabelValue(value: any) { return value !== undefined && value !== null && value !== "" && !isUuid(value) && !Number.isFinite(Number(value)); }
+function rowLabel(row: any) {
+  if (!row || typeof row !== "object") return formatValue(row);
+  const fullName = [row.firstName ?? row.first_name, row.lastName ?? row.last_name].filter(Boolean).join(" ").trim();
+  if (fullName) return row.medicalRecordNumber || row.medical_record_number ? `${fullName} · ${row.medicalRecordNumber ?? row.medical_record_number}` : fullName;
+  const preferred = ["label", "description", "medicine", "invoiceNumber", "patientName", "name", "medicalRecordNumber", "practitionerName", "prescriberName", "cashierName", "department", "position", "method", "sourceType", "source_type", "bloodGroup", "blood_group", "componentType", "component_type", "ward", "type", "day", "indicateur", "serviceCode", "service_code"];
+  const key = preferred.find((item) => isReadableLabelValue(row[item])) ?? Object.keys(row).find((item) => isReadableLabelValue(row[item]));
+  return key ? cleanDashboardLabel(row[key]) : "-";
+}
+function isReadableLabelValue(value: any) { return value !== undefined && value !== null && value !== "" && !isUuid(value) && !Number.isFinite(Number(value)) && !isTechnicalDashboardLabel(value); }
+function isTechnicalDashboardLabel(value: any) { return /^(tarif manquant:|medicine:|vaccine:)[\w:-]+/i.test(String(value).trim()); }
+function cleanDashboardLabel(value: any) {
+  const label = String(formatValue(value)).trim();
+  if (/^med:/i.test(label)) return "Médicament";
+  if (/^vaccine:/i.test(label)) return "Vaccination";
+  return label;
+}
 function isUuid(value: any) { return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value); }
 function shortLabel(value: any) { return String(formatValue(value)).slice(0, 16); }
 function formatMoney(value: any, currency = "USD") {

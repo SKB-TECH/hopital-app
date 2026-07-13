@@ -15,6 +15,10 @@ function buildHeaders(req: NextRequest) {
     const value = req.headers.get(key);
     if (value) headers.set(key, value);
   }
+  if (!headers.get("authorization")) {
+    const accessToken = req.cookies.get("accessToken")?.value;
+    if (accessToken) headers.set("authorization", `Bearer ${accessToken}`);
+  }
   headers.set("x-forwarded-host", req.headers.get("host") || req.nextUrl.host);
   return headers;
 }
@@ -24,7 +28,10 @@ async function proxy(method: string, req: NextRequest, ctx: ProxyCtx) {
   const init: RequestInit = { method, headers: buildHeaders(req), cache: "no-store" };
   if (method !== "GET" && method !== "HEAD") init.body = await req.arrayBuffer();
   try {
-    const upstream = await fetch(buildUpstreamUrl(path, req.nextUrl.search), init);
+    let upstream = await fetch(buildUpstreamUrl(path, req.nextUrl.search), init);
+    if (upstream.status === 404 && path?.[0] !== "api") {
+      upstream = await fetch(buildUpstreamUrl(["api", "v1", ...path], req.nextUrl.search), init);
+    }
     const body = await upstream.arrayBuffer();
     const responseHeaders: Record<string, string> = { "content-type": upstream.headers.get("content-type") || "application/json", "cache-control": "no-store" };
     const contentDisposition = upstream.headers.get("content-disposition");

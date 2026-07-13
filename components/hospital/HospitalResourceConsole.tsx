@@ -55,7 +55,6 @@ export default function HospitalResourceConsole() {
   const canCreateSelected = selected?.canCreate !== false && hasHospitalModulePermission(user, module.key, selected?.key, "CREATE");
   const canUpdateSelected = selected?.canUpdate !== false && hasHospitalModulePermission(user, module.key, selected?.key, "UPDATE");
   const canPrintSelected = hasHospitalModulePermission(user, module.key, selected?.key, "PRINT") || selected?.endpoint === "/prescriptions";
-  const canExportSelected = hasHospitalModulePermission(user, module.key, selected?.key, "EXPORT");
 
   const [rows, setRows] = useState<any[]>([]);
   const [query, setQuery] = useState("");
@@ -136,6 +135,17 @@ export default function HospitalResourceConsole() {
 
   const filtered = rows;
   const pageCount = Math.max(1, Math.ceil(Math.max(totalRows, filtered.length) / pageSize));
+  const statusOptions = useMemo(() => {
+    const statusField = selected?.fields?.find((field: any) => field.name === "status" && Array.isArray(field.options));
+    return (statusField?.options ?? []).map((option: any) => ({
+      value: String(option?.value ?? option),
+      label: String(option?.label ?? option?.value ?? option),
+    })).filter((option: any) => option.value);
+  }, [selected?.fields]);
+
+  useEffect(() => {
+    if (statusFilter && !statusOptions.some((option) => option.value === statusFilter)) setStatusFilter("");
+  }, [statusFilter, statusOptions]);
 
   const openCreate = () => {
     if (!canCreateSelected) return;
@@ -168,9 +178,40 @@ export default function HospitalResourceConsole() {
       toast.success("Passage patient clôturé.");
       await load();
     } catch (err: any) {
-      const message = readError(err);
+      const message = await readDownloadError(err);
       setError(message);
       toast.error(message);
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  const downloadBackup = async (row: any) => {
+    if (!row?.id) return;
+    setPosting(true);
+    setError("");
+    try {
+      await downloadBackupFile(row.id, row.fileName);
+      toast.success("Sauvegarde téléchargée.");
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
+        try {
+          toast.message("Sauvegarde introuvable. Création d’une nouvelle sauvegarde...");
+          const created = await api.post("/backups", { scope: "DATABASE" });
+          const fresh = await waitForBackupCompletion(created.data?.id);
+          await downloadBackupFile(fresh.id, fresh.fileName);
+          toast.success("Nouvelle sauvegarde téléchargée.");
+          await load();
+        } catch (fallbackError: any) {
+          const message = await readDownloadError(fallbackError);
+          setError(message);
+          toast.error(message);
+        }
+      } else {
+        const message = await readDownloadError(err);
+        setError(message);
+        toast.error(message);
+      }
     } finally {
       setPosting(false);
     }
@@ -307,6 +348,19 @@ export default function HospitalResourceConsole() {
       if (operation.kind === "validate-oms-step" && operation.row?.id) {
         await api.patch(`/surgery/checklists/${operation.row.id}/${operationForm.step}`, {});
         toast.success("Étape OMS validée.");
+      }
+      if (operation.kind === "administer-medication" && operation.row?.id) {
+        await api.patch(`/nursing/medications/${operation.row.id}/administer`, cleanObject(operationForm));
+        toast.success("Médicament administré et stock mis à jour.");
+      }
+      if (operation.kind === "complete-nursing-task" && operation.row?.id) {
+        await api.patch(`/nursing/tasks/${operation.row.id}/status`, cleanObject(operationForm));
+        toast.success("Soin infirmier mis à jour.");
+      }
+      if (operation.kind === "resend-user-invitation" && operation.row?.id) {
+        const response = await api.post(`/users/${operation.row.id}/resend-invitation`, {});
+        const status = response.data?.invitationEmailStatus;
+        toast.success(status === "SENT" ? "Invitation envoyée par email." : `Invitation traitée: ${status ?? "statut inconnu"}.`);
       }
       if (operation.kind === "change-status" && operation.row?.id && operation.endpoint) {
         const payload: Record<string, any> = { status: operationForm.status };
@@ -471,11 +525,9 @@ export default function HospitalResourceConsole() {
                       {module.key === "reception" && <button onClick={() => window.open(`/${locale}/ticket-kiosk`, "_blank", "noopener,noreferrer")} className="inline-flex h-11 items-center gap-2 border border-blue-700 bg-white px-4 text-sm font-black text-blue-800 hover:bg-blue-50"><Printer className="size-4" />Impression tickets</button>}
                       {moduleActions.map((action) => <button key={action.kind} onClick={() => openOperation(action.kind)} className="inline-flex h-11 items-center gap-2 border border-blue-700 bg-white px-4 text-sm font-black text-blue-800 hover:bg-blue-50"><action.icon className="size-4" />{hospitalText(action.label, locale)}</button>)}
                       <button onClick={load} className="inline-flex h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-800 hover:bg-slate-50"><RefreshCcw className="size-4" />{hospitalUi(locale, "refresh")}</button>
-                      {canPrintSelected && <button onClick={() => setPrintDialog({})} className="inline-flex h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-800 hover:bg-slate-50"><Printer className="size-4" />{hospitalUi(locale, "documents")}</button>}
-                      {canExportSelected && <button className="inline-flex h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-800 hover:bg-slate-50"><Download className="size-4" />{hospitalUi(locale, "export")}</button>}
                     </div>
                   </div>
-                  {!isDashboard && <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(260px,1fr)_170px_170px_180px_auto]">
+                  {!isDashboard && <div className={`mt-5 grid gap-3 ${statusOptions.length ? "lg:grid-cols-[minmax(260px,1fr)_170px_170px_180px_auto]" : "lg:grid-cols-[minmax(260px,1fr)_170px_170px_auto]"}`}>
                     <label className="flex h-12 items-center gap-3 border border-slate-200 bg-slate-50 px-4 focus-within:border-blue-700 focus-within:bg-white">
                       <Search className="size-5 shrink-0 text-slate-400" />
                       <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Recherche globale: patient, dossier, médicament, référence..." className="w-full min-w-0 bg-transparent text-sm font-semibold outline-none" />
@@ -488,19 +540,15 @@ export default function HospitalResourceConsole() {
                       <span className="block text-[10px] font-black uppercase tracking-wide text-slate-500">Au</span>
                       <input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} className="w-full bg-transparent text-sm font-black text-slate-800 outline-none" />
                     </label>
-                    <label className="h-12 border border-slate-200 bg-slate-50 px-3 py-1 focus-within:border-blue-700 focus-within:bg-white">
-                      <span className="block text-[10px] font-black uppercase tracking-wide text-slate-500">Statut</span>
-                      <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="w-full bg-transparent text-sm font-black text-slate-800 outline-none">
-                        <option value="">Tous</option>
-                        <option value="Payé">Payé</option>
-                        <option value="À encaisser">À encaisser</option>
-                        <option value="Partiel">Partiel</option>
-                        <option value="À facturer">À facturer</option>
-                        <option value="PENDING">En attente</option>
-                        <option value="COMPLETED">Terminé</option>
-                        <option value="CANCELLED">Annulé</option>
-                      </select>
-                    </label>
+                    {statusOptions.length ? (
+                      <label className="h-12 border border-slate-200 bg-slate-50 px-3 py-1 focus-within:border-blue-700 focus-within:bg-white">
+                        <span className="block text-[10px] font-black uppercase tracking-wide text-slate-500">Statut</span>
+                        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="w-full bg-transparent text-sm font-black text-slate-800 outline-none">
+                          <option value="">Tous</option>
+                          {statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                        </select>
+                      </label>
+                    ) : null}
                     <button onClick={() => { setQuery(""); setDebouncedQuery(""); setFromDate(""); setToDate(""); setStatusFilter(""); }} className="h-12 border border-slate-300 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50">Effacer</button>
                   </div>}
                 </div>
@@ -512,7 +560,7 @@ export default function HospitalResourceConsole() {
                     </thead>
                     <tbody>
                       {loading ? <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center text-sm font-semibold text-slate-500"><Loader2 className="mx-auto mb-3 size-6 animate-spin text-blue-700" />{hospitalUi(locale, "loadingData")}</td></tr> :
-                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs truncate px-5 py-4 text-sm font-semibold text-slate-700">{safeCellText(displayCell(row, column.key, referenceLabels))}</td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => openView(row)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title="Voir"><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Documents"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "download-backup" ? window.open(`/api/proxy/backups/${row.id}/download`, "_blank") : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : action.kind === "close-queue" ? closeQueueEncounter(row) : openOperation(action.kind, row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title={action.label}><action.icon className="size-4" /></button>)}</div></td></tr>) :
+                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs truncate px-5 py-4 text-sm font-semibold text-slate-700">{safeCellText(displayCell(row, column.key, referenceLabels))}</td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => openView(row)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title="Voir"><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Documents"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "download-backup" ? downloadBackup(row) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : action.kind === "close-queue" ? closeQueueEncounter(row) : openOperation(action.kind, row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title={action.label}><action.icon className="size-4" /></button>)}</div></td></tr>) :
                       <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center"><Database className="mx-auto mb-3 size-8 text-slate-300" /><p className="font-black text-slate-800">{hospitalUi(locale, "noData")}</p><p className="mt-1 text-sm text-slate-500">{hospitalUi(locale, "noDataHint")}</p></td></tr>}
                     </tbody>
                     </table>
@@ -1157,9 +1205,12 @@ function getRowActions(endpoint: string, row: any): OperationAction[] {
   if (endpoint === "/surgery/slots" && !["COMPLETED", "CANCELLED"].includes(String(row?.status ?? "").toUpperCase())) actions.push({ kind: "surgery-status", label: "Statut salle", icon: Activity });
   if (endpoint === "/surgery/slots") actions.push({ kind: "validate-material-count", label: "Valider comptage", icon: CheckCircle2 });
   if (endpoint === "/surgery/checklists") actions.push({ kind: "validate-oms-step", label: "Valider OMS", icon: CheckCircle2 });
+  if (endpoint === "/nursing/medications" && !["ADMINISTERED", "REFUSED", "PATIENT_ABSENT", "CANCELLED"].includes(String(row?.status ?? "").toUpperCase())) actions.push({ kind: "administer-medication", label: "Administrer", icon: Smartphone });
+  if (endpoint === "/nursing/tasks" && !["DONE", "FAIT", "CANCELLED", "ANNULE"].includes(String(row?.status ?? "").toUpperCase())) actions.push({ kind: "complete-nursing-task", label: "Clôturer soin", icon: CheckCircle2 });
+  if (endpoint === "/users" && row?.email) actions.push({ kind: "resend-user-invitation", label: "Renvoyer invitation", icon: Send });
   if (endpoint === "/admissions" && row?.status !== "DISCHARGED") actions.push({ kind: "discharge", label: "Sortie patient", icon: FileText });
   if ((endpoint === "/reception/check-in" || endpoint === "/reception/walk-in-ticket") && String(row?.status ?? "").toUpperCase() === "IN_PROGRESS") actions.push({ kind: "close-queue", label: "Clôturer le passage", icon: CheckCircle2 });
-  if (row?.status && nextStatuses(endpoint, row.status).length) actions.push({ kind: "change-status", label: "Changer statut", icon: CheckCircle2 });
+  if (row?.status && !["/nursing/medications", "/nursing/tasks"].includes(endpoint) && nextStatuses(endpoint, row.status).length) actions.push({ kind: "change-status", label: "Changer statut", icon: CheckCircle2 });
   return actions;
 }
 
@@ -1255,4 +1306,61 @@ function formatWorkedDuration(checkIn?: Date | null, checkOut?: Date | null) {
   const rest = minutes % 60;
   if (!hours) return `${rest} min`;
   return `${hours} h ${String(rest).padStart(2, "0")} min`;
+}
+
+function parseDownloadFileName(disposition: string) {
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) return decodeURIComponent(utf8Match[1].replace(/"/g, ""));
+  const match = disposition.match(/filename="?([^";]+)"?/i);
+  return match?.[1] ? match[1].trim() : "";
+}
+
+async function downloadBackupFile(id: string, fallbackFileName?: string) {
+  const response = await api.get(`/backups/${id}/download`, { responseType: "blob" });
+  const disposition = String(response.headers?.["content-disposition"] || "");
+  const fileName = parseDownloadFileName(disposition) || fallbackFileName || `sauvegarde-${id}.sql`;
+  const blob = response.data instanceof Blob ? response.data : new Blob([response.data], { type: "application/sql" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function waitForBackupCompletion(id: string) {
+  if (!id) throw new Error("Sauvegarde non créée.");
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, attempt ? 2000 : 800));
+    const response = await api.get("/backups", { params: { page: 1, limit: 50 } });
+    const rows = Array.isArray(response.data?.data) ? response.data.data : [];
+    const row = rows.find((item: any) => item.id === id);
+    if (row?.status === "COMPLETED") return row;
+    if (row?.status === "FAILED") throw new Error(row.errorMessage || "La sauvegarde a échoué.");
+  }
+  throw new Error("La sauvegarde prend trop de temps. Réessayez dans quelques secondes.");
+}
+
+async function readDownloadError(err: any) {
+  const data = err?.response?.data;
+  if (data instanceof Blob) {
+    const text = await data.text().catch(() => "");
+    if (text) {
+      try {
+        const parsed = JSON.parse(text);
+        const msg = parsed?.message ?? parsed?.detail ?? text;
+        const message = Array.isArray(msg) ? msg.join(", ") : String(msg);
+        const status = err?.response?.status;
+        const method = err?.config?.method ? String(err.config.method).toUpperCase() : "";
+        const url = err?.config?.url ? String(err.config.url) : "";
+        const context = [status ? `HTTP ${status}` : "", method, url].filter(Boolean).join(" · ");
+        return context ? `${context} — ${message}` : message;
+      } catch {
+        return text;
+      }
+    }
+  }
+  return readError(err);
 }

@@ -60,6 +60,31 @@ export function OperationDialog({ operation, form, setForm, posting, locale = "f
             <SelectField label="Étape OMS" value={form.step} onChange={(value) => setForm({ ...form, step: value })} options={["before-induction", "before-incision", "before-exit"]} />
           </> : null}
           {operation.kind === "validate-material-count" ? <p className="border border-rose-200 bg-rose-50 p-4 text-sm font-bold text-rose-900">Confirmer le comptage opératoire. Si une compresse, aiguille ou instrument manque, le système bloquera la clôture.</p> : null}
+          {operation.kind === "administer-medication" ? <>
+            <div className="border border-slate-200 bg-slate-950 p-4 text-white">
+              <p className="text-xs font-black uppercase tracking-wide text-blue-200">Validation au lit du patient</p>
+              <p className="mt-1 text-lg font-black">{operation.row?.medicine ?? "Médicament"}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-300">{operation.row?.dose ? `Dose: ${operation.row.dose}` : "Dose prescrite"} · {operation.row?.patientName ?? operation.row?.medicalRecordNumber ?? "Patient"}</p>
+            </div>
+            <TextField label="Code-barres scanné" value={form.scannedBarcode} onChange={(value) => setForm({ ...form, scannedBarcode: value })} />
+            <TextField type="datetime-local" label="Administré le" value={form.administeredAt} onChange={(value) => setForm({ ...form, administeredAt: value })} />
+            <TextAreaField label="Note infirmière" value={form.notes} onChange={(value) => setForm({ ...form, notes: value })} />
+          </> : null}
+          {operation.kind === "complete-nursing-task" ? <>
+            <div className="border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-black uppercase tracking-wide text-slate-500">Soin / tâche</p>
+              <p className="mt-1 text-lg font-black text-slate-950">{operation.row?.description ?? operation.row?.type ?? "Tâche infirmière"}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-500">Statut actuel: {operation.row?.status ?? "-"}</p>
+            </div>
+            <SelectField label="Nouveau statut" value={form.status} onChange={(value) => setForm({ ...form, status: value })} options={["DONE", "IN_PROGRESS", "POSTPONED", "CANCELLED"]} />
+            <TextField type="datetime-local" label="Exécuté le" value={form.executedAt} onChange={(value) => setForm({ ...form, executedAt: value })} />
+            <TextAreaField label="Transmission / note" value={form.notes} onChange={(value) => setForm({ ...form, notes: value })} />
+          </> : null}
+          {operation.kind === "resend-user-invitation" ? (
+            <div className="border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">
+              Un nouveau mot de passe temporaire sera généré et envoyé uniquement à {operation.row?.email ?? "l’utilisateur"}. Il ne sera pas affiché à l’écran.
+            </div>
+          ) : null}
           {operation.kind === "stock-movement" ? <>
             <ReferenceField referenceKey="stockItemId" label="Article stock" value={form.stockItemId} onChange={(value) => setForm({ ...form, stockItemId: value })} />
             <SelectField label="Type" value={form.type} onChange={(value) => setForm({ ...form, type: value })} options={["RECEIPT", "ISSUE", "TRANSFER", "ADJUSTMENT"]} />
