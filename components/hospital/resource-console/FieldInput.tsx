@@ -58,7 +58,7 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
         publicId: result.public_id,
         resourceType: result.resource_type,
       };
-      onChange(field.name === "url" ? result.secure_url : payload);
+      onChange(field.name === "url" || field.name.toLowerCase().includes("url") ? result.secure_url : payload);
     } finally {
       setUploadingFile(false);
     }
@@ -114,6 +114,11 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
             <input type="file" accept="application/pdf,image/*,text/plain,application/dicom,.dcm" className="hidden" disabled={uploadingFile} onChange={(event) => event.target.files?.[0] && uploadFile(event.target.files[0])} />
           </label>
           {value ? <div className="border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">{typeof value === "string" ? value : value.fileName || value.url || "Fichier Cloudinary attaché"}</div> : null}
+        </div>
+      ) : field.type === "color" ? (
+        <div className="flex items-center gap-3">
+          <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(String(value ?? "")) ? String(value) : "#1d4ed8"} onChange={(event) => onChange(event.target.value)} className="h-12 w-16 cursor-pointer border border-slate-200 bg-white p-1" />
+          <input type="text" value={value ?? ""} onChange={(event) => onChange(event.target.value)} placeholder={field.placeholder || "#1d4ed8"} className={base} />
         </div>
       ) : field.type === "textarea" ? (
         <textarea value={typeof value === "string" ? value : JSON.stringify(value ?? {}, null, 2)} onChange={(event) => onChange(event.target.value)} placeholder={field.placeholder} className={`${base} h-28 text-sm`} />

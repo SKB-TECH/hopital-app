@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 type TenantConfig = {
-  tenant: { id: string | null; name: string; code: string; subdomain: string | null; status: string };
+  tenant: { id: string | null; name: string; code: string; status: string };
   branding: {
     logoUrl: string | null;
     colors: { primary: string; secondary: string; accent: string };
@@ -14,7 +14,7 @@ type TenantConfig = {
 };
 
 const defaultConfig: TenantConfig = {
-  tenant: { id: null, name: "Afia-Smart", code: "DEFAULT", subdomain: null, status: "DEFAULT" },
+  tenant: { id: null, name: "Afia-Smart", code: "DEFAULT", status: "DEFAULT" },
   branding: {
     logoUrl: null,
     colors: { primary: "#1d4ed8", secondary: "#0f172a", accent: "#0284c7" },
