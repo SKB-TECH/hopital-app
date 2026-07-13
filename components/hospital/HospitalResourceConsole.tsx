@@ -1307,7 +1307,7 @@ async function buildReferenceLabels(keys: string[], rows: any[]) {
     const reference = hospitalReferences[key];
     if (!reference) return;
     try {
-      const response = await api.get(reference.endpoint, { params: { limit: 500 } });
+      const response = await api.get(reference.endpoint, { params: { limit: 100 } });
       maps[key] = Object.fromEntries(normalizeRows(response.data).map((row) => {
         const valueKey = reference.valueKey ?? "id";
         const id = String(row[valueKey] ?? row.id ?? "");
@@ -1338,7 +1338,7 @@ function buildMissingPricingState(services: any[], operationForm: Record<string,
 }
 
 async function ensurePricingServices(rows: MissingPricingRow[]) {
-  const response = await api.get("/pricing/services", { params: { limit: 1000 } });
+  const response = await api.get("/pricing/services", { params: { limit: 100 } });
   const existing = normalizeRows(response.data).map((service) => ({ id: String(service.id ?? ""), code: String(service.code ?? "").toUpperCase() }));
   const byCode = new Map(existing.filter((service) => service.id && service.code).map((service) => [service.code, service]));
 

@@ -58,7 +58,7 @@ const ROLE_ALIASES: Record<string, HospitalRole> = {
 export const ROLE_MODULE_ACCESS: Record<HospitalRole, string[]> = {
   SUPER_ADMIN: ALL_MODULES,
   HOSPITAL_ADMIN: ALL_MODULES,
-  DIRECTOR: ["reports", "patients", "admissions", "billing", "hr", "inventory", "procurement"],
+  DIRECTOR: ["reports", "patients", "admissions", "billing", "hr", "inventory", "logistics", "procurement"],
   MEDICAL_DIRECTOR: ["reports", "patients", "emr", "consultations", "appointments", "emergencies", "admissions", "nursing", "surgery", "technical-platform", "laboratory", "imaging", "pharmacy", "maternity", "pediatrics"],
   DOCTOR: ["patients", "emr", "consultations", "appointments", "emergencies", "admissions", "nursing", "surgery", "technical-platform", "laboratory", "imaging", "pharmacy", "maternity", "pediatrics"],
   GENERAL_PRACTITIONER: ["patients", "emr", "consultations", "appointments", "emergencies", "admissions", "nursing", "technical-platform", "laboratory", "imaging", "pharmacy"],
@@ -76,8 +76,8 @@ export const ROLE_MODULE_ACCESS: Record<HospitalRole, string[]> = {
   CASHIER: ["patients", "billing", "insurance"],
   ACCOUNTANT: ["billing", "insurance", "reports"],
   HR: ["hr", "reports"],
-  STOREKEEPER: ["inventory", "procurement", "pharmacy"],
-  AUDITOR: ["reports", "billing", "inventory", "administration"],
+  STOREKEEPER: ["inventory", "logistics", "procurement", "pharmacy"],
+  AUDITOR: ["reports", "billing", "inventory", "logistics", "administration"],
   MEDICAL_RECORDS_OFFICER: ["patients", "emr", "reports"],
   PATIENT: [],
 };
