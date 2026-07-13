@@ -632,7 +632,8 @@ function shortLabel(value: any) { return String(formatValue(value)).slice(0, 16)
 function formatMoney(value: any, currency = "USD") {
   const numeric = Number(value ?? 0);
   if (!Number.isFinite(numeric)) return formatValue(value);
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency, maximumFractionDigits: numeric % 1 ? 2 : 0 }).format(numeric);
+  const amount = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: numeric % 1 ? 2 : 0 }).format(numeric).replace(/[\u202f\u00a0]/g, " ");
+  return `${amount} ${currency}`;
 }
 function formatDashboardNumber(value: any) { const numeric = Number(value); if (Number.isFinite(numeric)) return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(numeric); return formatValue(value); }
 function isAlertMetric(key: string, value: any) { const numeric = Number(value ?? 0); if (!Number.isFinite(numeric) || numeric <= 0) return false; return /(critical|alert|pending|waiting|overdue|expired|expiring|low|outOfStock|outstanding|unpaid|emergency|missed|due)/i.test(key); }

@@ -432,7 +432,8 @@ function invoiceItemsTotal(value: any) {
 }
 
 function formatMoney(value: number, currency: string) {
-  return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(Number.isFinite(value) ? value : 0)} ${currency}`;
+  const amount = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(Number.isFinite(value) ? value : 0).replace(/[\u202f\u00a0]/g, " ");
+  return `${amount} ${currency}`;
 }
 
 function InvoiceItemsField({ value, onChange }: { value: any; onChange: (value: any[]) => void }) {
