@@ -292,7 +292,10 @@ export default function HospitalResourceConsole() {
         return;
       }
       if (operation.kind === "pay-invoice" && operation.row?.id) {
-        await api.post(`/billing/invoices/${operation.row.id}/payments`, cleanObject(operationForm));
+        const paymentEndpoint = operation.endpoint === "/pharmacy/sales"
+          ? `/pharmacy/sales/${operation.row.id}/payments`
+          : `/billing/invoices/${operation.row.id}/payments`;
+        await api.post(paymentEndpoint, cleanObject(operationForm));
         toast.success("Paiement enregistré avec succès.");
       }
       if (operation.kind === "validate-lab" && operation.row?.id) {
@@ -1671,6 +1674,7 @@ function getRowActions(endpoint: string, row: any): OperationAction[] {
     { kind: "print-invoice", label: "Imprimer PDF", icon: Printer },
     ...(canPayInvoice(row) ? [{ kind: "pay-invoice" as const, label: "Encaisser", icon: CreditCard }] : []),
   ];
+  if (endpoint === "/pharmacy/sales" && canPayPharmacySale(row)) return [{ kind: "pay-invoice", label: "Encaisser", icon: CreditCard }];
   const actions: OperationAction[] = [];
   if (endpoint === "/backups" && String(row?.status ?? "").toUpperCase() === "COMPLETED") actions.push({ kind: "download-backup", label: "Télécharger", icon: Download });
   if (row?.patientId && endpoint !== "/patients") actions.push({ kind: "patient-record", label: "Dossier patient", icon: UserRound });
@@ -1704,6 +1708,12 @@ function canBillDispensation(row: any) {
   if (["PAID", "PAYÉ", "PAYEE", "PAYÉE"].includes(status)) return false;
   if (row?.invoiceId && moneyNumber(row?.balanceDue ?? row?.balance_due) <= 0) return false;
   return true;
+}
+
+function canPayPharmacySale(row: any) {
+  const status = String(row?.status ?? "").toUpperCase();
+  if (["PAID", "VOID", "CANCELLED"].includes(status)) return false;
+  return moneyNumber(row?.balanceDue ?? row?.balance_due) > 0;
 }
 
 function moneyNumber(value: any) {
