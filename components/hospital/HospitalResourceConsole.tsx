@@ -605,7 +605,7 @@ export default function HospitalResourceConsole() {
                     </thead>
                     <tbody>
                       {loading ? <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center text-sm font-semibold text-slate-500"><Loader2 className="mx-auto mb-3 size-6 animate-spin text-blue-700" />{hospitalUi(locale, "loadingData")}</td></tr> :
-                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs truncate px-5 py-4 text-sm font-semibold text-slate-700">{safeCellText(displayCell(row, column.key, referenceLabels))}</td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => openView(row)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title="Voir"><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Documents"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "download-backup" ? downloadBackup(row) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : action.kind === "close-queue" ? closeQueueEncounter(row) : action.kind === "print-employee-badge" ? setBadgeDialog({ row }) : openOperation(action.kind, row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title={action.label}><action.icon className="size-4" /></button>)}</div></td></tr>) :
+                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs truncate px-5 py-4 text-sm font-semibold text-slate-700">{safeCellText(displayCell(row, column.key, referenceLabels))}</td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => openView(row)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title="Voir"><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Imprimer"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "download-backup" ? downloadBackup(row) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : action.kind === "close-queue" ? closeQueueEncounter(row) : action.kind === "print-employee-badge" ? setBadgeDialog({ row }) : openOperation(action.kind, row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title={action.label}><action.icon className="size-4" /></button>)}</div></td></tr>) :
                       <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center"><Database className="mx-auto mb-3 size-8 text-slate-300" /><p className="font-black text-slate-800">{hospitalUi(locale, "noData")}</p><p className="mt-1 text-sm text-slate-500">{hospitalUi(locale, "noDataHint")}</p></td></tr>}
                     </tbody>
                     </table>
@@ -616,7 +616,7 @@ export default function HospitalResourceConsole() {
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))} className="h-10 border border-slate-300 bg-white px-3 text-sm font-black text-slate-700 outline-none focus:border-blue-700">
-                        {[25, 50, 100, 200].map((size) => <option key={size} value={size}>{size} / page</option>)}
+                        {[25, 50, 100].map((size) => <option key={size} value={size}>{size} / page</option>)}
                       </select>
                       <button disabled={page <= 1 || loading} onClick={() => setPage((current) => Math.max(1, current - 1))} className="h-10 border border-slate-300 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">Précédent</button>
                       <span className="h-10 border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-black text-slate-700">Page {page} / {pageCount}</span>
@@ -895,7 +895,8 @@ function printListDocument({ title, description, locale, filters, total, rows, c
   const visibleColumns = printableColumns(columns, rows).slice(0, 10);
   const bodyRows = rows.map((row) => visibleColumns.map((column) => escapeHtml(safeCellText(displayCell(row, column.key, referenceLabels)))));
   const totalLabel = `${escapeHtml(String(total || rows.length))} ligne${(total || rows.length) > 1 ? "s" : ""}`;
-  const filtersLabel = filters.length ? filters.map(escapeHtml).join(" · ") : "Aucun filtre appliqué";
+  const filtersLabel = filters.length ? filters.map(escapeHtml).join(" · ") : "";
+  const reportContext = [totalLabel, filtersLabel].filter(Boolean).join(" · ");
   const html = `<!doctype html>
 <html lang="${escapeHtml(locale)}">
 <head>
@@ -914,9 +915,7 @@ function printListDocument({ title, description, locale, filters, total, rows, c
     .title { margin: 18px 0 8px; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
     .title h2 { margin: 0; font-size: 26px; color: #020617; }
     .title p { margin: 6px 0 0; color: #64748b; font-size: 12px; font-weight: 700; }
-    .summary { margin: 12px 0 14px; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; padding: 9px 0; color: #475569; font-size: 11px; font-weight: 700; display: flex; justify-content: space-between; gap: 18px; }
-    .summary strong { color: #0f172a; }
-    .summary span:last-child { text-align: right; }
+    .context { margin: 10px 0 14px; color: #334155; font-size: 11px; font-weight: 800; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 12px; }
     th { background: #1d4ed8; color: white; border: 1px solid #1e40af; padding: 8px 7px; text-align: left; font-size: 10px; line-height: 1.25; text-transform: uppercase; }
     td { border: 1px solid #dbe3ef; padding: 7px; vertical-align: top; font-size: 10.5px; line-height: 1.35; word-break: break-word; }
@@ -947,7 +946,7 @@ function printListDocument({ title, description, locale, filters, total, rows, c
       <p>${escapeHtml(description || "Liste imprimable")}</p>
     </div>
   </section>
-  <section class="summary"><span><strong>Total:</strong> ${totalLabel}</span><span><strong>Filtres:</strong> ${filtersLabel}</span></section>
+  ${reportContext ? `<section class="context">${reportContext}</section>` : ""}
   ${bodyRows.length ? `<table><thead><tr>${visibleColumns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}</tr></thead><tbody>${bodyRows.map((cells) => `<tr>${cells.map((cell) => `<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody></table>` : `<div class="empty">Aucune donnée à imprimer.</div>`}
   <section class="footer"><span>Afia-Smart Hospital OS</span><span>Page imprimée depuis le navigateur</span></section>
 </body>

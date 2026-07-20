@@ -74,7 +74,7 @@ export function PrintDialog({ moduleEndpoint, moduleTitle, locale, row, data, on
       <div className="ml-auto h-full w-full max-w-3xl overflow-y-auto border-l border-slate-300 bg-white">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-7 py-5">
           <div>
-            <h2 className="text-2xl font-black text-slate-950">Documents & impression</h2>
+            <h2 className="text-2xl font-black text-slate-950">Impression</h2>
             <p className="mt-1 text-sm font-semibold text-slate-500">{moduleTitle}{row?.id ? ` · ${printableRowReference(row)}` : " · impression du module"}</p>
           </div>
           <button onClick={onClose} className="border border-slate-300 p-2 text-slate-600 hover:bg-slate-50"><X className="size-5" /></button>
