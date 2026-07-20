@@ -91,9 +91,9 @@ export function cleanPayload(form: Record<string, any>, fields: HospitalField[])
     }
     if (field.type === "pharmacy-sale-items") {
       const items = Array.isArray(value) ? value
-        .filter((item) => item?.medicineId && Number.isFinite(Number(item?.quantity)) && Number(item.quantity) > 0 && Number.isFinite(Number(item?.unitPrice)) && Number(item.unitPrice) >= 0)
+        .filter((item) => item?.medicineId && Number.isFinite(Number(item?.quantity)) && Number(item.quantity) > 0 && Number.isFinite(Number(item?.unitPrice)) && Number(item.unitPrice) > 0)
         .map((item) => ({ medicineId: item.medicineId, quantity: Number(item.quantity), unitPrice: Number(item.unitPrice) })) : [];
-      if (field.required && !items.length) throw new Error("Ajoutez au moins un médicament avec quantité vendue et prix unitaire.");
+      if (field.required && !items.length) throw new Error("Ajoutez au moins un médicament avec quantité vendue et prix public configuré.");
       out[field.name] = items;
       continue;
     }

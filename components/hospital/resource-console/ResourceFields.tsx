@@ -9,8 +9,8 @@ import { normalizeRows, relationLabel } from "./utils";
 export function TextField({ label, value, onChange, type = "text" }: { label: string; value: any; onChange: (value: any) => void; type?: string }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">{label}</span>
-      <input type={type} value={value ?? ""} onChange={(event) => onChange(event.target.value)} className="w-full border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-semibold outline-none focus:border-blue-700 focus:bg-white" />
+      <span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-300">{label}</span>
+      <input type={type} value={value ?? ""} onChange={(event) => onChange(event.target.value)} className="w-full border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-950 outline-none focus:border-blue-700 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-400 dark:focus:bg-slate-950" />
     </label>
   );
 }
@@ -18,8 +18,8 @@ export function TextField({ label, value, onChange, type = "text" }: { label: st
 export function TextAreaField({ label, value, onChange }: { label: string; value: any; onChange: (value: any) => void }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">{label}</span>
-      <textarea value={value ?? ""} onChange={(event) => onChange(event.target.value)} className="h-40 w-full border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-semibold outline-none focus:border-blue-700 focus:bg-white" />
+      <span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-300">{label}</span>
+      <textarea value={value ?? ""} onChange={(event) => onChange(event.target.value)} className="h-40 w-full border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-950 outline-none focus:border-blue-700 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-400 dark:focus:bg-slate-950" />
     </label>
   );
 }
@@ -27,8 +27,8 @@ export function TextAreaField({ label, value, onChange }: { label: string; value
 export function SelectField({ label, value, onChange, options }: { label: string; value: any; onChange: (value: any) => void; options: string[] }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">{label}</span>
-      <select value={value ?? ""} onChange={(event) => onChange(event.target.value)} className="w-full border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-semibold outline-none focus:border-blue-700 focus:bg-white">
+      <span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-300">{label}</span>
+      <select value={value ?? ""} onChange={(event) => onChange(event.target.value)} className="w-full border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-950 outline-none focus:border-blue-700 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-400 dark:focus:bg-slate-950">
         {options.map((option) => <option key={option} value={option}>{option}</option>)}
       </select>
     </label>
@@ -55,7 +55,7 @@ export function ReferenceField({ referenceKey, label, value, onChange }: { refer
 
   return (
     <label className="block">
-      <span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">{label}</span>
+      <span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-300">{label}</span>
       <Autocomplete value={String(value ?? "")} options={options} isLoading={loading} placeholder={"Sélectionner " + label.toLowerCase()} searchPlaceholder={"Rechercher " + label.toLowerCase()} emptyText="Aucun résultat" onSelect={(option) => onChange(option.id)} showIdFallback={false} />
     </label>
   );

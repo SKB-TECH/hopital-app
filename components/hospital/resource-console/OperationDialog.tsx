@@ -16,13 +16,13 @@ export function OperationDialog({ operation, form, setForm, posting, locale = "f
 
   return (
     <div className="fixed inset-0 z-[80] bg-slate-950/40">
-      <div className={`ml-auto h-full w-full overflow-y-auto border-l border-slate-300 bg-white ${isInvoiceFlow ? "max-w-5xl" : "max-w-2xl"}`}>
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-7 py-5">
+      <div className={`ml-auto h-full w-full overflow-y-auto border-l border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900 ${isInvoiceFlow ? "max-w-5xl" : "max-w-2xl"}`}>
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-7 py-5 dark:border-slate-700 dark:bg-slate-900">
           <div>
-            <h2 className="text-2xl font-black text-slate-950">{isPharmacySale ? "Vente pharmacie" : title}</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-500">{isPharmacySale ? "Médicaments délivrés, montant et encaissement" : isInvoiceFlow ? "Facturation patient, prestations et encaissement" : "Action métier sécurisée"}</p>
+            <h2 className="text-2xl font-black text-slate-950 dark:text-white">{isPharmacySale ? "Vente pharmacie" : title}</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-300">{isPharmacySale ? "Médicaments délivrés, montant et encaissement" : isInvoiceFlow ? "Facturation patient, prestations et encaissement" : "Action métier sécurisée"}</p>
           </div>
-          <button onClick={onClose} className="border border-slate-300 p-2 text-slate-600 hover:bg-slate-50"><X className="size-5" /></button>
+          <button onClick={onClose} className="border border-slate-300 p-2 text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"><X className="size-5" /></button>
         </div>
         <div className="space-y-5 p-7">
           {isInvoiceFlow ? <InvoiceWorkflow operationKind={operation.kind} form={form} setForm={setForm} /> : null}
@@ -101,8 +101,8 @@ export function OperationDialog({ operation, form, setForm, posting, locale = "f
             <TextAreaField label="Notes / justification" value={form.notes} onChange={(value) => setForm({ ...form, notes: value })} />
           </> : null}
           {operation.kind === "validate-lab" ? <p className="border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">Confirmer la validation biologique de ce résultat. Cette action engage le validateur.</p> : null}
-          <div className="flex justify-end gap-3 border-t border-slate-200 pt-5">
-            <button onClick={onClose} className="h-12 border border-slate-300 bg-white px-5 text-sm font-black text-slate-800 hover:bg-slate-50">Annuler</button>
+          <div className="flex justify-end gap-3 border-t border-slate-200 pt-5 dark:border-slate-700">
+            <button onClick={onClose} className="h-12 border border-slate-300 bg-white px-5 text-sm font-black text-slate-800 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800">Annuler</button>
             <button disabled={posting} onClick={onSubmit} className="inline-flex h-12 items-center justify-center gap-2 bg-blue-700 px-6 text-sm font-black text-white hover:bg-blue-800 disabled:opacity-50">{posting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}{isPharmacySale ? "Valider la vente" : isInvoiceFlow ? operation.kind === "generate-invoice" ? "Générer la facture" : "Calculer l’aperçu" : "Confirmer"}</button>
           </div>
         </div>
@@ -228,6 +228,29 @@ function InvoiceWorkflow({ operationKind, form, setForm }: { operationKind: stri
     return () => { mounted = false; };
   }, [isPharmacyDispensation, form.patientId, form.sourceId]);
 
+  useEffect(() => {
+    if (operationKind !== "generate-invoice" || !form.collectNow) return;
+    if (displayTotal > 0 && !Number(form.paymentAmount || 0)) {
+      setForm({ ...form, paymentAmount: String(displayTotal) });
+    }
+  }, [operationKind, form.collectNow, displayTotal]);
+
+  useEffect(() => {
+    if (isPharmacyDispensation || operationKind !== "generate-invoice" || !form.collectNow || !form.patientId || form.preview || estimatedManualTotal > 0) return;
+    let mounted = true;
+    setPreviewLoading(true);
+    setPreviewError("");
+    api.post("/billing/invoices/preview", invoiceApiPayload(form))
+      .then((response) => {
+        if (!mounted) return;
+        const total = Number(response.data?.subtotal ?? 0);
+        setForm({ ...form, preview: response.data, paymentAmount: form.paymentAmount || (total > 0 ? String(total) : "") });
+      })
+      .catch((error) => mounted && setPreviewError(error?.response?.data?.message || error?.message || "Impossible de calculer les frais à encaisser."))
+      .finally(() => mounted && setPreviewLoading(false));
+    return () => { mounted = false; };
+  }, [isPharmacyDispensation, operationKind, form.collectNow, form.patientId, form.admissionId, form.from, form.to, estimatedManualTotal]);
+
   if (isPharmacyDispensation) {
     return <PharmacySaleWorkflow operationKind={operationKind} form={form} setForm={setForm} previewLoading={previewLoading} previewError={previewError} />;
   }
@@ -275,28 +298,30 @@ function InvoiceWorkflow({ operationKind, form, setForm }: { operationKind: stri
         </div>
 
         {operationKind === "generate-invoice" ? (
-          <div className="border border-blue-200 bg-blue-50 p-5">
+          <div className="border border-blue-200 bg-blue-50 p-5 dark:border-slate-700 dark:bg-slate-950">
             <label className="flex cursor-pointer items-start gap-3">
-              <input type="checkbox" checked={Boolean(form.collectNow)} onChange={(event) => setForm({ ...form, collectNow: event.target.checked, paymentAmount: event.target.checked ? form.paymentAmount || String(displayTotal || "") : form.paymentAmount })} className="mt-1 size-4 rounded border-slate-300" />
+              <input type="checkbox" checked={Boolean(form.collectNow)} onChange={(event) => setForm({ ...form, collectNow: event.target.checked, paymentAmount: event.target.checked ? form.paymentAmount || (displayTotal > 0 ? String(displayTotal) : "") : form.paymentAmount })} className="mt-1 size-4 rounded border-slate-300" />
               <span>
-                <span className="flex items-center gap-2 text-sm font-black text-slate-950"><WalletCards className="size-4 text-blue-700" />Encaisser immédiatement</span>
-                <span className="mt-1 block text-xs font-semibold text-slate-600">Cochez ici si le patient paie au moment de la création de la facture.</span>
+                <span className="flex items-center gap-2 text-sm font-black text-slate-950 dark:text-white"><WalletCards className="size-4 text-blue-700 dark:text-blue-300" />Encaisser immédiatement</span>
+                <span className="mt-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Le montant dû est repris automatiquement dès qu’il est calculé.</span>
               </span>
             </label>
             {form.collectNow ? (
-              <div className="mt-4 space-y-4 border-t border-blue-100 pt-4">
+              <div className="mt-4 space-y-4 border-t border-blue-100 pt-4 dark:border-slate-700">
+                {previewLoading ? <div className="flex items-center gap-2 border border-blue-200 bg-white px-3 py-2 text-xs font-black text-blue-800 dark:border-slate-700 dark:bg-slate-900 dark:text-blue-200"><Loader2 className="size-4 animate-spin" />Calcul du montant à encaisser...</div> : null}
+                {previewError ? <div className="border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-black text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">{previewError}</div> : null}
                 <TextField type="number" label="Montant encaissé" value={form.paymentAmount} onChange={(value) => setForm({ ...form, paymentAmount: Number(value) })} />
                 <SelectField label="Méthode" value={form.paymentMethod} onChange={(value) => setForm({ ...form, paymentMethod: value })} options={["CASH", "CARD", "MOBILE_MONEY", "BANK_TRANSFER"]} />
-                <div className="flex items-center gap-2 bg-white px-3 py-2 text-xs font-bold text-emerald-700">
+                <div className="flex items-center gap-2 bg-white px-3 py-2 text-xs font-bold text-emerald-700 dark:bg-slate-900 dark:text-emerald-300">
                   <CheckCircle2 className="size-4" />La facture sera marquée payée à hauteur du montant encaissé.
                 </div>
               </div>
             ) : null}
           </div>
         ) : (
-          <div className="border border-slate-200 bg-slate-50 p-5 text-sm font-semibold text-slate-600">
-            <CreditCard className="mb-3 size-5 text-slate-500" />
-            Lancez l’aperçu pour vérifier les lignes et tarifs. L’encaissement apparaît au moment de générer la facture.
+          <div className="border border-slate-200 bg-slate-50 p-5 text-sm font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
+            <CreditCard className="mb-3 size-5 text-slate-500 dark:text-slate-300" />
+            L’aperçu calcule les frais sans créer de facture. Utilisez-le pour vérifier les lignes avant validation.
           </div>
         )}
       </aside>
@@ -306,12 +331,12 @@ function InvoiceWorkflow({ operationKind, form, setForm }: { operationKind: stri
 
 function InvoicePanel({ icon, title, subtitle, children }: { icon: ReactNode; title: string; subtitle: string; children: ReactNode }) {
   return (
-    <section className="border border-slate-200 bg-white">
-      <div className="flex items-start gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4">
+    <section className="border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+      <div className="flex items-start gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4 dark:border-slate-700 dark:bg-slate-950">
         <div className="flex size-10 items-center justify-center bg-blue-700 text-white">{icon}</div>
         <div>
-          <h3 className="font-black text-slate-950">{title}</h3>
-          <p className="mt-1 text-xs font-semibold text-slate-500">{subtitle}</p>
+          <h3 className="font-black text-slate-950 dark:text-white">{title}</h3>
+          <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-300">{subtitle}</p>
         </div>
       </div>
       <div className="p-5">{children}</div>
@@ -413,23 +438,23 @@ function InvoicePreview({ value }: { value: any }) {
   const charges = normalizeRows(value?.charges);
   const unpriced = normalizeRows(value?.unpriced);
   return (
-    <div className="border border-slate-200 bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3">
+    <div className="border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-950">
         <div>
-          <p className="text-xs font-black uppercase tracking-wide text-slate-500">Aperçu facture</p>
-          <p className="mt-1 text-sm font-black text-slate-950">{formatValue(value?.subtotal)} {value?.currency ?? ""}</p>
+          <p className="text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-300">Aperçu facture</p>
+          <p className="mt-1 text-sm font-black text-slate-950 dark:text-white">{formatValue(value?.subtotal)} {value?.currency ?? ""}</p>
         </div>
         {unpriced.length ? <span className="bg-amber-100 px-3 py-1 text-xs font-black text-amber-800">Tarifs à compléter</span> : null}
       </div>
-      <div className="divide-y divide-slate-100">
+      <div className="divide-y divide-slate-100 dark:divide-slate-800">
         {charges.slice(0, 12).map((charge: any, index: number) => (
           <div key={index} className="grid gap-2 px-4 py-3 text-sm md:grid-cols-[1fr_90px_120px]">
-            <div className="font-bold text-slate-800">{charge.description ?? charge.serviceCode ?? "Prestation"}</div>
-            <div className="font-semibold text-slate-500">Qté {formatValue(charge.quantity)}</div>
-            <div className="font-black text-slate-950 md:text-right">{formatValue(charge.total ?? charge.unitPrice)} {charge.currency ?? value?.currency ?? ""}</div>
+            <div className="font-bold text-slate-800 dark:text-slate-100">{charge.description ?? charge.serviceCode ?? "Prestation"}</div>
+            <div className="font-semibold text-slate-500 dark:text-slate-300">Qté {formatValue(charge.quantity)}</div>
+            <div className="font-black text-slate-950 dark:text-white md:text-right">{formatValue(charge.total ?? charge.unitPrice)} {charge.currency ?? value?.currency ?? ""}</div>
           </div>
         ))}
-        {!charges.length ? <p className="px-4 py-4 text-sm font-semibold text-slate-500">Aucune ligne à afficher.</p> : null}
+        {!charges.length ? <p className="px-4 py-4 text-sm font-semibold text-slate-500 dark:text-slate-300">Aucune ligne à afficher.</p> : null}
       </div>
       {unpriced.length ? (
         <div className="border-t border-amber-100 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
@@ -483,18 +508,18 @@ function InvoiceItemsField({ value, onChange }: { value: any; onChange: (value: 
   const removeRow = (index: number) => onChange(rows.filter((_, rowIndex) => rowIndex !== index));
 
   return (
-    <div className="overflow-hidden border border-slate-200 bg-white">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-4">
+    <div className="overflow-hidden border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-4 dark:border-slate-700 dark:bg-slate-950">
         <div>
-          <p className="text-xs font-black uppercase tracking-wide text-slate-500">Motifs facturables</p>
-          <p className="mt-1 text-xs font-semibold text-slate-500">Utilisez la grille pour les prestations connues, ou une ligne libre pour un service exceptionnel.</p>
+          <p className="text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-300">Motifs facturables</p>
+          <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-300">Utilisez la grille pour les prestations connues, ou une ligne libre pour un service exceptionnel.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={addTariffRow} className="inline-flex items-center gap-2 border border-blue-700 bg-white px-3 py-2 text-xs font-black text-blue-800 hover:bg-blue-50"><Plus className="size-4" />Prestation tarifée</button>
-          <button type="button" onClick={addManualRow} className="inline-flex items-center gap-2 border border-slate-300 bg-white px-3 py-2 text-xs font-black text-slate-800 hover:bg-slate-100"><Plus className="size-4" />Ligne libre</button>
+          <button type="button" onClick={addTariffRow} className="inline-flex items-center gap-2 border border-blue-700 bg-white px-3 py-2 text-xs font-black text-blue-800 hover:bg-blue-50 dark:bg-slate-900 dark:text-blue-200 dark:hover:bg-slate-800"><Plus className="size-4" />Prestation tarifée</button>
+          <button type="button" onClick={addManualRow} className="inline-flex items-center gap-2 border border-slate-300 bg-white px-3 py-2 text-xs font-black text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800"><Plus className="size-4" />Ligne libre</button>
         </div>
       </div>
-      <div className="divide-y divide-slate-100">
+      <div className="divide-y divide-slate-100 dark:divide-slate-800">
         {rows.map((row, index) => {
           const isManual = row.mode === "manual" || (!row.serviceCode && row.unitPrice !== undefined);
           return (
@@ -506,7 +531,7 @@ function InvoiceItemsField({ value, onChange }: { value: any; onChange: (value: 
                     if (event.target.value === "__manual__") updateRow(index, { mode: "manual", serviceCode: "", description: row.description ?? "", unitPrice: row.unitPrice ?? 0 });
                     else updateRow(index, { mode: "tariff", serviceCode: event.target.value, description: "", unitPrice: undefined });
                   }}
-                  className="h-11 w-full border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-900 outline-none focus:border-blue-700 focus:bg-white"
+                  className="h-11 w-full border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-900 outline-none focus:border-blue-700 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-400 dark:focus:bg-slate-950"
                 >
                   <option value="">{loading ? "Chargement..." : "Choisir une prestation tarifée"}</option>
                   {services.map((service) => <option key={service.code} value={service.code}>{service.label}</option>)}
@@ -517,27 +542,27 @@ function InvoiceItemsField({ value, onChange }: { value: any; onChange: (value: 
                     value={row.description ?? ""}
                     onChange={(event) => updateRow(index, { description: event.target.value })}
                     placeholder="Libellé visible sur la facture"
-                    className="h-11 w-full border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 outline-none focus:border-blue-700"
+                    className="h-11 w-full border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 outline-none focus:border-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-400"
                   />
                 ) : null}
               </div>
               <label className="block">
-                <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">Qté</span>
-                <input type="number" min="1" step="1" value={row.quantity ?? 1} onChange={(event) => updateRow(index, { quantity: Number(event.target.value) })} className="h-11 w-full border border-slate-200 bg-slate-50 px-3 text-sm font-semibold outline-none focus:border-blue-700 focus:bg-white" />
+                <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-300">Qté</span>
+                <input type="number" min="1" step="1" value={row.quantity ?? 1} onChange={(event) => updateRow(index, { quantity: Number(event.target.value) })} className="h-11 w-full border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-950 outline-none focus:border-blue-700 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-400 dark:focus:bg-slate-950" />
               </label>
               <label className="block">
-                <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500">Prix</span>
+                <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-300">Prix</span>
                 {isManual ? (
-                  <input type="number" min="0" step="0.01" value={row.unitPrice ?? 0} onChange={(event) => updateRow(index, { unitPrice: Number(event.target.value) })} className="h-11 w-full border border-slate-200 bg-slate-50 px-3 text-sm font-semibold outline-none focus:border-blue-700 focus:bg-white" />
+                  <input type="number" min="0" step="0.01" value={row.unitPrice ?? 0} onChange={(event) => updateRow(index, { unitPrice: Number(event.target.value) })} className="h-11 w-full border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-950 outline-none focus:border-blue-700 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-400 dark:focus:bg-slate-950" />
                 ) : (
-                  <div className="flex h-11 items-center border border-slate-200 bg-slate-50 px-3 text-xs font-black uppercase tracking-wide text-slate-500">Grille</div>
+                  <div className="flex h-11 items-center border border-slate-200 bg-slate-50 px-3 text-xs font-black uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">Grille</div>
                 )}
               </label>
-              <button type="button" onClick={() => removeRow(index)} className="mt-5 flex h-11 items-center justify-center border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-700"><Trash2 className="size-4" /></button>
+              <button type="button" onClick={() => removeRow(index)} className="mt-5 flex h-11 items-center justify-center border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-rose-950 dark:hover:text-rose-200"><Trash2 className="size-4" /></button>
             </div>
           );
         })}
-        {!rows.length ? <p className="px-4 py-5 text-sm font-semibold text-slate-500">Aucun motif ajouté. La facture reprendra les frais déjà générés pour ce patient.</p> : null}
+        {!rows.length ? <p className="px-4 py-5 text-sm font-semibold text-slate-500 dark:text-slate-300">Aucun motif ajouté. La facture reprendra les frais déjà générés pour ce patient.</p> : null}
       </div>
     </div>
   );

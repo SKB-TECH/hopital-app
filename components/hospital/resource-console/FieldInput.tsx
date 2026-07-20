@@ -19,6 +19,7 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
   const [cameraStarting, setCameraStarting] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const lastAutoPaymentRef = useRef("");
 
   useEffect(() => {
     if (!field.reference) return;
@@ -46,6 +47,36 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
   }, [cameraStream]);
 
   useEffect(() => () => stopCamera(), []);
+
+  useEffect(() => {
+    if (!form?.patientId || field.name !== "insuranceRate") return;
+    if (Number(value || 0) > 0) return;
+    let mounted = true;
+    api.get("/insurance/coverages", { params: { patientId: form.patientId, limit: 1 } })
+      .then((response) => {
+        if (!mounted) return;
+        const coverage = normalizeRows(response.data).find((item) => String(item.status ?? "").toUpperCase() === "ACTIVE") ?? normalizeRows(response.data)[0];
+        const rate = Number(coverage?.coverageRate ?? coverage?.coverage_rate ?? 0);
+        if (Number.isFinite(rate) && rate > 0) onChange(rate);
+      })
+      .catch(() => undefined);
+    return () => { mounted = false; };
+  }, [field.name, form?.patientId]);
+
+  useEffect(() => {
+    if (field.name !== "paidAmount") return;
+    const total = pharmacySaleTotal(form?.lines);
+    if (total <= 0) return;
+    const insuranceRate = Math.max(0, Math.min(100, Number(form?.insuranceRate ?? 0)));
+    const mutualRate = Math.max(0, Math.min(100, Number(form?.mutualRate ?? 0)));
+    const due = Math.max(0, Math.round((total - total * insuranceRate / 100 - total * mutualRate / 100) * 100) / 100);
+    const current = String(value ?? "");
+    const next = String(due);
+    if (!current || Number(current) === 0 || current === lastAutoPaymentRef.current) {
+      lastAutoPaymentRef.current = next;
+      onChange(due);
+    }
+  }, [field.name, form?.lines, form?.insuranceRate, form?.mutualRate]);
 
   const uploadFile = async (file: File) => {
     setUploadingFile(true);
@@ -209,10 +240,18 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
       ) : field.type === "checkbox" ? (
         <input type="checkbox" checked={Boolean(value)} onChange={(event) => onChange(event.target.checked)} />
       ) : (
-        <input type={field.type === "number" ? "number" : field.type === "date" ? "date" : field.type === "datetime" ? "datetime-local" : field.name === "password" || field.name.toLowerCase().includes("pin") ? "password" : "text"} value={value ?? ""} onChange={(event) => onChange(field.type === "number" ? Number(event.target.value) : event.target.value)} placeholder={field.name === "password" ? (locale === "en" ? "Minimum 10 characters" : "Minimum 10 caractères") : field.name.toLowerCase().includes("pin") ? "4 à 8 chiffres" : field.placeholder} className={base} />
+        <input type={field.type === "number" ? "number" : field.type === "date" ? "date" : field.type === "datetime" ? "datetime-local" : field.name === "password" || field.name.toLowerCase().includes("pin") ? "password" : "text"} value={value ?? ""} onChange={(event) => {
+          if (field.name === "paidAmount") lastAutoPaymentRef.current = "";
+          onChange(field.type === "number" ? Number(event.target.value) : event.target.value);
+        }} placeholder={field.name === "password" ? (locale === "en" ? "Minimum 10 characters" : "Minimum 10 caractères") : field.name.toLowerCase().includes("pin") ? "4 à 8 chiffres" : field.placeholder} className={base} />
       )}
     </label>
   );
+}
+
+function pharmacySaleTotal(lines: any) {
+  const rows = Array.isArray(lines) ? lines : [];
+  return rows.reduce((sum, row) => sum + Number(row.quantity || 0) * Number(row.unitPrice || 0), 0);
 }
 
 function imagePreview(value: any) {
@@ -410,11 +449,12 @@ function PharmacySaleItemsField({ value, onChange, locale }: { value: any; onCha
                     <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-wide">
                       {medicine.code ? <span className="bg-slate-950 px-2 py-1 text-white">{medicine.code}</span> : null}
                       <span className="bg-slate-100 px-2 py-1 text-slate-600">Stock: {Number.isFinite(medicine.stock) ? medicine.stock.toLocaleString(locale === "en" ? "en-US" : "fr-FR") : "-"}</span>
+                      {medicine.unitPrice <= 0 ? <span className="bg-amber-100 px-2 py-1 text-amber-800">Prix public à configurer</span> : null}
                     </div>
                   ) : null}
                 </div>
                 <input type="number" min="1" step="1" value={row.quantity ?? ""} onChange={(event) => updateRow(index, { quantity: event.target.value })} className="h-12 border border-slate-200 bg-slate-50 px-3 text-sm font-black outline-none focus:border-blue-700 focus:bg-white" />
-                <input type="number" min="0" step="0.01" value={row.unitPrice ?? ""} onChange={(event) => updateRow(index, { unitPrice: event.target.value })} placeholder="0" className="h-12 border border-slate-200 bg-slate-50 px-3 text-sm font-black outline-none focus:border-blue-700 focus:bg-white" />
+                <input type="number" min="0" step="0.01" value={row.unitPrice ?? ""} readOnly placeholder="Prix catalogue" className="h-12 border border-slate-200 bg-slate-100 px-3 text-sm font-black text-slate-800 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
                 <div className="flex h-12 items-center border border-slate-100 bg-slate-50 px-3 text-sm font-black text-slate-800">{money(Number.isFinite(lineTotal) ? lineTotal : 0)} {currency}</div>
                 <button type="button" onClick={() => removeRow(index)} className="flex size-12 items-center justify-center border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-700" title="Retirer">
                   <Trash2 className="size-4" />
