@@ -7,7 +7,22 @@ export function cleanObject(input: Record<string, any>) {
 
 export function invoiceApiPayload(input: Record<string, any>) {
   const { collectNow, paymentMethod, paymentAmount, paymentReference, preview, ...payload } = input;
-  return cleanObject(payload);
+  return cleanObject({
+    ...payload,
+    invoiceItems: sanitizeInvoiceItems(payload.invoiceItems),
+  });
+}
+
+function sanitizeInvoiceItems(value: any) {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => {
+    const { mode, ...payload } = item ?? {};
+    return cleanObject({
+      ...payload,
+      quantity: payload.quantity === "" || payload.quantity === undefined ? undefined : Number(payload.quantity),
+      unitPrice: payload.unitPrice === "" || payload.unitPrice === undefined ? undefined : Number(payload.unitPrice),
+    });
+  }).filter((item) => item.serviceCode || item.description);
 }
 
 export function normalizeRows(data: any): any[] {

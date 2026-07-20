@@ -287,7 +287,6 @@ function InvoiceWorkflow({ operationKind, form, setForm }: { operationKind: stri
               <div className="mt-4 space-y-4 border-t border-blue-100 pt-4">
                 <TextField type="number" label="Montant encaissé" value={form.paymentAmount} onChange={(value) => setForm({ ...form, paymentAmount: Number(value) })} />
                 <SelectField label="Méthode" value={form.paymentMethod} onChange={(value) => setForm({ ...form, paymentMethod: value })} options={["CASH", "CARD", "MOBILE_MONEY", "BANK_TRANSFER"]} />
-                <TextField label="Référence paiement" value={form.paymentReference} onChange={(value) => setForm({ ...form, paymentReference: value })} />
                 <div className="flex items-center gap-2 bg-white px-3 py-2 text-xs font-bold text-emerald-700">
                   <CheckCircle2 className="size-4" />La facture sera marquée payée à hauteur du montant encaissé.
                 </div>
@@ -399,7 +398,6 @@ function PharmacySaleWorkflow({ operationKind, form, setForm, previewLoading, pr
             <div className="space-y-4">
               <TextField type="number" label="Montant encaissé" value={form.paymentAmount} onChange={(value) => setForm({ ...form, paymentAmount: Number(value), collectNow: true })} />
               <SelectField label="Méthode" value={form.paymentMethod} onChange={(value) => setForm({ ...form, paymentMethod: value, collectNow: true })} options={["CASH", "CARD", "MOBILE_MONEY", "BANK_TRANSFER"]} />
-              <TextField label="Référence paiement" value={form.paymentReference} onChange={(value) => setForm({ ...form, paymentReference: value, collectNow: true })} />
               <div className="flex items-center gap-2 bg-white px-3 py-2 text-xs font-bold text-emerald-700">
                 <CheckCircle2 className="size-4" />La vente sera facturée et encaissée en une seule action.
               </div>

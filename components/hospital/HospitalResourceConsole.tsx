@@ -276,7 +276,7 @@ export default function HospitalResourceConsole() {
             await api.post(`/billing/invoices/${invoice.id}/payments`, cleanObject({
               amount,
               method: paymentMethod || "CASH",
-              reference: paymentReference,
+              reference: paymentReference || autoPaymentReference(paymentMethod || "CASH"),
             }));
           }
         }
@@ -1721,6 +1721,11 @@ function moneyNumber(value: any) {
   const normalized = String(value).replace(/\s/g, "").replace(",", ".");
   const numeric = Number(normalized);
   return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function autoPaymentReference(method: string) {
+  const prefix = String(method || "PAY").replace(/[^A-Z0-9]/gi, "").slice(0, 4).toUpperCase() || "PAY";
+  return `${prefix}-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Date.now().toString().slice(-6)}`;
 }
 
 function canRunOperation(kind: OperationKind, canCreate: boolean, canUpdate: boolean, canPrint: boolean) {
