@@ -37,7 +37,7 @@ export function defaultForm(fields: HospitalField[], row?: Record<string, any>) 
 }
 
 function defaultFieldValue(field: HospitalField) {
-  if (field.type === "module-permissions" || field.type === "price-list-items" || field.type === "purchase-order-items" || field.type === "dispensation-items" || field.type === "prescription-items") return [];
+  if (field.type === "module-permissions" || field.type === "price-list-items" || field.type === "purchase-order-items" || field.type === "dispensation-items" || field.type === "prescription-items" || field.type === "pharmacy-sale-items") return [];
   if (field.type === "json") return "";
   if (field.type === "number") return 0;
   if (field.type === "checkbox") return false;
@@ -86,6 +86,14 @@ export function cleanPayload(form: Record<string, any>, fields: HospitalField[])
     if (field.type === "dispensation-items") {
       const items = Array.isArray(value) ? value.filter((item) => item?.medicineId && item?.batchId && Number.isFinite(Number(item?.quantity)) && Number(item.quantity) > 0).map((item) => ({ medicineId: item.medicineId, batchId: item.batchId, quantity: Number(item.quantity) })) : [];
       if (field.required && !items.length) throw new Error("Ajoutez au moins un médicament avec son lot et la quantité délivrée.");
+      out[field.name] = items;
+      continue;
+    }
+    if (field.type === "pharmacy-sale-items") {
+      const items = Array.isArray(value) ? value
+        .filter((item) => item?.medicineId && Number.isFinite(Number(item?.quantity)) && Number(item.quantity) > 0 && Number.isFinite(Number(item?.unitPrice)) && Number(item.unitPrice) >= 0)
+        .map((item) => ({ medicineId: item.medicineId, quantity: Number(item.quantity), unitPrice: Number(item.unitPrice) })) : [];
+      if (field.required && !items.length) throw new Error("Ajoutez au moins un médicament avec quantité vendue et prix unitaire.");
       out[field.name] = items;
       continue;
     }

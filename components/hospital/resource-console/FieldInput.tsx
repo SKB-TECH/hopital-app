@@ -115,7 +115,7 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
   };
 
   return (
-    <label className={field.type === "multiselect" || field.type === "module-permissions" || field.type === "price-list-items" || field.type === "purchase-order-items" || field.type === "dispensation-items" || field.type === "prescription-items" ? "block md:col-span-2" : "block"}>
+    <label className={field.type === "multiselect" || field.type === "module-permissions" || field.type === "price-list-items" || field.type === "purchase-order-items" || field.type === "dispensation-items" || field.type === "prescription-items" || field.type === "pharmacy-sale-items" ? "block md:col-span-2" : "block"}>
       <span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">{field.label}{field.required ? " *" : ""}</span>
       {field.type === "module-permissions" ? (
         <ModulePermissionsEditor value={value} roles={form?.roles} onChange={onChange} locale={locale} />
@@ -129,6 +129,8 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
         <DispensationItemsField value={value} onChange={onChange} locale={locale} />
       ) : field.type === "prescription-items" ? (
         <PrescriptionItemsField value={value} onChange={onChange} locale={locale} />
+      ) : field.type === "pharmacy-sale-items" ? (
+        <PharmacySaleItemsField value={value} onChange={onChange} locale={locale} />
       ) : field.reference ? (
         <Autocomplete value={String(value ?? "")} options={options} isLoading={loading} placeholder={field.placeholder || `${locale === "en" ? "Select" : "Sélectionner"} ${field.label.toLowerCase()}`} searchPlaceholder={`${locale === "en" ? "Search" : "Rechercher"} ${field.label.toLowerCase()}`} emptyText={locale === "en" ? "No result" : "Aucun résultat"} onSelect={(option) => onChange(option.id)} showIdFallback={false} />
       ) : field.type === "multiselect" ? (
@@ -332,6 +334,109 @@ function DispensationItemsField({ value, onChange, locale }: { value: any; onCha
         </div>
       </div>
       <button type="button" onClick={addRow} className="mt-3 border border-blue-700 bg-white px-4 py-2 text-sm font-black text-blue-800 hover:bg-blue-50">Ajouter un médicament</button>
+    </div>
+  );
+}
+
+function PharmacySaleItemsField({ value, onChange, locale }: { value: any; onChange: (value: any) => void; locale: string }) {
+  const rows = Array.isArray(value) ? value : [];
+  const [medicines, setMedicines] = useState<Array<{ id: string; label: string; stock: number; unitPrice: number; code: string }>>([]);
+  const [loading, setLoading] = useState(false);
+  const currency = "USD";
+
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    Promise.all([api.get("/pharmacy/medicines"), api.get("/pharmacy/batches")])
+      .then(([medicineResponse, batchResponse]) => {
+        if (!mounted) return;
+        const stockByMedicine = normalizeRows(batchResponse.data).reduce<Record<string, number>>((acc, batch) => {
+          const medicineId = String(batch.medicineId ?? "");
+          if (!medicineId) return acc;
+          acc[medicineId] = (acc[medicineId] ?? 0) + Number(batch.availableQuantity ?? batch.available_quantity ?? batch.quantity ?? 0);
+          return acc;
+        }, {});
+        setMedicines(normalizeRows(medicineResponse.data).map((medicine) => {
+          const unitPrice = Number(medicine.publicPrice ?? medicine.public_price ?? medicine.price ?? medicine.unitPrice ?? 0);
+          const id = String(medicine.id ?? "");
+          const stock = stockByMedicine[id] ?? Number(medicine.currentStock ?? medicine.availableQuantity ?? medicine.quantity ?? medicine.stock ?? 0);
+          const code = String(medicine.code ?? medicine.cipCode ?? medicine.ucdCode ?? "");
+          return {
+            id,
+            code,
+            stock,
+            unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
+            label: [medicine.name, medicine.strength, medicine.form, code].filter(Boolean).join(" · "),
+          };
+        }).filter((medicine) => medicine.id));
+      })
+      .catch(() => mounted && setMedicines([]))
+      .finally(() => mounted && setLoading(false));
+    return () => { mounted = false; };
+  }, []);
+
+  const money = (amount: number) => amount.toLocaleString(locale === "en" ? "en-US" : "fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const updateRow = (index: number, patch: Record<string, any>) => onChange(rows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row));
+  const addRow = () => onChange([...rows, { medicineId: "", quantity: 1, unitPrice: "" }]);
+  const removeRow = (index: number) => onChange(rows.filter((_, rowIndex) => rowIndex !== index));
+  const selectedMedicine = (medicineId: string) => medicines.find((medicine) => medicine.id === medicineId);
+  const total = rows.reduce((sum, row) => sum + Number(row.quantity || 0) * Number(row.unitPrice || 0), 0);
+
+  return (
+    <div className="space-y-3">
+      <div className="overflow-hidden border border-slate-200 bg-white">
+        <div className="grid grid-cols-[minmax(280px,1.5fr)_120px_150px_150px_44px] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-black uppercase tracking-wide text-slate-500">
+          <span>Médicament</span><span>Qté vendue</span><span>Prix unitaire</span><span>Total ligne</span><span />
+        </div>
+        <div className="divide-y divide-slate-100">
+          {rows.map((row, index) => {
+            const medicine = selectedMedicine(row.medicineId ?? "");
+            const lineTotal = Number(row.quantity || 0) * Number(row.unitPrice || 0);
+            return (
+              <div key={index} className="grid grid-cols-[minmax(280px,1.5fr)_120px_150px_150px_44px] gap-3 p-4">
+                <div>
+                  <select
+                    value={row.medicineId ?? ""}
+                    onChange={(event) => {
+                      const medicineItem = selectedMedicine(event.target.value);
+                      updateRow(index, { medicineId: event.target.value, unitPrice: medicineItem?.unitPrice || "" });
+                    }}
+                    className="h-12 w-full border border-slate-200 bg-slate-50 px-3 text-sm font-black outline-none focus:border-blue-700 focus:bg-white"
+                  >
+                    <option value="">{loading ? "Chargement..." : "Choisir le médicament vendu"}</option>
+                    {medicines.map((medicineItem) => <option key={medicineItem.id} value={medicineItem.id}>{medicineItem.label}</option>)}
+                  </select>
+                  {medicine ? (
+                    <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-wide">
+                      {medicine.code ? <span className="bg-slate-950 px-2 py-1 text-white">{medicine.code}</span> : null}
+                      <span className="bg-slate-100 px-2 py-1 text-slate-600">Stock: {Number.isFinite(medicine.stock) ? medicine.stock.toLocaleString(locale === "en" ? "en-US" : "fr-FR") : "-"}</span>
+                    </div>
+                  ) : null}
+                </div>
+                <input type="number" min="1" step="1" value={row.quantity ?? ""} onChange={(event) => updateRow(index, { quantity: event.target.value })} className="h-12 border border-slate-200 bg-slate-50 px-3 text-sm font-black outline-none focus:border-blue-700 focus:bg-white" />
+                <input type="number" min="0" step="0.01" value={row.unitPrice ?? ""} onChange={(event) => updateRow(index, { unitPrice: event.target.value })} placeholder="0" className="h-12 border border-slate-200 bg-slate-50 px-3 text-sm font-black outline-none focus:border-blue-700 focus:bg-white" />
+                <div className="flex h-12 items-center border border-slate-100 bg-slate-50 px-3 text-sm font-black text-slate-800">{money(Number.isFinite(lineTotal) ? lineTotal : 0)} {currency}</div>
+                <button type="button" onClick={() => removeRow(index)} className="flex size-12 items-center justify-center border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-700" title="Retirer">
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+            );
+          })}
+          {!rows.length ? (
+            <div className="p-5">
+              <p className="text-sm font-black text-slate-800">Aucun médicament ajouté.</p>
+              <p className="mt-1 text-sm font-semibold text-slate-500">Ajoutez chaque médicament avec la quantité vendue et le prix unitaire.</p>
+            </div>
+          ) : null}
+        </div>
+        <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <button type="button" onClick={addRow} className="inline-flex h-11 w-fit items-center gap-2 border border-blue-700 bg-white px-4 text-sm font-black text-blue-800 hover:bg-blue-50">
+            <Plus className="size-4" />
+            Ajouter un médicament
+          </button>
+          <div className="text-sm font-black text-slate-900">Total vente: {money(total)} {currency}</div>
+        </div>
+      </div>
     </div>
   );
 }
