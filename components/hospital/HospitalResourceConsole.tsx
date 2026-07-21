@@ -1556,7 +1556,10 @@ function isFileAttachment(value: any) {
   return Boolean(value && typeof value === "object" && !Array.isArray(value) && (value.url || value.secureUrl) && (value.fileName || value.contentType || value.provider === "cloudinary"));
 }
 
-function attachmentUrl(value: Record<string, any>) {
+function attachmentUrl(value: any) {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (typeof value !== "object" || Array.isArray(value)) return "";
   return String(value.url || value.secureUrl || value.secure_url || "");
 }
 
