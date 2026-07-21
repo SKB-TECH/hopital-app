@@ -423,16 +423,17 @@ function PharmacySaleItemsField({ value, onChange, locale }: { value: any; onCha
 
   return (
     <div className="space-y-3">
-      <div className="overflow-hidden border border-slate-200 bg-white">
-        <div className="grid grid-cols-[minmax(280px,1.5fr)_120px_150px_150px_44px] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-black uppercase tracking-wide text-slate-500">
+      <div className="overflow-hidden border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+        <div className="grid grid-cols-[minmax(340px,1.6fr)_140px_180px_170px_56px] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-black uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
           <span>Médicament</span><span>Qté vendue</span><span>Prix unitaire</span><span>Total ligne</span><span />
         </div>
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {rows.map((row, index) => {
             const medicine = selectedMedicine(row.medicineId ?? "");
             const lineTotal = Number(row.quantity || 0) * Number(row.unitPrice || 0);
+            const hasCataloguePrice = Boolean(medicine && medicine.unitPrice > 0);
             return (
-              <div key={index} className="grid grid-cols-[minmax(280px,1.5fr)_120px_150px_150px_44px] gap-3 p-4">
+              <div key={index} className="grid grid-cols-[minmax(340px,1.6fr)_140px_180px_170px_56px] gap-3 p-4">
                 <div>
                   <select
                     value={row.medicineId ?? ""}
@@ -440,23 +441,32 @@ function PharmacySaleItemsField({ value, onChange, locale }: { value: any; onCha
                       const medicineItem = selectedMedicine(event.target.value);
                       updateRow(index, { medicineId: event.target.value, unitPrice: medicineItem?.unitPrice || "" });
                     }}
-                    className="h-12 w-full border border-slate-200 bg-slate-50 px-3 text-sm font-black outline-none focus:border-blue-700 focus:bg-white"
+                    className="h-12 w-full border border-slate-200 bg-slate-50 px-3 text-sm font-black outline-none focus:border-blue-700 focus:bg-white dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-blue-500"
                   >
                     <option value="">{loading ? "Chargement..." : "Choisir le médicament vendu"}</option>
                     {medicines.map((medicineItem) => <option key={medicineItem.id} value={medicineItem.id}>{medicineItem.label}</option>)}
                   </select>
                   {medicine ? (
                     <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-wide">
-                      {medicine.code ? <span className="bg-slate-950 px-2 py-1 text-white">{medicine.code}</span> : null}
-                      <span className="bg-slate-100 px-2 py-1 text-slate-600">Stock: {Number.isFinite(medicine.stock) ? medicine.stock.toLocaleString(locale === "en" ? "en-US" : "fr-FR") : "-"}</span>
-                      {medicine.unitPrice <= 0 ? <span className="bg-amber-100 px-2 py-1 text-amber-800">Prix public à configurer</span> : null}
+                      {medicine.code ? <span className="bg-slate-950 px-2 py-1 text-white dark:bg-slate-800">{medicine.code}</span> : null}
+                      <span className="bg-slate-100 px-2 py-1 text-slate-600 dark:bg-slate-800 dark:text-slate-200">Stock: {Number.isFinite(medicine.stock) ? medicine.stock.toLocaleString(locale === "en" ? "en-US" : "fr-FR") : "-"}</span>
+                      {hasCataloguePrice ? <span className="bg-emerald-50 px-2 py-1 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">Prix catalogue</span> : <span className="bg-amber-100 px-2 py-1 text-amber-800 dark:bg-amber-950 dark:text-amber-200">Saisir le prix public</span>}
                     </div>
                   ) : null}
                 </div>
-                <input type="number" min="1" step="1" value={row.quantity ?? ""} onChange={(event) => updateRow(index, { quantity: event.target.value })} className="h-12 border border-slate-200 bg-slate-50 px-3 text-sm font-black outline-none focus:border-blue-700 focus:bg-white" />
-                <input type="number" min="0" step="0.01" value={row.unitPrice ?? ""} readOnly placeholder="Prix catalogue" className="h-12 border border-slate-200 bg-slate-100 px-3 text-sm font-black text-slate-800 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
-                <div className="flex h-12 items-center border border-slate-100 bg-slate-50 px-3 text-sm font-black text-slate-800">{money(Number.isFinite(lineTotal) ? lineTotal : 0)} {currency}</div>
-                <button type="button" onClick={() => removeRow(index)} className="flex size-12 items-center justify-center border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-700" title="Retirer">
+                <input type="number" min="1" step="1" value={row.quantity ?? ""} onChange={(event) => updateRow(index, { quantity: event.target.value })} className="h-12 border border-slate-200 bg-slate-50 px-3 text-sm font-black outline-none focus:border-blue-700 focus:bg-white dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-blue-500" />
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={row.unitPrice ?? ""}
+                  onChange={(event) => updateRow(index, { unitPrice: event.target.value })}
+                  readOnly={hasCataloguePrice}
+                  placeholder={hasCataloguePrice ? "Prix catalogue" : "Prix public"}
+                  className={`h-12 border px-3 text-sm font-black outline-none ${hasCataloguePrice ? "border-slate-200 bg-slate-100 text-slate-800 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" : "border-amber-300 bg-amber-50 text-amber-950 focus:border-blue-700 focus:bg-white dark:border-amber-700 dark:bg-slate-950 dark:text-amber-100 dark:focus:border-blue-500"}`}
+                />
+                <div className="flex h-12 items-center border border-slate-100 bg-slate-50 px-3 text-sm font-black text-slate-800 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">{money(Number.isFinite(lineTotal) ? lineTotal : 0)} {currency}</div>
+                <button type="button" onClick={() => removeRow(index)} className="flex size-12 items-center justify-center border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-rose-950" title="Retirer">
                   <Trash2 className="size-4" />
                 </button>
               </div>
@@ -469,12 +479,12 @@ function PharmacySaleItemsField({ value, onChange, locale }: { value: any; onCha
             </div>
           ) : null}
         </div>
-        <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <button type="button" onClick={addRow} className="inline-flex h-11 w-fit items-center gap-2 border border-blue-700 bg-white px-4 text-sm font-black text-blue-800 hover:bg-blue-50">
+        <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-950">
+          <button type="button" onClick={addRow} className="inline-flex h-11 w-fit items-center gap-2 border border-blue-700 bg-white px-4 text-sm font-black text-blue-800 hover:bg-blue-50 dark:bg-slate-950 dark:text-blue-300 dark:hover:bg-slate-900">
             <Plus className="size-4" />
             Ajouter un médicament
           </button>
-          <div className="text-sm font-black text-slate-900">Total vente: {money(total)} {currency}</div>
+          <div className="text-sm font-black text-slate-900 dark:text-slate-100">Total vente: {money(total)} {currency}</div>
         </div>
       </div>
     </div>

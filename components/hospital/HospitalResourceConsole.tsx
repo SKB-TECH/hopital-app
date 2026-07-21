@@ -605,7 +605,7 @@ export default function HospitalResourceConsole() {
                     </thead>
                     <tbody>
                       {loading ? <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center text-sm font-semibold text-slate-500"><Loader2 className="mx-auto mb-3 size-6 animate-spin text-blue-700" />{hospitalUi(locale, "loadingData")}</td></tr> :
-                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs truncate px-5 py-4 text-sm font-semibold text-slate-700">{safeCellText(displayCell(row, column.key, referenceLabels))}</td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => openView(row)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title="Voir"><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Imprimer"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "download-backup" ? downloadBackup(row) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : action.kind === "close-queue" ? closeQueueEncounter(row) : action.kind === "print-employee-badge" ? setBadgeDialog({ row }) : openOperation(action.kind, row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title={action.label}><action.icon className="size-4" /></button>)}</div></td></tr>) :
+                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs truncate px-5 py-4 text-sm font-semibold text-slate-700">{safeCellText(displayCell(row, column.key, referenceLabels))}</td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => openView(row)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title="Voir"><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Imprimer"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "download-backup" ? downloadBackup(row) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : action.kind === "close-queue" ? closeQueueEncounter(row) : action.kind === "print-employee-badge" ? setBadgeDialog({ row }) : openOperation(action.kind, row)} className={action.kind === "pay-invoice" ? "inline-flex items-center gap-2 border-l border-blue-700 bg-blue-700 px-3 py-2 text-xs font-black text-white hover:bg-blue-800" : "border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50"} title={action.label}><action.icon className="size-4" />{action.kind === "pay-invoice" ? <span>Encaisser</span> : null}</button>)}</div></td></tr>) :
                       <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center"><Database className="mx-auto mb-3 size-8 text-slate-300" /><p className="font-black text-slate-800">{hospitalUi(locale, "noData")}</p><p className="mt-1 text-sm text-slate-500">{hospitalUi(locale, "noDataHint")}</p></td></tr>}
                     </tbody>
                     </table>
@@ -1381,6 +1381,7 @@ function cleanMissingDescription(description: string, code: string) {
 
 function displayCell(row: any, key: string, referenceLabels: Record<string, Record<string, string>>) {
   if (key === "id") return recordReference(row);
+  if (key === "status" && row?.invoiceNumber) return invoiceStatusLabel(row?.status);
   if (key === "patientId" && row?.patientName) return [row.patientName, row.medicalRecordNumber].filter(Boolean).join(" · ");
   if (key === "practitionerId" && row?.practitionerName) return row.practitionerName;
   if (key === "prescriberId" && row?.prescriberName) return row.prescriberName;
@@ -1392,6 +1393,15 @@ function displayCell(row: any, key: string, referenceLabels: Record<string, Reco
   const readableSibling = readableSiblingValue(row, key);
   if (readableSibling) return formatValue(readableSibling);
   if (isUuid(value)) return "Référence interne";
+  return formatValue(value);
+}
+
+function invoiceStatusLabel(value: any) {
+  const status = String(value ?? "").toUpperCase();
+  if (status === "ISSUED") return "À encaisser";
+  if (status === "PAID") return "Payée";
+  if (status === "PARTIALLY_PAID" || status === "PARTIAL") return "Partiellement payée";
+  if (status === "VOID" || status === "CANCELLED") return "Annulée";
   return formatValue(value);
 }
 
@@ -1660,7 +1670,6 @@ function detailLabel(key: string) {
 
 function getModuleActions(endpoint: string): OperationAction[] {
   if (endpoint === "/billing/invoices") return [
-    { kind: "preview-invoice", label: "Aperçu facture", icon: Receipt },
     { kind: "generate-invoice", label: "Générer facture", icon: FileText },
   ];
   if (endpoint === "/inventory/items") return [{ kind: "stock-movement", label: "Mouvement stock", icon: Database }];
@@ -1669,10 +1678,7 @@ function getModuleActions(endpoint: string): OperationAction[] {
 
 function getRowActions(endpoint: string, row: any): OperationAction[] {
   if (endpoint === "/hr/employees") return [{ kind: "print-employee-badge", label: "Imprimer badge", icon: IdCard }];
-  if (endpoint === "/billing/invoices") return [
-    { kind: "print-invoice", label: "Imprimer PDF", icon: Printer },
-    ...(canPayInvoice(row) ? [{ kind: "pay-invoice" as const, label: "Encaisser", icon: CreditCard }] : []),
-  ];
+  if (endpoint === "/billing/invoices") return canPayInvoice(row) ? [{ kind: "pay-invoice", label: "Encaisser", icon: CreditCard }] : [];
   if (endpoint === "/pharmacy/sales" && canPayPharmacySale(row)) return [{ kind: "pay-invoice", label: "Encaisser", icon: CreditCard }];
   const actions: OperationAction[] = [];
   if (endpoint === "/backups" && String(row?.status ?? "").toUpperCase() === "COMPLETED") actions.push({ kind: "download-backup", label: "Télécharger", icon: Download });
@@ -1699,7 +1705,8 @@ function getRowActions(endpoint: string, row: any): OperationAction[] {
 function canPayInvoice(row: any) {
   const status = String(row?.status ?? "").toUpperCase();
   if (["PAID", "VOID", "CANCELLED"].includes(status)) return false;
-  return moneyNumber(row?.balanceDue ?? row?.balance_due) > 0;
+  if (payableBalance(row) > 0) return true;
+  return ["ISSUED", "PARTIALLY_PAID", "PARTIAL"].includes(status) && moneyNumber(row?.total ?? row?.patientAmount ?? row?.patient_amount) > 0;
 }
 
 function canBillDispensation(row: any) {
@@ -1712,7 +1719,15 @@ function canBillDispensation(row: any) {
 function canPayPharmacySale(row: any) {
   const status = String(row?.status ?? "").toUpperCase();
   if (["PAID", "VOID", "CANCELLED"].includes(status)) return false;
-  return moneyNumber(row?.balanceDue ?? row?.balance_due) > 0;
+  return payableBalance(row) > 0;
+}
+
+function payableBalance(row: any) {
+  const explicit = moneyNumber(row?.balanceDue ?? row?.balance_due ?? row?.remainingAmount ?? row?.remaining_amount);
+  if (explicit > 0) return explicit;
+  const total = moneyNumber(row?.total ?? row?.patientAmount ?? row?.patient_amount ?? row?.amount);
+  const paid = moneyNumber(row?.paidAmount ?? row?.paid_amount ?? row?.paid);
+  return Math.max(total - paid, 0);
 }
 
 function moneyNumber(value: any) {
@@ -1733,6 +1748,7 @@ function canRunOperation(kind: OperationKind, canCreate: boolean, canUpdate: boo
   if (kind === "print-employee-badge") return canPrint;
   if (kind === "download-backup") return true;
   if (kind === "preview-invoice" || kind === "generate-invoice") return true;
+  if (kind === "pay-invoice") return true;
   if (kind === "stock-movement") return canCreate;
   if (kind === "patient-record") return true;
   if (kind === "close-queue") return true;

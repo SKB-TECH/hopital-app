@@ -16,7 +16,7 @@ export function OperationDialog({ operation, form, setForm, posting, locale = "f
 
   return (
     <div className="fixed inset-0 z-[80] bg-slate-950/40">
-      <div className={`ml-auto h-full w-full overflow-y-auto border-l border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900 ${isInvoiceFlow ? "max-w-5xl" : "max-w-2xl"}`}>
+      <div className={`ml-auto h-full w-full overflow-x-hidden overflow-y-auto border-l border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900 ${isInvoiceFlow ? "max-w-[96vw]" : "max-w-2xl"}`}>
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-7 py-5 dark:border-slate-700 dark:bg-slate-900">
           <div>
             <h2 className="text-2xl font-black text-slate-950 dark:text-white">{isPharmacySale ? "Vente pharmacie" : title}</h2>
@@ -36,7 +36,9 @@ export function OperationDialog({ operation, form, setForm, posting, locale = "f
               <TextField type="number" label="Montant encaissé" value={form.amount} onChange={(value) => setForm({ ...form, amount: Number(value) })} />
               <SelectField label="Méthode" value={form.method} onChange={(value) => setForm({ ...form, method: value })} options={["CASH", "CARD", "MOBILE_MONEY", "BANK_TRANSFER"]} />
             </div>
-            <TextField label="Référence paiement" value={form.reference} onChange={(value) => setForm({ ...form, reference: value })} />
+            <div className="border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-900 dark:border-slate-700 dark:bg-slate-950 dark:text-blue-100">
+              La référence du reçu est générée automatiquement par la caisse. Pour carte ou mobile money, elle peut être ajoutée depuis le reçu opérateur si nécessaire.
+            </div>
           </> : null}
           {operation.kind === "discharge" ? <TextAreaField label="Résumé de sortie" value={form.summary} onChange={(value) => setForm({ ...form, summary: value })} /> : null}
           {operation.kind === "complete-consultation" ? <>
@@ -204,6 +206,7 @@ function InvoiceWorkflow({ operationKind, form, setForm }: { operationKind: stri
   const previewTotal = Number(form.preview?.subtotal ?? 0);
   const estimatedManualTotal = invoiceItemsTotal(form.invoiceItems);
   const displayTotal = previewTotal || estimatedManualTotal;
+  const displayCurrency = form.preview?.currency ?? invoiceItemsCurrency(form.invoiceItems) ?? "RWF";
   const isPharmacyDispensation = form.sourceType === "DISPENSATION" && form.sourceId;
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState("");
@@ -230,7 +233,7 @@ function InvoiceWorkflow({ operationKind, form, setForm }: { operationKind: stri
 
   useEffect(() => {
     if (operationKind !== "generate-invoice" || !form.collectNow) return;
-    if (displayTotal > 0 && !Number(form.paymentAmount || 0)) {
+    if (displayTotal > 0 && Number(form.paymentAmount || 0) !== displayTotal) {
       setForm({ ...form, paymentAmount: String(displayTotal) });
     }
   }, [operationKind, form.collectNow, displayTotal]);
@@ -256,7 +259,7 @@ function InvoiceWorkflow({ operationKind, form, setForm }: { operationKind: stri
   }
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
+    <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-5">
         <InvoicePanel icon={<UserRound className="size-5" />} title="Patient et séjour" subtitle="Sélectionnez le dossier à facturer">
           <div className="grid gap-4 md:grid-cols-2">
@@ -265,8 +268,8 @@ function InvoiceWorkflow({ operationKind, form, setForm }: { operationKind: stri
           </div>
         </InvoicePanel>
 
-        <InvoicePanel icon={<Receipt className="size-5" />} title="Prestations facturées" subtitle="Ajoutez les actes à facturer ou laissez vide pour reprendre les frais déjà générés">
-          <InvoiceItemsField value={form.invoiceItems} onChange={(value) => setForm({ ...form, invoiceItems: value })} />
+        <InvoicePanel icon={<Receipt className="size-5" />} title="Prestations facturées" subtitle="Table de caisse, quantités, prix et total instantané">
+          <InvoiceItemsField value={form.invoiceItems} onChange={(value) => setForm({ ...form, invoiceItems: value, preview: undefined })} currency={displayCurrency} />
         </InvoicePanel>
 
         {isPharmacyDispensation ? (
@@ -290,9 +293,9 @@ function InvoiceWorkflow({ operationKind, form, setForm }: { operationKind: stri
       <aside className="space-y-5">
         <div className="border border-slate-200 bg-slate-950 p-5 text-white">
           <p className="text-xs font-black uppercase tracking-wide text-blue-200">Résumé caisse</p>
-          <p className="mt-3 text-3xl font-black">{formatMoney(displayTotal, form.preview?.currency ?? "USD")}</p>
+          <p className="mt-3 text-3xl font-black">{formatMoney(displayTotal, displayCurrency)}</p>
           <div className="mt-4 grid grid-cols-2 gap-2 text-xs font-bold text-slate-300">
-            <span>Prestations</span><span className="text-right text-white">{Array.isArray(form.invoiceItems) ? form.invoiceItems.length : 0}</span>
+            <span>Prestations</span><span className="text-right text-white">{invoiceItemsCount(form.invoiceItems, form.preview)}</span>
             <span>Mode</span><span className="text-right text-white">{operationKind === "generate-invoice" ? "Création" : "Aperçu"}</span>
           </div>
         </div>
@@ -479,14 +482,25 @@ function invoiceItemsTotal(value: any) {
   return rows.reduce((sum, row) => sum + Number(row.quantity || 0) * Number(row.unitPrice || 0), 0);
 }
 
+function invoiceItemsCurrency(value: any) {
+  const rows = Array.isArray(value) ? value : [];
+  return rows.map((row) => row?.currency).find(Boolean);
+}
+
+function invoiceItemsCount(value: any, preview: any) {
+  const rows = Array.isArray(value) ? value.filter((row) => row?.serviceCode || row?.description) : [];
+  if (rows.length) return rows.length;
+  return normalizeRows(preview?.charges).length;
+}
+
 function formatMoney(value: number, currency: string) {
   const amount = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(Number.isFinite(value) ? value : 0).replace(/[\u202f\u00a0]/g, " ");
   return `${amount} ${currency}`;
 }
 
-function InvoiceItemsField({ value, onChange }: { value: any; onChange: (value: any[]) => void }) {
+function InvoiceItemsField({ value, onChange, currency }: { value: any; onChange: (value: any[]) => void; currency: string }) {
   const rows = Array.isArray(value) ? value : [];
-  const [services, setServices] = useState<Array<{ code: string; label: string }>>([]);
+  const [services, setServices] = useState<Array<{ code: string; label: string; name: string; category: string; unitPrice?: number; currency?: string }>>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -495,43 +509,86 @@ function InvoiceItemsField({ value, onChange }: { value: any; onChange: (value: 
     api.get("/pricing/services")
       .then((response) => mounted && setServices(normalizeRows(response.data).map((service) => ({
         code: String(service.code ?? ""),
-        label: [service.name, service.code, service.category].filter(Boolean).join(" · "),
+        name: String(service.name ?? service.code ?? ""),
+        category: String(service.category ?? ""),
+        unitPrice: service.unitPrice === null || service.unitPrice === undefined || service.unitPrice === "" ? undefined : Number(service.unitPrice),
+        currency: service.currency ? String(service.currency) : undefined,
+        label: [service.name, service.code].filter(Boolean).join(" · "),
       })).filter((service) => service.code)))
       .catch(() => mounted && setServices([]))
       .finally(() => mounted && setLoading(false));
     return () => { mounted = false; };
   }, []);
 
+  const serviceByCode = new Map(services.map((service) => [service.code, service]));
+
+  useEffect(() => {
+    if (!services.length || !rows.length) return;
+    let changed = false;
+    const hydrated = rows.map((row) => {
+      if (row?.mode === "manual" || !row?.serviceCode) return row;
+      const service = serviceByCode.get(String(row.serviceCode));
+      if (!service || service.unitPrice === undefined) return row;
+      if (Number(row.unitPrice ?? NaN) === service.unitPrice && row.currency === service.currency) return row;
+      changed = true;
+      return { ...row, unitPrice: service.unitPrice, currency: service.currency };
+    });
+    if (changed) onChange(hydrated);
+  }, [services, rows]);
+
   const updateRow = (index: number, patch: Record<string, any>) => onChange(rows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row));
   const addTariffRow = () => onChange([...rows, { serviceCode: "", quantity: 1, mode: "tariff" }]);
   const addManualRow = () => onChange([...rows, { serviceCode: "", description: "", quantity: 1, unitPrice: 0, mode: "manual" }]);
   const removeRow = (index: number) => onChange(rows.filter((_, rowIndex) => rowIndex !== index));
+  const total = invoiceItemsTotal(rows);
 
   return (
-    <div className="overflow-hidden border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-4 dark:border-slate-700 dark:bg-slate-950">
-        <div>
-          <p className="text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-300">Motifs facturables</p>
-          <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-300">Utilisez la grille pour les prestations connues, ou une ligne libre pour un service exceptionnel.</p>
+    <div className="overflow-hidden border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
+        <div className="flex items-baseline gap-3">
+          <p className="text-sm font-black text-slate-950 dark:text-white">Panier de facturation</p>
+          <p className="text-xs font-bold text-slate-500 dark:text-slate-300">{rows.length ? `${rows.length} ligne(s)` : "Aucune ligne ajoutée"}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={addTariffRow} className="inline-flex items-center gap-2 border border-blue-700 bg-white px-3 py-2 text-xs font-black text-blue-800 hover:bg-blue-50 dark:bg-slate-900 dark:text-blue-200 dark:hover:bg-slate-800"><Plus className="size-4" />Prestation tarifée</button>
           <button type="button" onClick={addManualRow} className="inline-flex items-center gap-2 border border-slate-300 bg-white px-3 py-2 text-xs font-black text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800"><Plus className="size-4" />Ligne libre</button>
         </div>
       </div>
+      {rows.length ? (
+        <div className="hidden grid-cols-[minmax(0,1fr)_76px_120px_130px_40px] border-b border-slate-100 bg-slate-50 px-4 py-2 text-[10px] font-black uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 lg:grid">
+          <span>Prestation</span>
+          <span className="text-right">Qté</span>
+          <span className="text-right">Prix</span>
+          <span className="text-right">Montant</span>
+          <span />
+        </div>
+      ) : null}
       <div className="divide-y divide-slate-100 dark:divide-slate-800">
         {rows.map((row, index) => {
           const isManual = row.mode === "manual" || (!row.serviceCode && row.unitPrice !== undefined);
+          const selectedService = serviceByCode.get(String(row.serviceCode ?? ""));
+          const rowCurrency = row.currency ?? selectedService?.currency ?? currency;
+          const unitPrice = Number(row.unitPrice ?? selectedService?.unitPrice ?? 0);
+          const lineTotal = Number(row.quantity || 0) * unitPrice;
           return (
-            <div key={index} className="grid gap-3 p-4 md:grid-cols-[1fr_90px_135px_42px]">
+            <div key={index} className="grid gap-3 p-4 lg:grid-cols-[minmax(0,1fr)_76px_120px_130px_40px] lg:items-start">
               <div className="space-y-2">
                 <select
                   value={isManual ? "__manual__" : row.serviceCode ?? ""}
                   onChange={(event) => {
                     if (event.target.value === "__manual__") updateRow(index, { mode: "manual", serviceCode: "", description: row.description ?? "", unitPrice: row.unitPrice ?? 0 });
-                    else updateRow(index, { mode: "tariff", serviceCode: event.target.value, description: "", unitPrice: undefined });
+                    else {
+                      const service = serviceByCode.get(event.target.value);
+                      updateRow(index, {
+                        mode: "tariff",
+                        serviceCode: event.target.value,
+                        description: "",
+                        unitPrice: service?.unitPrice,
+                        currency: service?.currency,
+                      });
+                    }
                   }}
-                  className="h-11 w-full border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-900 outline-none focus:border-blue-700 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-400 dark:focus:bg-slate-950"
+                  className="h-11 w-full border border-slate-200 bg-white px-3 text-sm font-black text-slate-900 outline-none focus:border-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-400"
                 >
                   <option value="">{loading ? "Chargement..." : "Choisir une prestation tarifée"}</option>
                   {services.map((service) => <option key={service.code} value={service.code}>{service.label}</option>)}
@@ -547,23 +604,35 @@ function InvoiceItemsField({ value, onChange }: { value: any; onChange: (value: 
                 ) : null}
               </div>
               <label className="block">
-                <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-300">Qté</span>
-                <input type="number" min="1" step="1" value={row.quantity ?? 1} onChange={(event) => updateRow(index, { quantity: Number(event.target.value) })} className="h-11 w-full border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-950 outline-none focus:border-blue-700 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-400 dark:focus:bg-slate-950" />
+                <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-300 lg:hidden">Qté</span>
+                <input type="number" min="1" step="1" value={row.quantity ?? 1} onChange={(event) => updateRow(index, { quantity: Number(event.target.value) })} className="h-11 w-full border border-slate-200 bg-white px-3 text-right text-sm font-black text-slate-950 outline-none focus:border-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-400" />
               </label>
               <label className="block">
-                <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-300">Prix</span>
+                <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-300 lg:hidden">Prix</span>
                 {isManual ? (
-                  <input type="number" min="0" step="0.01" value={row.unitPrice ?? 0} onChange={(event) => updateRow(index, { unitPrice: Number(event.target.value) })} className="h-11 w-full border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-slate-950 outline-none focus:border-blue-700 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-400 dark:focus:bg-slate-950" />
+                  <input type="number" min="0" step="0.01" value={row.unitPrice ?? 0} onChange={(event) => updateRow(index, { unitPrice: Number(event.target.value) })} className="h-11 w-full border border-slate-200 bg-white px-3 text-right text-sm font-black text-slate-950 outline-none focus:border-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-400" />
                 ) : (
-                  <div className="flex h-11 items-center border border-slate-200 bg-slate-50 px-3 text-xs font-black uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">Grille</div>
+                  <div className={`flex h-11 items-center justify-end border px-3 text-sm font-black ${unitPrice > 0 ? "border-slate-200 bg-white text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-white" : "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100"}`}>
+                    {unitPrice > 0 ? formatMoney(unitPrice, rowCurrency) : "À tarifer"}
+                  </div>
                 )}
               </label>
-              <button type="button" onClick={() => removeRow(index)} className="mt-5 flex h-11 items-center justify-center border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-rose-950 dark:hover:text-rose-200"><Trash2 className="size-4" /></button>
+              <div>
+                <span className="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-300 lg:hidden">Montant</span>
+                <div className="flex h-11 items-center justify-end bg-slate-950 px-3 text-sm font-black text-white dark:bg-slate-800">{formatMoney(lineTotal, rowCurrency)}</div>
+              </div>
+              <button type="button" onClick={() => removeRow(index)} className="flex h-11 items-center justify-center border border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-rose-950 dark:hover:text-rose-200"><Trash2 className="size-4" /></button>
             </div>
           );
         })}
         {!rows.length ? <p className="px-4 py-5 text-sm font-semibold text-slate-500 dark:text-slate-300">Aucun motif ajouté. La facture reprendra les frais déjà générés pour ce patient.</p> : null}
       </div>
+      {rows.length ? (
+        <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-700 dark:bg-slate-900">
+          <span className="text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-300">Total</span>
+          <span className="text-xl font-black text-slate-950 dark:text-white">{formatMoney(total, currency)}</span>
+        </div>
+      ) : null}
     </div>
   );
 }

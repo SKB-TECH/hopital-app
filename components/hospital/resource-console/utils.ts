@@ -16,11 +16,16 @@ export function invoiceApiPayload(input: Record<string, any>) {
 function sanitizeInvoiceItems(value: any) {
   if (!Array.isArray(value)) return [];
   return value.map((item) => {
-    const { mode, ...payload } = item ?? {};
+    const payload = item ?? {};
+    const serviceCode = typeof payload.serviceCode === "string" ? payload.serviceCode.trim() : "";
+    const description = typeof payload.description === "string" ? payload.description.trim() : "";
+    const quantity = payload.quantity === "" || payload.quantity === undefined ? undefined : Number(payload.quantity);
+    const unitPrice = payload.unitPrice === "" || payload.unitPrice === undefined ? undefined : Number(payload.unitPrice);
     return cleanObject({
-      ...payload,
-      quantity: payload.quantity === "" || payload.quantity === undefined ? undefined : Number(payload.quantity),
-      unitPrice: payload.unitPrice === "" || payload.unitPrice === undefined ? undefined : Number(payload.unitPrice),
+      ...(serviceCode ? { serviceCode } : {}),
+      ...(description ? { description } : {}),
+      quantity,
+      ...(unitPrice === undefined ? {} : { unitPrice }),
     });
   }).filter((item) => item.serviceCode || item.description);
 }
@@ -90,10 +95,12 @@ export function cleanPayload(form: Record<string, any>, fields: HospitalField[])
       continue;
     }
     if (field.type === "pharmacy-sale-items") {
-      const items = Array.isArray(value) ? value
-        .filter((item) => item?.medicineId && Number.isFinite(Number(item?.quantity)) && Number(item.quantity) > 0 && Number.isFinite(Number(item?.unitPrice)) && Number(item.unitPrice) > 0)
+      const candidateItems = Array.isArray(value) ? value
+        .filter((item) => item?.medicineId && Number.isFinite(Number(item?.quantity)) && Number(item.quantity) > 0)
         .map((item) => ({ medicineId: item.medicineId, quantity: Number(item.quantity), unitPrice: Number(item.unitPrice) })) : [];
-      if (field.required && !items.length) throw new Error("Ajoutez au moins un médicament avec quantité vendue et prix public configuré.");
+      if (field.required && !candidateItems.length) throw new Error("Ajoutez au moins un médicament avec la quantité vendue.");
+      if (candidateItems.some((item) => !Number.isFinite(item.unitPrice) || item.unitPrice <= 0)) throw new Error("Saisissez le prix public de chaque médicament vendu.");
+      const items = candidateItems.filter((item) => item.unitPrice > 0);
       out[field.name] = items;
       continue;
     }
@@ -257,7 +264,7 @@ export function defaultOperationForm(kind: OperationKind, row?: any, endpoint = 
       paymentReference: isPharmacyDispensation ? "Délivrance pharmacie" : "",
     };
   }
-  if (kind === "pay-invoice") return { amount: row?.balanceDue ?? row?.balance_due ?? "", method: "CASH", reference: "" };
+  if (kind === "pay-invoice") return { amount: invoiceBalance(row) || "", method: "CASH", reference: "" };
   if (kind === "discharge") return { summary: "" };
   if (kind === "complete-consultation") return { assessment: row?.assessment ?? "", plan: row?.plan ?? "", notes: row?.notes ?? "" };
   if (kind === "confirm-birth") return {
@@ -320,6 +327,22 @@ export function validateOperation(kind: OperationKind, form: Record<string, any>
   if (kind === "complete-nursing-task" && !String(form.status ?? "").trim()) throw new Error("Sélectionnez le statut de clôture.");
   if (kind === "change-status" && !String(form.status ?? "").trim()) throw new Error("Sélectionnez le nouveau statut.");
   if (kind === "change-status" && form.status === "ADMINISTERED" && "administeredAt" in form && !String(form.administeredAt ?? "").trim()) throw new Error("La date d’administration est obligatoire.");
+}
+
+function invoiceBalance(row: any) {
+  const explicit = moneyNumber(row?.balanceDue ?? row?.balance_due ?? row?.remainingAmount ?? row?.remaining_amount);
+  if (explicit > 0) return explicit;
+  const total = moneyNumber(row?.total ?? row?.patientAmount ?? row?.patient_amount ?? row?.amount);
+  const paid = moneyNumber(row?.paidAmount ?? row?.paid_amount ?? row?.paid);
+  return Math.max(total - paid, 0);
+}
+
+function moneyNumber(value: any) {
+  if (value === null || value === undefined || value === "") return 0;
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  const normalized = String(value).replace(/\s/g, "").replace(",", ".");
+  const numeric = Number(normalized);
+  return Number.isFinite(numeric) ? numeric : 0;
 }
 
 function nextSurgeryStatuses(current?: string) {
