@@ -228,7 +228,7 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
               {cameraError ? <p className="border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-black text-amber-800">{cameraError}</p> : null}
             </div>
           ) : null}
-          {value ? <div className="border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">{field.type === "image" ? "Photo employé attachée" : typeof value === "string" ? value : value.fileName || value.url || "Fichier Cloudinary attaché"}</div> : null}
+          {value ? <div className="border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">{field.type === "image" ? `${field.label} attachée` : typeof value === "string" ? value : value.fileName || value.url || "Fichier Cloudinary attaché"}</div> : null}
         </div>
       ) : field.type === "color" ? (
         <div className="flex items-center gap-3">
