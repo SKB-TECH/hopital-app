@@ -129,7 +129,7 @@ const HOSPITAL_LABELS: Record<string, string> = {
   serviceCodes: "Codes actes",
   services: "Actes à facturer",
   lastChargeAt: "Dernier acte",
-  estimatedAmount: "Montant estimé",
+  estimatedAmount: "Montant à facturer",
   cashDate: "Date caisse",
   closingDate: "Date clôture",
   totalAmount: "Montant total",
