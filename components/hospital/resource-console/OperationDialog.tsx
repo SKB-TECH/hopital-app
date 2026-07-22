@@ -13,10 +13,12 @@ export function OperationDialog({ operation, form, setForm, posting, locale = "f
   const title = hospitalText(operationTitle(operation.kind), locale);
   const isInvoiceFlow = operation.kind === "preview-invoice" || operation.kind === "generate-invoice";
   const isPharmacySale = isInvoiceFlow && form.sourceType === "DISPENSATION" && form.sourceId;
+  const isPharmacyPayment = operation.kind === "pay-invoice" && operation.endpoint === "/pharmacy/sales";
+  const paymentDocumentNumber = operation.row?.invoiceNumber ?? operation.row?.saleNumber ?? operation.row?.documentNumber ?? "Document caisse";
 
   return (
     <div className="fixed inset-0 z-[80] bg-slate-950/40">
-      <div className={`ml-auto h-full w-full overflow-x-hidden overflow-y-auto border-l border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900 ${isInvoiceFlow ? "max-w-[96vw]" : "max-w-2xl"}`}>
+      <div className={`ml-auto h-full w-full overflow-x-hidden overflow-y-auto border-l border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900 ${isInvoiceFlow ? "max-w-none" : "max-w-2xl"}`}>
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-7 py-5 dark:border-slate-700 dark:bg-slate-900">
           <div>
             <h2 className="text-2xl font-black text-slate-950 dark:text-white">{isPharmacySale ? "Vente pharmacie" : title}</h2>
@@ -24,13 +26,13 @@ export function OperationDialog({ operation, form, setForm, posting, locale = "f
           </div>
           <button onClick={onClose} className="border border-slate-300 p-2 text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"><X className="size-5" /></button>
         </div>
-        <div className="space-y-5 p-7">
+        <div className="space-y-5 p-4 sm:p-6 lg:p-7">
           {isInvoiceFlow ? <InvoiceWorkflow operationKind={operation.kind} form={form} setForm={setForm} /> : null}
           {operation.kind === "pay-invoice" ? <>
             <div className="border border-slate-200 bg-slate-950 p-5 text-white">
-              <p className="text-xs font-black uppercase tracking-wide text-blue-200">Facture à encaisser</p>
+              <p className="text-xs font-black uppercase tracking-wide text-blue-200">{isPharmacyPayment ? "Vente pharmacie à encaisser" : "Facture à encaisser"}</p>
               <p className="mt-2 text-2xl font-black">{formatMoney(Number(operation.row?.balanceDue ?? form.amount ?? 0), operation.row?.currency ?? "USD")}</p>
-              <p className="mt-1 text-sm font-semibold text-slate-300">{operation.row?.invoiceNumber ?? "Facture"}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-300">{paymentDocumentNumber}</p>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <TextField type="number" label="Montant encaissé" value={form.amount} onChange={(value) => setForm({ ...form, amount: Number(value) })} />
@@ -259,7 +261,7 @@ function InvoiceWorkflow({ operationKind, form, setForm }: { operationKind: stri
   }
 
   return (
-    <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="grid w-full gap-5 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_420px]">
       <div className="space-y-5">
         <InvoicePanel icon={<UserRound className="size-5" />} title="Patient et séjour" subtitle="Sélectionnez le dossier à facturer">
           <div className="grid gap-4 md:grid-cols-2">
@@ -313,10 +315,10 @@ function InvoiceWorkflow({ operationKind, form, setForm }: { operationKind: stri
               <div className="mt-4 space-y-4 border-t border-blue-100 pt-4 dark:border-slate-700">
                 {previewLoading ? <div className="flex items-center gap-2 border border-blue-200 bg-white px-3 py-2 text-xs font-black text-blue-800 dark:border-slate-700 dark:bg-slate-900 dark:text-blue-200"><Loader2 className="size-4 animate-spin" />Calcul du montant à encaisser...</div> : null}
                 {previewError ? <div className="border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-black text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">{previewError}</div> : null}
-                <TextField type="number" label="Montant encaissé" value={form.paymentAmount} onChange={(value) => setForm({ ...form, paymentAmount: Number(value) })} />
+                <TextField type="number" label="Montant à encaisser" value={form.paymentAmount} onChange={(value) => setForm({ ...form, paymentAmount: Number(value) })} />
                 <SelectField label="Méthode" value={form.paymentMethod} onChange={(value) => setForm({ ...form, paymentMethod: value })} options={["CASH", "CARD", "MOBILE_MONEY", "BANK_TRANSFER"]} />
                 <div className="flex items-center gap-2 bg-white px-3 py-2 text-xs font-bold text-emerald-700 dark:bg-slate-900 dark:text-emerald-300">
-                  <CheckCircle2 className="size-4" />La facture sera marquée payée à hauteur du montant encaissé.
+                  <CheckCircle2 className="size-4" />La référence caisse sera générée automatiquement au moment du paiement.
                 </div>
               </div>
             ) : null}
@@ -479,7 +481,12 @@ function cleanPreviewText(value: any): string {
 
 function invoiceItemsTotal(value: any) {
   const rows = Array.isArray(value) ? value : [];
-  return rows.reduce((sum, row) => sum + Number(row.quantity || 0) * Number(row.unitPrice || 0), 0);
+  return rows.reduce((sum, row) => {
+    const quantity = Number(row.quantity || 0);
+    const unitPrice = Number(row.unitPrice ?? row.unit_price ?? 0);
+    const amount = Number(row.amount ?? row.total ?? NaN);
+    return sum + (Number.isFinite(amount) && amount > 0 ? amount : quantity * unitPrice);
+  }, 0);
 }
 
 function invoiceItemsCurrency(value: any) {
@@ -541,6 +548,7 @@ function InvoiceItemsField({ value, onChange, currency }: { value: any; onChange
   const addManualRow = () => onChange([...rows, { serviceCode: "", description: "", quantity: 1, unitPrice: 0, mode: "manual" }]);
   const removeRow = (index: number) => onChange(rows.filter((_, rowIndex) => rowIndex !== index));
   const total = invoiceItemsTotal(rows);
+  const missingPrices = rows.filter((row) => row?.mode !== "manual" && row?.serviceCode && Number(row.unitPrice ?? serviceByCode.get(String(row.serviceCode))?.unitPrice ?? 0) <= 0).length;
 
   return (
     <div className="overflow-hidden border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
@@ -549,13 +557,14 @@ function InvoiceItemsField({ value, onChange, currency }: { value: any; onChange
           <p className="text-sm font-black text-slate-950 dark:text-white">Panier de facturation</p>
           <p className="text-xs font-bold text-slate-500 dark:text-slate-300">{rows.length ? `${rows.length} ligne(s)` : "Aucune ligne ajoutée"}</p>
         </div>
+        {missingPrices ? <span className="border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-black text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">{missingPrices} tarif(s) à configurer</span> : null}
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={addTariffRow} className="inline-flex items-center gap-2 border border-blue-700 bg-white px-3 py-2 text-xs font-black text-blue-800 hover:bg-blue-50 dark:bg-slate-900 dark:text-blue-200 dark:hover:bg-slate-800"><Plus className="size-4" />Prestation tarifée</button>
           <button type="button" onClick={addManualRow} className="inline-flex items-center gap-2 border border-slate-300 bg-white px-3 py-2 text-xs font-black text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800"><Plus className="size-4" />Ligne libre</button>
         </div>
       </div>
       {rows.length ? (
-        <div className="hidden grid-cols-[minmax(0,1fr)_76px_120px_130px_40px] border-b border-slate-100 bg-slate-50 px-4 py-2 text-[10px] font-black uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 lg:grid">
+        <div className="hidden grid-cols-[minmax(420px,1fr)_96px_150px_170px_48px] border-b border-slate-100 bg-slate-50 px-4 py-2 text-[10px] font-black uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 lg:grid">
           <span>Prestation</span>
           <span className="text-right">Qté</span>
           <span className="text-right">Prix</span>
@@ -571,7 +580,7 @@ function InvoiceItemsField({ value, onChange, currency }: { value: any; onChange
           const unitPrice = Number(row.unitPrice ?? selectedService?.unitPrice ?? 0);
           const lineTotal = Number(row.quantity || 0) * unitPrice;
           return (
-            <div key={index} className="grid gap-3 p-4 lg:grid-cols-[minmax(0,1fr)_76px_120px_130px_40px] lg:items-start">
+            <div key={index} className="grid gap-3 p-4 lg:grid-cols-[minmax(420px,1fr)_96px_150px_170px_48px] lg:items-start">
               <div className="space-y-2">
                 <select
                   value={isManual ? "__manual__" : row.serviceCode ?? ""}
@@ -588,7 +597,7 @@ function InvoiceItemsField({ value, onChange, currency }: { value: any; onChange
                       });
                     }
                   }}
-                  className="h-11 w-full border border-slate-200 bg-white px-3 text-sm font-black text-slate-900 outline-none focus:border-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-400"
+                  className="h-11 w-full min-w-0 border border-slate-200 bg-white px-3 text-sm font-black text-slate-900 outline-none focus:border-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-400"
                 >
                   <option value="">{loading ? "Chargement..." : "Choisir une prestation tarifée"}</option>
                   {services.map((service) => <option key={service.code} value={service.code}>{service.label}</option>)}
@@ -599,7 +608,7 @@ function InvoiceItemsField({ value, onChange, currency }: { value: any; onChange
                     value={row.description ?? ""}
                     onChange={(event) => updateRow(index, { description: event.target.value })}
                     placeholder="Libellé visible sur la facture"
-                    className="h-11 w-full border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 outline-none focus:border-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-400"
+                    className="h-11 w-full min-w-0 border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 outline-none focus:border-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-400"
                   />
                 ) : null}
               </div>
@@ -612,7 +621,7 @@ function InvoiceItemsField({ value, onChange, currency }: { value: any; onChange
                 {isManual ? (
                   <input type="number" min="0" step="0.01" value={row.unitPrice ?? 0} onChange={(event) => updateRow(index, { unitPrice: Number(event.target.value) })} className="h-11 w-full border border-slate-200 bg-white px-3 text-right text-sm font-black text-slate-950 outline-none focus:border-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-400" />
                 ) : (
-                  <div className={`flex h-11 items-center justify-end border px-3 text-sm font-black ${unitPrice > 0 ? "border-slate-200 bg-white text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-white" : "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100"}`}>
+                <div className={`flex h-11 items-center justify-end border px-3 text-sm font-black ${unitPrice > 0 ? "border-slate-200 bg-white text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-white" : "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100"}`}>
                     {unitPrice > 0 ? formatMoney(unitPrice, rowCurrency) : "À tarifer"}
                   </div>
                 )}
