@@ -48,7 +48,7 @@ function defaultFieldValue(field: HospitalField) {
   if (field.type === "checkbox") return false;
   if (field.type === "multiselect") return [];
   if (field.name === "active") return "true";
-  if (field.name === "currency") return "CDF";
+  if (field.name === "currency" || field.name === "paymentCurrency") return "";
   return "";
 }
 
@@ -262,12 +262,12 @@ export function defaultOperationForm(kind: OperationKind, row?: any, endpoint = 
       invoiceItems: [],
       collectNow: isPharmacyDispensation,
       paymentMethod: "CASH",
-      paymentCurrency: "CDF",
+      paymentCurrency: "",
       paymentAmount: "",
       paymentReference: isPharmacyDispensation ? "Délivrance pharmacie" : "",
     };
   }
-  if (kind === "pay-invoice") return { amount: invoiceBalance(row) || "", method: "CASH", paymentCurrency: normalizeCurrency(row?.currency ?? "CDF"), reference: "" };
+  if (kind === "pay-invoice") return { amount: invoiceBalance(row) || "", method: "CASH", paymentCurrency: "", reference: "" };
   if (kind === "discharge") return { summary: "" };
   if (kind === "complete-consultation") return { assessment: row?.assessment ?? "", plan: row?.plan ?? "", notes: row?.notes ?? "" };
   if (kind === "confirm-birth") return {
@@ -312,7 +312,9 @@ export function validateOperation(kind: OperationKind, form: Record<string, any>
   if ((kind === "preview-invoice" || kind === "generate-invoice") && !form.patientId) throw new Error("Sélectionnez le patient pour calculer la facture.");
   if ((kind === "preview-invoice" || kind === "generate-invoice") && form.from && form.to && new Date(form.to).getTime() < new Date(form.from).getTime()) throw new Error("La date de fin de facture doit être après la date de début.");
   if (kind === "generate-invoice" && form.collectNow && form.paymentAmount && (!Number.isFinite(Number(form.paymentAmount)) || Number(form.paymentAmount) <= 0)) throw new Error("Le montant encaissé doit être supérieur à 0.");
+  if (kind === "generate-invoice" && form.collectNow && !form.paymentCurrency) throw new Error("Sélectionnez la devise reçue.");
   if (kind === "pay-invoice" && (!Number.isFinite(Number(form.amount)) || Number(form.amount) <= 0)) throw new Error("Le montant encaissé doit être supérieur à 0.");
+  if (kind === "pay-invoice" && !form.paymentCurrency) throw new Error("Sélectionnez la devise reçue.");
   if (kind === "stock-movement" && !form.stockItemId) throw new Error("Sélectionnez l’article de stock.");
   if (kind === "stock-movement" && (!Number.isFinite(Number(form.quantity)) || Number(form.quantity) <= 0)) throw new Error("La quantité du mouvement de stock doit être supérieure à 0.");
   if (kind === "discharge" && !String(form.summary ?? "").trim()) throw new Error("Le résumé de sortie est obligatoire.");
@@ -340,11 +342,6 @@ function invoiceBalance(row: any) {
   return Math.max(total - paid, 0);
 }
 
-function normalizeCurrency(value: any) {
-  const currency = String(value ?? "CDF").trim().toUpperCase();
-  if (currency === "EURO") return "EUR";
-  return ["CDF", "USD", "EUR"].includes(currency) ? currency : "CDF";
-}
 
 function moneyNumber(value: any) {
   if (value === null || value === undefined || value === "") return 0;

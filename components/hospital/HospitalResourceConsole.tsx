@@ -277,7 +277,7 @@ export default function HospitalResourceConsole() {
             await api.post(`/billing/invoices/${invoice.id}/payments`, cleanObject({
               amount,
               method: paymentMethod || "CASH",
-              paymentCurrency: paymentCurrency || invoice.currency || "CDF",
+              paymentCurrency,
               reference: paymentReference || autoPaymentReference(paymentMethod || "CASH"),
             }));
           }
@@ -395,6 +395,10 @@ export default function HospitalResourceConsole() {
 
   const completeMissingPricing = async () => {
     if (!missingPricing || !operation) return;
+    if (!missingPricing.currency) {
+      toast.error("Sélectionnez la devise de la grille tarifaire.");
+      return;
+    }
     setPosting(true);
     setError("");
     try {
@@ -1057,7 +1061,8 @@ function MissingPricingDialog({ state, posting, locale, onChange, onClose, onSub
             <label className="block">
               <span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500">Devise</span>
               <select value={state.currency} onChange={(event) => onChange({ ...state, currency: event.target.value })} className="w-full border border-slate-200 bg-white px-3 py-3 text-sm font-black outline-none focus:border-blue-700">
-                {["USD", "CDF", "RWF", "EUR"].map((currency) => <option key={currency} value={currency}>{currency}</option>)}
+                <option value="" disabled>Sélectionner</option>
+                {["CDF", "USD", "EUR"].map((currency) => <option key={currency} value={currency}>{currency}</option>)}
               </select>
             </label>
             <label className="block">
@@ -1335,7 +1340,7 @@ function buildMissingPricingState(services: any[], operationForm: Record<string,
   const validFrom = String(operationForm.from ?? "").slice(0, 10) || new Date().toISOString().slice(0, 10);
   return {
     name: `Tarifs manquants ${new Date().toISOString().slice(0, 10)}`,
-    currency: "USD",
+    currency: "",
     validFrom,
     rows,
   };

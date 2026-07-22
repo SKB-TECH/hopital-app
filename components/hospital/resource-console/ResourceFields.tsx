@@ -29,6 +29,7 @@ export function SelectField({ label, value, onChange, options }: { label: string
     <label className="block">
       <span className="mb-2 block text-xs font-black uppercase tracking-wide text-slate-500 dark:text-slate-300">{label}</span>
       <select value={value ?? ""} onChange={(event) => onChange(event.target.value)} className="w-full border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-950 outline-none focus:border-blue-700 focus:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-blue-400 dark:focus:bg-slate-950">
+        <option value="" disabled>Sélectionner</option>
         {options.map((option) => <option key={option} value={option}>{option}</option>)}
       </select>
     </label>

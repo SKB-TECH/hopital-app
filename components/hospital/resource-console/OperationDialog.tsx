@@ -38,7 +38,7 @@ export function OperationDialog({ operation, form, setForm, posting, locale = "f
             </div>
             <div className="grid gap-4 md:grid-cols-3">
               <TextField type="number" label="Montant encaissé" value={form.amount} onChange={(value) => setForm({ ...form, amount: Number(value) })} />
-              <SelectField label="Devise reçue" value={form.paymentCurrency ?? "CDF"} onChange={(value) => setForm({ ...form, paymentCurrency: value })} options={PAYMENT_CURRENCIES} />
+              <SelectField label="Devise reçue" value={form.paymentCurrency ?? ""} onChange={(value) => setForm({ ...form, paymentCurrency: value })} options={PAYMENT_CURRENCIES} />
               <SelectField label="Méthode" value={form.method} onChange={(value) => setForm({ ...form, method: value })} options={["CASH", "CARD", "MOBILE_MONEY", "BANK_TRANSFER"]} />
             </div>
             <div className="border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-900 dark:border-slate-700 dark:bg-slate-950 dark:text-blue-100">
@@ -319,7 +319,7 @@ function InvoiceWorkflow({ operationKind, form, setForm }: { operationKind: stri
                 {previewLoading ? <div className="flex items-center gap-2 border border-blue-200 bg-white px-3 py-2 text-xs font-black text-blue-800 dark:border-slate-700 dark:bg-slate-900 dark:text-blue-200"><Loader2 className="size-4 animate-spin" />Calcul du montant à encaisser...</div> : null}
                 {previewError ? <div className="border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-black text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">{previewError}</div> : null}
                 <TextField type="number" label="Montant à encaisser" value={form.paymentAmount} onChange={(value) => setForm({ ...form, paymentAmount: Number(value) })} />
-                <SelectField label="Devise reçue" value={form.paymentCurrency ?? displayCurrency ?? "CDF"} onChange={(value) => setForm({ ...form, paymentCurrency: value })} options={PAYMENT_CURRENCIES} />
+                <SelectField label="Devise reçue" value={form.paymentCurrency ?? ""} onChange={(value) => setForm({ ...form, paymentCurrency: value })} options={PAYMENT_CURRENCIES} />
                 <SelectField label="Méthode" value={form.paymentMethod} onChange={(value) => setForm({ ...form, paymentMethod: value })} options={["CASH", "CARD", "MOBILE_MONEY", "BANK_TRANSFER"]} />
                 <div className="flex items-center gap-2 bg-white px-3 py-2 text-xs font-bold text-emerald-700 dark:bg-slate-900 dark:text-emerald-300">
                   <CheckCircle2 className="size-4" />La référence caisse sera générée automatiquement au moment du paiement.
@@ -431,7 +431,7 @@ function PharmacySaleWorkflow({ operationKind, form, setForm, previewLoading, pr
             <div className="mb-4 flex items-center gap-2 text-sm font-black text-slate-950"><WalletCards className="size-4 text-blue-700" />Paiement pharmacie</div>
             <div className="space-y-4">
               <TextField type="number" label="Montant encaissé" value={form.paymentAmount} onChange={(value) => setForm({ ...form, paymentAmount: Number(value), collectNow: true })} />
-              <SelectField label="Devise reçue" value={form.paymentCurrency ?? "CDF"} onChange={(value) => setForm({ ...form, paymentCurrency: value, collectNow: true })} options={PAYMENT_CURRENCIES} />
+              <SelectField label="Devise reçue" value={form.paymentCurrency ?? ""} onChange={(value) => setForm({ ...form, paymentCurrency: value, collectNow: true })} options={PAYMENT_CURRENCIES} />
               <SelectField label="Méthode" value={form.paymentMethod} onChange={(value) => setForm({ ...form, paymentMethod: value, collectNow: true })} options={["CASH", "CARD", "MOBILE_MONEY", "BANK_TRANSFER"]} />
               <div className="flex items-center gap-2 bg-white px-3 py-2 text-xs font-bold text-emerald-700">
                 <CheckCircle2 className="size-4" />La vente sera facturée et encaissée en une seule action.
