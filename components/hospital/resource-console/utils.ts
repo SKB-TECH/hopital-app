@@ -6,7 +6,7 @@ export function cleanObject(input: Record<string, any>) {
 }
 
 export function invoiceApiPayload(input: Record<string, any>) {
-  const { collectNow, paymentMethod, paymentAmount, paymentReference, preview, ...payload } = input;
+  const { collectNow, paymentMethod, paymentAmount, paymentReference, paymentCurrency, preview, ...payload } = input;
   return cleanObject({
     ...payload,
     invoiceItems: sanitizeInvoiceItems(payload.invoiceItems),
@@ -48,7 +48,7 @@ function defaultFieldValue(field: HospitalField) {
   if (field.type === "checkbox") return false;
   if (field.type === "multiselect") return [];
   if (field.name === "active") return "true";
-  if (field.name === "currency") return "RWF";
+  if (field.name === "currency") return "CDF";
   return "";
 }
 
@@ -262,11 +262,12 @@ export function defaultOperationForm(kind: OperationKind, row?: any, endpoint = 
       invoiceItems: [],
       collectNow: isPharmacyDispensation,
       paymentMethod: "CASH",
+      paymentCurrency: "CDF",
       paymentAmount: "",
       paymentReference: isPharmacyDispensation ? "Délivrance pharmacie" : "",
     };
   }
-  if (kind === "pay-invoice") return { amount: invoiceBalance(row) || "", method: "CASH", reference: "" };
+  if (kind === "pay-invoice") return { amount: invoiceBalance(row) || "", method: "CASH", paymentCurrency: normalizeCurrency(row?.currency ?? "CDF"), reference: "" };
   if (kind === "discharge") return { summary: "" };
   if (kind === "complete-consultation") return { assessment: row?.assessment ?? "", plan: row?.plan ?? "", notes: row?.notes ?? "" };
   if (kind === "confirm-birth") return {
@@ -337,6 +338,12 @@ function invoiceBalance(row: any) {
   const total = moneyNumber(row?.total ?? row?.patientAmount ?? row?.patient_amount ?? row?.amount);
   const paid = moneyNumber(row?.paidAmount ?? row?.paid_amount ?? row?.paid);
   return Math.max(total - paid, 0);
+}
+
+function normalizeCurrency(value: any) {
+  const currency = String(value ?? "CDF").trim().toUpperCase();
+  if (currency === "EURO") return "EUR";
+  return ["CDF", "USD", "EUR"].includes(currency) ? currency : "CDF";
 }
 
 function moneyNumber(value: any) {

@@ -267,7 +267,7 @@ export default function HospitalResourceConsole() {
     try {
       validateOperation(operation.kind, operationForm);
       if (operation.kind === "generate-invoice") {
-        const { collectNow, paymentMethod, paymentAmount, paymentReference } = operationForm;
+        const { collectNow, paymentMethod, paymentAmount, paymentReference, paymentCurrency } = operationForm;
         const invoiceEndpoint = operation.endpoint === "/billing/invoices/route" ? "/billing/invoices/route" : "/billing/invoices";
         const response = await api.post(invoiceEndpoint, invoiceApiPayload(operationForm));
         const invoice = response.data;
@@ -277,6 +277,7 @@ export default function HospitalResourceConsole() {
             await api.post(`/billing/invoices/${invoice.id}/payments`, cleanObject({
               amount,
               method: paymentMethod || "CASH",
+              paymentCurrency: paymentCurrency || invoice.currency || "CDF",
               reference: paymentReference || autoPaymentReference(paymentMethod || "CASH"),
             }));
           }
