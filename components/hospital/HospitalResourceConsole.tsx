@@ -54,7 +54,7 @@ export default function HospitalResourceConsole() {
   const canAccessSelected = canAccessHospitalResource(user, module.key, selected?.key);
   const canCreateSelected = selected?.canCreate !== false && hasHospitalModulePermission(user, module.key, selected?.key, "CREATE");
   const canUpdateSelected = selected?.canUpdate !== false && hasHospitalModulePermission(user, module.key, selected?.key, "UPDATE");
-  const canPrintSelected = hasHospitalModulePermission(user, module.key, selected?.key, "PRINT") || selected?.endpoint === "/prescriptions";
+  const canPrintSelected = selected?.endpoint !== "/billing/invoices/route" && (hasHospitalModulePermission(user, module.key, selected?.key, "PRINT") || selected?.endpoint === "/prescriptions");
 
   const [rows, setRows] = useState<any[]>([]);
   const [query, setQuery] = useState("");
@@ -268,7 +268,8 @@ export default function HospitalResourceConsole() {
       validateOperation(operation.kind, operationForm);
       if (operation.kind === "generate-invoice") {
         const { collectNow, paymentMethod, paymentAmount, paymentReference } = operationForm;
-        const response = await api.post("/billing/invoices", invoiceApiPayload(operationForm));
+        const invoiceEndpoint = operation.endpoint === "/billing/invoices/route" ? "/billing/invoices/route" : "/billing/invoices";
+        const response = await api.post(invoiceEndpoint, invoiceApiPayload(operationForm));
         const invoice = response.data;
         if (collectNow && invoice?.id) {
           const amount = Number(paymentAmount || invoice.balanceDue || invoice.total || 0);
@@ -605,7 +606,7 @@ export default function HospitalResourceConsole() {
                     </thead>
                     <tbody>
                       {loading ? <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center text-sm font-semibold text-slate-500"><Loader2 className="mx-auto mb-3 size-6 animate-spin text-blue-700" />{hospitalUi(locale, "loadingData")}</td></tr> :
-                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs px-5 py-4 text-sm font-semibold text-slate-700"><TableCellValue row={row} columnKey={column.key} referenceLabels={referenceLabels} /></td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => openView(row)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title="Voir"><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Imprimer"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "download-backup" ? downloadBackup(row) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : action.kind === "close-queue" ? closeQueueEncounter(row) : action.kind === "print-employee-badge" ? setBadgeDialog({ row }) : openOperation(action.kind, row)} className={action.kind === "pay-invoice" ? "inline-flex items-center gap-2 border-l border-blue-700 bg-blue-700 px-3 py-2 text-xs font-black text-white hover:bg-blue-800" : "border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50"} title={action.label}><action.icon className="size-4" />{action.kind === "pay-invoice" ? <span>Encaisser</span> : null}</button>)}</div></td></tr>) :
+                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs px-5 py-4 text-sm font-semibold text-slate-700"><TableCellValue row={row} columnKey={column.key} referenceLabels={referenceLabels} /></td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => openView(row)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title={selected.endpoint === "/billing/invoices/route" ? "Voir les actes" : "Voir"}><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Imprimer"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "download-backup" ? downloadBackup(row) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : action.kind === "close-queue" ? closeQueueEncounter(row) : action.kind === "print-employee-badge" ? setBadgeDialog({ row }) : openOperation(action.kind, row)} className={action.kind === "pay-invoice" || (selected.endpoint === "/billing/invoices/route" && action.kind === "generate-invoice") ? "inline-flex items-center gap-2 border-l border-blue-700 bg-blue-700 px-3 py-2 text-xs font-black text-white hover:bg-blue-800" : "border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50"} title={action.label}><action.icon className="size-4" />{action.kind === "pay-invoice" ? <span>Encaisser</span> : selected.endpoint === "/billing/invoices/route" && action.kind === "generate-invoice" ? <span>Créer la facture</span> : null}</button>)}</div></td></tr>) :
                       <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center"><Database className="mx-auto mb-3 size-8 text-slate-300" /><p className="font-black text-slate-800">{hospitalUi(locale, "noData")}</p><p className="mt-1 text-sm text-slate-500">{hospitalUi(locale, "noDataHint")}</p></td></tr>}
                     </tbody>
                     </table>
@@ -1381,7 +1382,9 @@ function cleanMissingDescription(description: string, code: string) {
 
 function displayCell(row: any, key: string, referenceLabels: Record<string, Record<string, string>>) {
   if (key === "id") return recordReference(row);
+  if (key === "status" && row?.chargeCount !== undefined) return billingQueueStatusLabel(row?.status);
   if (key === "status" && row?.invoiceNumber) return invoiceStatusLabel(row?.status);
+  if (key === "services") return cleanServicesText(String(row?.services ?? ""));
   if (key === "patientId" && row?.patientName) return [row.patientName, row.medicalRecordNumber].filter(Boolean).join(" · ");
   if (key === "practitionerId" && row?.practitionerName) return row.practitionerName;
   if (key === "prescriberId" && row?.prescriberName) return row.prescriberName;
@@ -1418,6 +1421,21 @@ function invoiceStatusLabel(value: any) {
   if (status === "PARTIALLY_PAID" || status === "PARTIAL") return "Partiellement payée";
   if (status === "VOID" || status === "CANCELLED") return "Annulée";
   return formatValue(value);
+}
+
+function billingQueueStatusLabel(value: any) {
+  const status = String(value ?? "").toUpperCase();
+  if (["READY_TO_INVOICE", "PRET_A_FACTURER", "PRÊT_À_FACTURER"].includes(status)) return "Prêt à facturer";
+  if (["MISSING_PRICE", "UNPRICED", "TARIF_MANQUANT"].includes(status)) return "Tarif à configurer";
+  return formatValue(value);
+}
+
+function cleanServicesText(value: string) {
+  return value
+    .split(",")
+    .map((item) => item.trim().replace(/^Tarif manquant:\s*/i, ""))
+    .filter(Boolean)
+    .join(", ") || "-";
 }
 
 function recordReference(row: any) {
@@ -1699,6 +1717,7 @@ function getRowActions(endpoint: string, row: any): OperationAction[] {
   if (endpoint === "/billing/invoices") return canPayInvoice(row) ? [{ kind: "pay-invoice", label: "Encaisser", icon: CreditCard }] : [];
   if (endpoint === "/pharmacy/sales" && canPayPharmacySale(row)) return [{ kind: "pay-invoice", label: "Encaisser", icon: CreditCard }];
   const actions: OperationAction[] = [];
+  if (endpoint === "/billing/invoices/route" && !["MISSING_PRICE", "UNPRICED", "TARIF_MANQUANT"].includes(String(row?.status ?? "").toUpperCase())) actions.push({ kind: "generate-invoice", label: "Créer la facture", icon: Receipt });
   if (endpoint === "/backups" && String(row?.status ?? "").toUpperCase() === "COMPLETED") actions.push({ kind: "download-backup", label: "Télécharger", icon: Download });
   if (row?.patientId && endpoint !== "/patients") actions.push({ kind: "patient-record", label: "Dossier patient", icon: UserRound });
   if (endpoint === "/pharmacy/dispensations" && row?.patientId && canBillDispensation(row)) actions.push({ kind: "generate-invoice", label: "Facturer / encaisser", icon: Receipt });

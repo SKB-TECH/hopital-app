@@ -249,9 +249,11 @@ function isReadableReferencePart(value: any) {
 export function defaultOperationForm(kind: OperationKind, row?: any, endpoint = "") {
   if (kind === "preview-invoice" || kind === "generate-invoice") {
     const isPharmacyDispensation = endpoint === "/pharmacy/dispensations";
+    const isBillingQueue = endpoint === "/billing/invoices/route";
     return {
       patientId: row?.patientId ?? "",
       admissionId: row?.admissionId ?? "",
+      encounterId: isBillingQueue ? row?.admissionId ?? row?.patientId ?? "" : "",
       from: "",
       to: "",
       sourceType: isPharmacyDispensation ? "DISPENSATION" : "",
