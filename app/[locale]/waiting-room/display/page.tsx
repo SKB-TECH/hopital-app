@@ -11,11 +11,11 @@ type QueuePayload = {
 type Option = { id: string; label: string; description?: string };
 type TvSlide = { title: string; subtitle: string; advice: string; image: string };
 
-const storageKey = "afia.waitingRoom.display";
+const storageKey = "doclyn.waitingRoom.display";
 
 const defaultSlides: TvSlide[] = [
   {
-    title: "Bienvenue à Afia-Smart",
+    title: "Bienvenue à Doclyn",
     subtitle: "Notre équipe vous appellera par votre numéro de ticket.",
     advice: "Gardez votre ticket visible et restez proche de l’écran.",
     image: "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=1600&q=80",

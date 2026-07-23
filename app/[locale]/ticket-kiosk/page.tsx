@@ -9,7 +9,7 @@ type Appointment = { id: string; patientName?: string; medicalRecordNumber?: str
 type Ticket = { id?: string; queueNumber?: string; ticketNumber?: string; patientName?: string; medicalRecordNumber?: string; checkedInAt?: string; printHtml?: string };
 type Option = { id: string; label: string; description?: string };
 
-const storageKey = "afia.reception.ticketDesk";
+const storageKey = "doclyn.reception.ticketDesk";
 const defaultServices: Option[] = [
   { id: "ORIENTATION", label: "Orientation générale", description: "Accueil, tri et orientation vers le bon service" },
   { id: "CONSULTATION_GENERAL", label: "Consultation générale", description: "Médecine générale ou premier avis clinique" },

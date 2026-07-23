@@ -17,7 +17,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<ThemeMode>("light");
 
   useEffect(() => {
-    const stored = typeof window !== "undefined" ? window.localStorage.getItem("afia-theme") : null;
+    const stored = typeof window !== "undefined" ? window.localStorage.getItem("doclyn-theme") : null;
     const initial = stored === "dark" || stored === "light"
       ? stored
       : window.matchMedia?.("(prefers-color-scheme: dark)").matches
@@ -29,7 +29,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     document.documentElement.style.colorScheme = theme;
-    window.localStorage.setItem("afia-theme", theme);
+    window.localStorage.setItem("doclyn-theme", theme);
   }, [theme]);
 
   const value = useMemo<ThemeContextType>(() => ({

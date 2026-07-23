@@ -934,9 +934,9 @@ function printListDocument({ title, description, locale, filters, total, rows, c
 <body>
   <section class="header">
     <div class="brand">
-      <img src="/logo.png" alt="Afia-Smart" />
+      <img src="/logo.png" alt="Doclyn" />
       <div>
-        <h1>Afia-Smart</h1>
+        <h1>Doclyn</h1>
         <p>Système d'information hospitalier</p>
       </div>
     </div>
@@ -954,7 +954,7 @@ function printListDocument({ title, description, locale, filters, total, rows, c
   </section>
   ${reportContext ? `<section class="context">${reportContext}</section>` : ""}
   ${bodyRows.length ? `<table><thead><tr>${visibleColumns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}</tr></thead><tbody>${bodyRows.map((cells) => `<tr>${cells.map((cell) => `<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody></table>` : `<div class="empty">Aucune donnée à imprimer.</div>`}
-  <section class="footer"><span>Afia-Smart Hospital OS</span><span>Page imprimée depuis le navigateur</span></section>
+  <section class="footer"><span>Doclyn Hospital OS</span><span>Page imprimée depuis le navigateur</span></section>
 </body>
 </html>`;
   printHtmlInFrame(html);
@@ -1002,9 +1002,9 @@ function printableColumns(columns: { key: string; label: string }[], rows: any[]
 }
 
 function printHtmlInFrame(html: string) {
-  document.getElementById("afia-list-print-frame")?.remove();
+  document.getElementById("doclyn-list-print-frame")?.remove();
   const frame = document.createElement("iframe");
-  frame.id = "afia-list-print-frame";
+  frame.id = "doclyn-list-print-frame";
   frame.setAttribute("aria-hidden", "true");
   frame.style.position = "fixed";
   frame.style.right = "0";
@@ -1220,7 +1220,7 @@ function BadgePreviewSide({ row, primaryColor, accentColor, side, photo }: { row
           <div className="absolute left-0 top-0 h-24 w-24" style={{ background: accentColor, clipPath: "polygon(0 0, 100% 0, 0 100%)" }} />
           <div className="absolute bottom-0 right-0 h-28 w-28" style={{ background: primaryColor, clipPath: "polygon(100% 0, 100% 100%, 0 100%)" }} />
           <div className="relative z-10 text-right">
-            <p className="text-xl font-black">Afia-Smart</p>
+            <p className="text-xl font-black">Doclyn</p>
             <p className="text-[10px] font-black uppercase text-slate-500">Hospital Staff</p>
           </div>
           <div className="relative z-10 mt-14">
@@ -1274,7 +1274,7 @@ function employeeBadgeHtml(row: any, theme: { primaryColor: string; accentColor:
     <section class="badge front"><div class="ring"></div><div class="photo">${photo ? `<img src="${escapeAttr(photo)}" />` : escapeHtml(initials)}</div><div class="name"><strong>${escapeHtml(fullName)}</strong><span>${escapeHtml(row.position || row.department || "Personnel hospitalier")}</span></div><div class="infos"><div>ID : ${escapeHtml(row.employeeNumber || row.badgeNumber || "-")}</div><div>Tél : ${escapeHtml(row.phone || "-")}</div><div>Email : ${escapeHtml(row.email || "-")}</div></div><div class="barcode"><div></div></div></section>
     </main>
     <main class="print-page">
-    <section class="badge back"><div class="corner-a"></div><div class="corner-b"></div><div class="brand"><strong>Afia-Smart</strong><span>Hospital Staff</span></div><div class="terms"><h3>Conditions</h3><ul><li>Badge personnel obligatoire dans les zones hospitalières.</li><li>En cas de perte, informer immédiatement l’administration.</li><li>Ce badge reste propriété de l’établissement.</li></ul></div><div class="dates"><div>Date d’émission: ${escapeHtml(issued)}</div><div>Expiration: ${escapeHtml(expires)}</div></div><div class="sign">Signature autorisée</div></section>
+    <section class="badge back"><div class="corner-a"></div><div class="corner-b"></div><div class="brand"><strong>Doclyn</strong><span>Hospital Staff</span></div><div class="terms"><h3>Conditions</h3><ul><li>Badge personnel obligatoire dans les zones hospitalières.</li><li>En cas de perte, informer immédiatement l’administration.</li><li>Ce badge reste propriété de l’établissement.</li></ul></div><div class="dates"><div>Date d’émission: ${escapeHtml(issued)}</div><div>Expiration: ${escapeHtml(expires)}</div></div><div class="sign">Signature autorisée</div></section>
     </main>
   <script>window.onload=function(){setTimeout(function(){window.print()},250)}</script></body></html>`;
 }

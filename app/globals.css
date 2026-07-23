@@ -140,7 +140,7 @@
     @apply mx-auto max-w-7xl px-4 md:px-8;
   }
 
-  .bg-afia-gradient {
+  .bg-doclyn-gradient {
     background: linear-gradient(
       135deg,
       oklch(0.23 0.08 255),
@@ -148,7 +148,7 @@
     );
   }
 
-  .bg-afia-warm-gradient {
+  .bg-doclyn-warm-gradient {
     background: linear-gradient(
       135deg,
       oklch(0.86 0.18 88),

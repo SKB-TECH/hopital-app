@@ -14,7 +14,7 @@ type TenantConfig = {
 };
 
 const defaultConfig: TenantConfig = {
-  tenant: { id: null, name: "Afia-Smart", code: "DEFAULT", status: "DEFAULT" },
+  tenant: { id: null, name: "Doclyn", code: "DEFAULT", status: "DEFAULT" },
   branding: {
     logoUrl: null,
     colors: { primary: "#1d4ed8", secondary: "#0f172a", accent: "#0284c7" },
@@ -62,7 +62,7 @@ export function TenantConfigProvider({ children }: { children: React.ReactNode }
     Object.entries(config.branding.cssVariables || {}).forEach(([key, value]) => {
       if (/^--[a-z0-9-]+$/i.test(key)) root.style.setProperty(key, String(value));
     });
-    document.title = config.tenant.name || "Afia-Smart";
+    document.title = config.tenant.name || "Doclyn";
   }, [config]);
 
   const value = useMemo(() => config, [config]);

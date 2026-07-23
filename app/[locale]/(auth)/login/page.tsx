@@ -59,10 +59,10 @@ export default function LoginPage() {
           <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-blue-700 via-cyan-500 to-emerald-500" />
           <div className="flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
-              <Image src="/logo.png" alt="Afia-Smart" width={44} height={44} className="h-11 w-11 object-contain" priority />
+              <Image src="/logo.png" alt="Doclyn" width={44} height={44} className="h-11 w-11 object-contain" priority />
             </div>
             <div>
-              <p className="text-2xl font-black tracking-normal text-blue-700 dark:text-blue-300">Afia-Smart</p>
+              <p className="text-2xl font-black tracking-normal text-blue-700 dark:text-blue-300">Doclyn</p>
               <p className="mt-1 text-sm font-semibold text-slate-400">Système d’information hospitalier</p>
             </div>
           </div>
@@ -82,8 +82,8 @@ export default function LoginPage() {
           <div className="w-full max-w-[430px]">
             <div className="mb-8 flex items-center justify-between lg:justify-end">
               <Link href={`/${locale}`} className="flex items-center gap-3 lg:hidden">
-                <Image src="/logo.png" alt="Afia-Smart" width={40} height={40} className="h-10 w-10 object-contain" priority />
-                <span className="text-xl font-black text-blue-700 dark:text-blue-300">Afia-Smart</span>
+                <Image src="/logo.png" alt="Doclyn" width={40} height={40} className="h-10 w-10 object-contain" priority />
+                <span className="text-xl font-black text-blue-700 dark:text-blue-300">Doclyn</span>
               </Link>
               <span className="inline-flex items-center gap-2 border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300">
                 <ShieldCheck className="h-4 w-4" />
@@ -140,7 +140,7 @@ export default function LoginPage() {
             </form>
 
             <p className="mt-8 text-center text-xs font-semibold leading-5 text-slate-400">
-              © 2026 Afia-Smart. Accès contrôlé, journalisation et traçabilité des données hospitalières.
+              © 2026 Doclyn. Accès contrôlé, journalisation et traçabilité des données hospitalières.
             </p>
           </div>
         </div>

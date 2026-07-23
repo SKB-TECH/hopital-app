@@ -11,7 +11,7 @@ import { hospitalText } from "@/shared/config/hospital-i18n";
 import { PatientRecordHeader } from "@/components/hospital/patient-record/PatientRecordHeader";
 import { PatientRecordSummary } from "@/components/hospital/patient-record/PatientRecordSummary";
 import { PatientRecordTable } from "@/components/hospital/patient-record/PatientRecordTable";
-import { normalizeRows, patientFullName } from "@/components/hospital/patient-record/helpers";
+import { normalizeRows, patientFullName, patientPhotoUrl } from "@/components/hospital/patient-record/helpers";
 import { patientRecordSections } from "@/components/hospital/patient-record/sections";
 import type { PatientRecordSectionKey } from "@/components/hospital/patient-record/types";
 
@@ -40,6 +40,7 @@ export default function PatientRecordPage() {
 
   const patient = data.patient;
   const fullName = patientFullName(patient);
+  const photoUrl = patientPhotoUrl(patient);
   const sections = patientRecordSections.map((section) => ({ ...section, label: hospitalText(section.label, locale) }));
   const rows = useMemo(() => ({
     consultations: data.consultations ?? [],
@@ -56,7 +57,7 @@ export default function PatientRecordPage() {
       <div className={`transition-all duration-300 ${isCollapsed ? "lg:ml-[84px]" : "lg:ml-[340px]"}`}>
         <DashboardNavbar />
         <main className="p-5 lg:p-8">
-          <PatientRecordHeader locale={locale} fullName={fullName} medicalRecordNumber={patient?.medicalRecordNumber} />
+          <PatientRecordHeader locale={locale} fullName={fullName} medicalRecordNumber={patient?.medicalRecordNumber} photoUrl={photoUrl} />
           {error && <div className="mb-6 border border-rose-200 bg-white p-4 text-sm font-bold text-rose-700">{String(error)}</div>}
           {loading ? (
             <div className="border border-slate-200 bg-white p-16 text-center text-slate-500">
@@ -65,7 +66,7 @@ export default function PatientRecordPage() {
             </div>
           ) : (
             <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
-              <PatientRecordNavigation active={active} sections={sections} locale={locale} fullName={fullName} phone={patient?.phone} onChange={setActive} />
+              <PatientRecordNavigation active={active} sections={sections} locale={locale} fullName={fullName} phone={patient?.phone} photoUrl={photoUrl} onChange={setActive} />
               <section className="border border-slate-200 bg-white p-6">
                 {active === "summary" ? (
                   <PatientRecordSummary patient={patient} data={data} locale={locale} />
@@ -81,13 +82,19 @@ export default function PatientRecordPage() {
   );
 }
 
-function PatientRecordNavigation({ active, sections, locale, fullName, phone, onChange }: { active: PatientRecordSectionKey; sections: typeof patientRecordSections; locale: string; fullName: string; phone?: string; onChange: (section: PatientRecordSectionKey) => void }) {
+function PatientRecordNavigation({ active, sections, locale, fullName, phone, photoUrl, onChange }: { active: PatientRecordSectionKey; sections: typeof patientRecordSections; locale: string; fullName: string; phone?: string; photoUrl?: string; onChange: (section: PatientRecordSectionKey) => void }) {
+  const initials = fullName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "PT";
   return (
     <aside className="border border-slate-200 bg-white">
-      <div className="border-b border-slate-200 p-5">
+      <div className="flex flex-col items-center border-b border-slate-200 p-6 text-center">
+        {photoUrl ? (
+          <img src={photoUrl} alt={fullName} className="mb-5 h-32 w-32 rounded-full border border-slate-200 bg-slate-100 object-cover" />
+        ) : (
+          <div className="mb-5 grid h-32 w-32 place-items-center rounded-full border border-slate-200 bg-blue-50 text-2xl font-black text-blue-800">{initials}</div>
+        )}
         <p className="text-xs font-black uppercase tracking-wide text-blue-700">Patient</p>
-        <h2 className="mt-1 text-xl font-black text-slate-950">{fullName}</h2>
-        <p className="mt-1 text-sm text-slate-500">{phone || (locale === "en" ? "Phone not provided" : "Téléphone non renseigné")}</p>
+        <h2 className="mt-2 text-2xl font-black text-slate-950">{fullName}</h2>
+        <p className="mt-2 text-base font-semibold text-slate-500">{phone || (locale === "en" ? "Phone not provided" : "Téléphone non renseigné")}</p>
       </div>
       <nav className="p-3">
         {sections.map((section) => {

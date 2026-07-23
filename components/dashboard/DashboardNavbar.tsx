@@ -62,7 +62,7 @@ export default function DashboardNavbar() {
                         {isMobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
                     </button>
 
-                    <h1 className="text-base font-semibold text-slate-900 sm:text-xl lg:hidden">Afia-Smart</h1>
+                    <h1 className="text-base font-semibold text-slate-900 sm:text-xl lg:hidden">Doclyn</h1>
 
                     <div className="flex items-center gap-4 ml-auto">
                         <button

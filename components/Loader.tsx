@@ -14,10 +14,10 @@ export function Loader({ label = "Préparation de votre espace hospitalier...", 
           <div className="absolute inset-0 animate-ping bg-blue-600/10" />
           <div className="absolute inset-2 border border-blue-100" />
           <div className="relative flex h-16 w-16 items-center justify-center bg-white shadow-lg">
-            <Image src="/logo.png" alt="Afia-Smart" width={44} height={44} className="h-11 w-11 object-contain" priority />
+            <Image src="/logo.png" alt="Doclyn" width={44} height={44} className="h-11 w-11 object-contain" priority />
           </div>
         </div>
-        <p className="text-sm font-black uppercase tracking-[0.24em] text-blue-700">Afia-Smart</p>
+        <p className="text-sm font-black uppercase tracking-[0.24em] text-blue-700">Doclyn</p>
         <p className="mt-3 max-w-sm text-base font-semibold text-slate-600">{label}</p>
         <div className="mt-6 h-1.5 w-64 overflow-hidden bg-slate-100">
           <div className="h-full w-1/2 animate-[loader-slide_1.25s_ease-in-out_infinite] bg-blue-700" />

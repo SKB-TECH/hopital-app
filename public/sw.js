@@ -1,4 +1,4 @@
-const CACHE_NAME = "afia-smart-shell-v1";
+const CACHE_NAME = "doclyn-shell-v1";
 const APP_SHELL = ["/logo.png", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {

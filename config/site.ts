@@ -1,10 +1,10 @@
 export const siteConfig = {
-  name: "Afia Smart",
+  name: "Doclyn",
   description:
-      "Smart Healthcare Platform connecting patients, doctors, hospitals, laboratories, pharmacies, and healthcare providers through a modern and intelligent digital ecosystem.",
+      "Doclyn connecte les patients, soignants, services hospitaliers, pharmacies, laboratoires et équipes administratives dans un SIH moderne et sécurisé.",
   url: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-  logo: "/images/afia-smart-logo.jpeg",
+  logo: "/doclyn-logo-light.png",
   links: {
-    email: "contact@afiasmart.com",
+    email: "contact.health",
   },
 };

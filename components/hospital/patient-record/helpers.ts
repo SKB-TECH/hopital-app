@@ -70,6 +70,14 @@ export function patientFullName(patient: any) {
   return [patient?.firstName, patient?.lastName].filter(Boolean).join(" ") || "Patient";
 }
 
+export function patientPhotoUrl(patient: any) {
+  const value = patient?.photoUrl ?? patient?.photo ?? patient?.imageUrl ?? patient?.avatarUrl;
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (typeof value !== "object" || Array.isArray(value)) return "";
+  return String(value.url || value.secureUrl || value.secure_url || "");
+}
+
 function isIsoDate(value: string) {
   return /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/.test(value) && !Number.isNaN(new Date(value).getTime());
 }

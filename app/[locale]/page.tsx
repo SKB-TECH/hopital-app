@@ -43,8 +43,8 @@ export default function HomePage() {
 
       <header className="relative z-20 mx-auto flex max-w-[1380px] items-center justify-between px-6 py-5 sm:px-10 lg:px-12">
         <Link href={`/${locale}`} className="flex items-center gap-3">
-          <Image src="/logo.png" alt="Afia-Smart" width={52} height={52} className="h-12 w-12 object-contain" priority />
-          <span className="text-2xl font-black text-[#0B43B5]">Afia-Smart</span>
+          <Image src="/logo.png" alt="Doclyn" width={52} height={52} className="h-12 w-12 object-contain" priority />
+          <span className="text-2xl font-black text-[#0B43B5]">Doclyn</span>
         </Link>
 
         <button className="inline-flex h-11 items-center gap-2 rounded-full bg-white px-4 text-sm font-bold text-[#061A4D] shadow-[0_10px_30px_rgba(6,26,77,0.08)] ring-1 ring-slate-100">
@@ -71,11 +71,10 @@ export default function HomePage() {
             transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
             className="text-[4rem] font-black leading-[0.98] tracking-normal text-[#061A4D] sm:text-[4.6rem] lg:text-[5.7rem] xl:text-[6.35rem]"
           >
-            Afia
-            <br />
-            Smart
+            Doclyn
             <br />
             Hospital
+            <br />
             Portal
           </motion.h1>
 
@@ -151,8 +150,8 @@ export default function HomePage() {
               className="relative z-10 flex h-52 w-52 items-center justify-center rounded-[36px] bg-white shadow-[0_30px_90px_rgba(6,26,77,0.13)] lg:h-64 lg:w-64 lg:rounded-[44px]"
             >
               <div className="flex flex-col items-center text-center">
-                <Image src="/logo.png" alt="Afia-Smart" width={76} height={76} className="h-14 w-14 object-contain lg:h-16 lg:w-16" priority />
-                <span className="mt-3 text-xl font-black text-[#0B43B5] lg:mt-4 lg:text-2xl">Afia-Smart</span>
+                <Image src="/logo.png" alt="Doclyn" width={76} height={76} className="h-14 w-14 object-contain lg:h-16 lg:w-16" priority />
+                <span className="mt-3 text-xl font-black text-[#0B43B5] lg:mt-4 lg:text-2xl">Doclyn</span>
                 <span className="mt-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Hospital OS</span>
               </div>
             </motion.div>

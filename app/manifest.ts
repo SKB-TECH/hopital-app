@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Afia-Smart Hospital Information System",
-    short_name: "Afia-Smart",
+    name: "Doclyn Hospital Information System",
+    short_name: "Doclyn",
     description: "Système hospitalier intégré pour patients, soins, pharmacie, laboratoire, chirurgie, facturation et reporting.",
     start_url: "/fr/overview",
     scope: "/",

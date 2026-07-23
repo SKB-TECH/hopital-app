@@ -87,11 +87,12 @@ export default function DashboardSidebar() {
 
   const sidebarContent = (
       <div className="flex h-full flex-col">
-        <div className="flex h-24 items-center justify-between border-b border-slate-200 px-6">
+        <div className="flex h-32 items-center justify-between border-b border-slate-200 px-6">
           <Link href={`/${locale}/overview`} className="flex items-center gap-4">
             {!isCollapsed && (
-              <div>
-                <Image src={"/logo.png"} alt={"logo"} width={400} height={400}/>
+              <div className="flex items-center">
+                <Image src="/doclyn-logo-light.png" alt="Doclyn" width={360} height={160} className="h-24 w-auto max-w-[17rem] object-contain dark:hidden" priority />
+                <Image src="/doclyn-logo-dark.png" alt="Doclyn" width={360} height={160} className="hidden h-24 w-auto max-w-[17rem] object-contain dark:block" priority />
               </div>
             )}
           </Link>

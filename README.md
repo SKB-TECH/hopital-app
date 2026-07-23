@@ -1,6 +1,6 @@
-# Afia-Smart Hospital Frontend
+# Doclyn Hospital Frontend
 
-Frontend Next.js du système hospitalier Afia-Smart.
+Frontend Next.js du système hospitalier Doclyn.
 
 ## Démarrage local
 
@@ -18,7 +18,7 @@ http://localhost:3000/fr
 ## Variables d’environnement
 
 ```env
-NEXT_PUBLIC_APP_NAME=Afia-Smart
+NEXT_PUBLIC_APP_NAME=Doclyn
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_API_URL=/api/proxy/api/v1
 NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
@@ -31,7 +31,7 @@ En production :
 NEXT_PUBLIC_API_URL=/api/proxy/api/v1
 NEXT_PUBLIC_API_BASE_URL=https://votre-api.com
 HOSPITAL_API_URL=https://votre-api.com
-NEXT_PUBLIC_APP_NAME=Afia-Smart
+NEXT_PUBLIC_APP_NAME=Doclyn
 ```
 
 Le front appelle l’API via :

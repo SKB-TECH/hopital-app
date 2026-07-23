@@ -14,7 +14,7 @@ import PWARegister from "@/components/PWARegister";
 
 const themeBootstrap = `
 try {
-  var stored = localStorage.getItem('afia-theme');
+  var stored = localStorage.getItem('doclyn-theme');
   var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   if (stored === 'dark' || (!stored && prefersDark)) document.documentElement.classList.add('dark');
   document.documentElement.style.colorScheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
@@ -32,11 +32,11 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "Afia-Smart",
+    title: "Doclyn",
     statusBarStyle: "default",
   },
   keywords: [
-    "Afia"
+    "Doclyn"
   ],
   authors: [{ name: siteConfig.name }],
   creator: siteConfig.name,
