@@ -161,7 +161,7 @@ export function FieldInput({ field, value, onChange, locale = "fr", form }: { fi
       ) : field.type === "prescription-items" ? (
         <PrescriptionItemsField value={value} onChange={onChange} locale={locale} />
       ) : field.type === "pharmacy-sale-items" ? (
-        <PharmacySaleItemsField value={value} onChange={onChange} locale={locale} />
+        <PharmacySaleItemsField value={value} onChange={onChange} locale={locale} currency={String(form?.currency || "CDF")} />
       ) : field.reference ? (
         <Autocomplete value={String(value ?? "")} options={options} isLoading={loading} placeholder={field.placeholder || `${locale === "en" ? "Select" : "Sélectionner"} ${field.label.toLowerCase()}`} searchPlaceholder={`${locale === "en" ? "Search" : "Rechercher"} ${field.label.toLowerCase()}`} emptyText={locale === "en" ? "No result" : "Aucun résultat"} onSelect={(option) => onChange(option.id)} showIdFallback={false} />
       ) : field.type === "multiselect" ? (
@@ -377,11 +377,10 @@ function DispensationItemsField({ value, onChange, locale }: { value: any; onCha
   );
 }
 
-function PharmacySaleItemsField({ value, onChange, locale }: { value: any; onChange: (value: any) => void; locale: string }) {
+function PharmacySaleItemsField({ value, onChange, locale, currency }: { value: any; onChange: (value: any) => void; locale: string; currency: string }) {
   const rows = Array.isArray(value) ? value : [];
   const [medicines, setMedicines] = useState<Array<{ id: string; label: string; stock: number; unitPrice: number; code: string }>>([]);
   const [loading, setLoading] = useState(false);
-  const currency = "USD";
 
   useEffect(() => {
     let mounted = true;
