@@ -13,7 +13,7 @@ export type OperationKind =
   | "validate-oms-step"
   | "administer-medication"
   | "complete-nursing-task"
-  | "resend-user-invitation"
+  | "consultation-ai" | "resend-user-invitation"
   | "change-status"
   | "close-queue"
   | "print-invoice"

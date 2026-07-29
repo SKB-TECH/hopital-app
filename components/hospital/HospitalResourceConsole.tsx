@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { Activity, Baby, BadgeDollarSign, CheckCircle2, CreditCard, Database, Download, Edit3, Eye, FileText, IdCard, Loader2, Monitor, Plus, Printer, Receipt, RefreshCcw, Search, Send, Smartphone, UploadCloud, UserRound, X } from "lucide-react";
+import { Activity, Baby, BadgeDollarSign, BrainCircuit, CheckCircle2, CreditCard, Database, Download, Edit3, Eye, FileText, IdCard, Loader2, Monitor, Plus, Printer, Receipt, RefreshCcw, Search, Send, Smartphone, UploadCloud, UserRound, X } from "lucide-react";
 import DashboardNavbar from "@/components/dashboard/DashboardNavbar";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import { useSidebar } from "@/contexts/SidebarContext";
@@ -77,6 +77,7 @@ export default function HospitalResourceConsole() {
   const [missingPricing, setMissingPricing] = useState<MissingPricingState | null>(null);
   const [printDialog, setPrintDialog] = useState<{ row?: any } | null>(null);
   const [badgeDialog, setBadgeDialog] = useState<{ row: any } | null>(null);
+  const [aiDialog, setAiDialog] = useState<{ row: any; result?: any; loading: boolean } | null>(null);
   const [referenceLabels, setReferenceLabels] = useState<Record<string, Record<string, string>>>({});
   const [importingWho, setImportingWho] = useState(false);
 
@@ -254,6 +255,24 @@ export default function HospitalResourceConsole() {
     }
   };
 
+  const openConsultationAi = async (row: any) => {
+    if (!row?.id) return;
+    setAiDialog({ row, loading: true });
+    setPosting(true);
+    setError("");
+    try {
+      const response = await api.post(`/consultations/${row.id}/ai/assistant`, {});
+      setAiDialog({ row, result: response.data, loading: false });
+      toast.success("Analyse IA générée. Validation médicale obligatoire.");
+    } catch (err: any) {
+      const message = readError(err);
+      setAiDialog({ row, result: { error: message }, loading: false });
+      setError(message);
+      toast.error(message);
+    } finally {
+      setPosting(false);
+    }
+  };
   const openOperation = (kind: OperationKind, row?: any) => {
     if (!canRunOperation(kind, canCreateSelected, canUpdateSelected, canPrintSelected)) return;
     setOperation({ kind, row, endpoint: selected.endpoint });
@@ -611,7 +630,7 @@ export default function HospitalResourceConsole() {
                     </thead>
                     <tbody>
                       {loading ? <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center text-sm font-semibold text-slate-500"><Loader2 className="mx-auto mb-3 size-6 animate-spin text-blue-700" />{hospitalUi(locale, "loadingData")}</td></tr> :
-                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs px-5 py-4 text-sm font-semibold text-slate-700"><TableCellValue row={row} columnKey={column.key} referenceLabels={referenceLabels} /></td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => openView(row)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title={selected.endpoint === "/billing/invoices/route" ? "Voir les actes" : "Voir"}><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Imprimer"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "download-backup" ? downloadBackup(row) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : action.kind === "close-queue" ? closeQueueEncounter(row) : action.kind === "print-employee-badge" ? setBadgeDialog({ row }) : openOperation(action.kind, row)} className={action.kind === "pay-invoice" || (selected.endpoint === "/billing/invoices/route" && action.kind === "generate-invoice") ? "inline-flex items-center gap-2 border-l border-blue-700 bg-blue-700 px-3 py-2 text-xs font-black text-white hover:bg-blue-800" : "border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50"} title={action.label}><action.icon className="size-4" />{action.kind === "pay-invoice" ? <span>Encaisser</span> : selected.endpoint === "/billing/invoices/route" && action.kind === "generate-invoice" ? <span>Créer la facture</span> : null}</button>)}</div></td></tr>) :
+                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs px-5 py-4 text-sm font-semibold text-slate-700"><TableCellValue row={row} columnKey={column.key} referenceLabels={referenceLabels} /></td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => openView(row)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title={selected.endpoint === "/billing/invoices/route" ? "Voir les actes" : "Voir"}><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Imprimer"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "download-backup" ? downloadBackup(row) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : action.kind === "close-queue" ? closeQueueEncounter(row) : action.kind === "print-employee-badge" ? setBadgeDialog({ row }) : action.kind === "consultation-ai" ? openConsultationAi(row) : openOperation(action.kind, row)} className={action.kind === "pay-invoice" || (selected.endpoint === "/billing/invoices/route" && action.kind === "generate-invoice") ? "inline-flex items-center gap-2 border-l border-blue-700 bg-blue-700 px-3 py-2 text-xs font-black text-white hover:bg-blue-800" : "border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50"} title={action.label}><action.icon className="size-4" />{action.kind === "pay-invoice" ? <span>Encaisser</span> : selected.endpoint === "/billing/invoices/route" && action.kind === "generate-invoice" ? <span>Créer la facture</span> : null}</button>)}</div></td></tr>) :
                       <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center"><Database className="mx-auto mb-3 size-8 text-slate-300" /><p className="font-black text-slate-800">{hospitalUi(locale, "noData")}</p><p className="mt-1 text-sm text-slate-500">{hospitalUi(locale, "noDataHint")}</p></td></tr>}
                     </tbody>
                     </table>
@@ -660,6 +679,13 @@ export default function HospitalResourceConsole() {
             <EmployeeBadgeDialog
               row={badgeDialog.row}
               onClose={() => setBadgeDialog(null)}
+            />
+          )}
+
+          {aiDialog && (
+            <ConsultationAiDialog
+              state={aiDialog}
+              onClose={() => setAiDialog(null)}
             />
           )}
 
@@ -1034,6 +1060,54 @@ function escapeHtml(value: any) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char] ?? char));
 }
 
+function ConsultationAiDialog({ state, onClose }: { state: { row: any; result?: any; loading: boolean }; onClose: () => void }) {
+  const result = state.result;
+  const summaryText = aiText(result?.summary) || aiText(result?.summary?.summary) || aiText(result?.summary?.content);
+  const riskText = aiText(result?.risk) || aiText(result?.risk?.alerts) || aiText(result?.risk?.message);
+  const codingText = aiText(result?.coding) || aiText(result?.coding?.codes) || aiText(result?.coding?.suggestions);
+  return (
+    <div className="fixed inset-0 z-[95] bg-slate-950/50">
+      <div className="ml-auto h-full w-full max-w-4xl overflow-y-auto border-l border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-950">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-7 py-5 dark:border-slate-800 dark:bg-slate-950">
+          <div className="flex items-center gap-4">
+            <span className="flex size-12 items-center justify-center bg-blue-700 text-white"><BrainCircuit className="size-6" /></span>
+            <div>
+              <h2 className="text-2xl font-black text-slate-950 dark:text-white">Assistant IA consultation</h2>
+              <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">{[state.row?.patientName, state.row?.medicalRecordNumber].filter(Boolean).join(" · ") || "Consultation"}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="border border-slate-300 p-2 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900"><X className="size-5" /></button>
+        </div>
+        <div className="space-y-4 p-7">
+          <div className="border border-amber-300 bg-amber-50 p-4 text-sm font-black text-amber-950 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-100">Validation médicale obligatoire. L’IA aide à synthétiser, elle ne remplace pas le médecin.</div>
+          {state.loading ? <div className="border border-slate-200 p-10 text-center text-sm font-bold text-slate-500 dark:border-slate-800 dark:text-slate-300"><Loader2 className="mx-auto mb-3 size-6 animate-spin text-blue-700" />Analyse de la consultation en cours...</div> : result?.error ? <div className="border border-red-200 bg-red-50 p-4 text-sm font-black text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">{result.error}</div> : (
+            <div className="grid gap-4">
+              <AiResultBlock title="Synthèse clinique" value={summaryText} />
+              <AiResultBlock title="Alertes et risques" value={riskText} />
+              <AiResultBlock title="Aide au codage" value={codingText} />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AiResultBlock({ title, value }: { title: string; value: string }) {
+  return <section className="border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900"><h3 className="text-sm font-black uppercase tracking-wide text-blue-700 dark:text-blue-300">{title}</h3><pre className="mt-3 whitespace-pre-wrap text-sm font-semibold leading-7 text-slate-800 dark:text-slate-100">{value || "Aucune recommandation générée."}</pre></section>;
+}
+
+function aiText(value: any): string {
+  if (value === null || value === undefined || value === "") return "";
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return value.map(aiText).filter(Boolean).join("\n");
+  if (typeof value === "object") {
+    const preferred = [value.summary, value.result, value.content, value.text, value.message].map(aiText).find(Boolean);
+    if (preferred) return preferred;
+    return Object.entries(value).map(([key, item]) => detailLabel(key) + ": " + aiText(item)).join("\n");
+  }
+  return String(value);
+}
 function MissingPricingDialog({ state, posting, locale, onChange, onClose, onSubmit }: { state: MissingPricingState; posting: boolean; locale: string; onChange: (state: MissingPricingState) => void; onClose: () => void; onSubmit: () => void }) {
   const updateRow = (index: number, patch: Partial<MissingPricingRow>) => onChange({ ...state, rows: state.rows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row) });
   const total = state.rows.reduce((sum, row) => sum + Number(row.unitPrice || 0) * Math.max(1, Number(row.count || 1)), 0);
@@ -1728,6 +1802,7 @@ function getRowActions(endpoint: string, row: any): OperationAction[] {
   if (row?.patientId && endpoint !== "/patients") actions.push({ kind: "patient-record", label: "Dossier patient", icon: UserRound });
   if (endpoint === "/pharmacy/dispensations" && row?.patientId && canBillDispensation(row)) actions.push({ kind: "generate-invoice", label: "Facturer / encaisser", icon: Receipt });
   if (endpoint === "/laboratory/results" && !row?.validatedAt) actions.push({ kind: "validate-lab", label: "Valider résultat", icon: CheckCircle2 });
+  if (endpoint === "/consultations") actions.push({ kind: "consultation-ai", label: "Assistant IA", icon: BrainCircuit });
   if (endpoint === "/consultations" && row?.status !== "COMPLETED") actions.push({ kind: "complete-consultation", label: "Terminer consultation", icon: CheckCircle2 });
   if (endpoint === "/maternity/pregnancy-records" && String(row?.status ?? "").toUpperCase() === "ACTIVE") {
     if (!row?.surgerySlotId && !row?.surgery_slot_id) actions.push({ kind: "send-to-surgery", label: "Envoyer au bloc", icon: Activity });
@@ -1787,6 +1862,7 @@ function autoPaymentReference(method: string) {
 }
 
 function canRunOperation(kind: OperationKind, canCreate: boolean, canUpdate: boolean, canPrint: boolean) {
+  if (kind === "consultation-ai") return true;
   if (kind === "print-invoice") return canPrint;
   if (kind === "print-employee-badge") return canPrint;
   if (kind === "download-backup") return true;
