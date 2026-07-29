@@ -1087,9 +1087,9 @@ function escapeHtml(value: any) {
 
 function ConsultationAiDialog({ state, onClose }: { state: { row: any; result?: any; loading: boolean; title?: string; subtitle?: string }; onClose: () => void }) {
   const result = state.result;
-  const summaryText = aiText(result?.summary) || aiText(result?.summary?.summary) || aiText(result?.summary?.content);
-  const riskText = aiText(result?.risk) || aiText(result?.risk?.alerts) || aiText(result?.risk?.message);
-  const codingText = aiText(result?.coding) || aiText(result?.coding?.codes) || aiText(result?.coding?.suggestions);
+  const summaryText = aiSummaryText(result?.summary);
+  const riskText = aiRiskText(result?.risk);
+  const codingText = aiCodingText(result?.coding);
   return (
     <div className="fixed inset-0 z-[95] bg-slate-950/50">
       <div className="ml-auto h-full w-full max-w-4xl overflow-y-auto border-l border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-950">
@@ -1118,20 +1118,82 @@ function ConsultationAiDialog({ state, onClose }: { state: { row: any; result?: 
   );
 }
 
+function aiSummaryText(value: any) {
+  return aiText(value?.data?.summary || value?.summary || value?.data?.sections || value?.decision || value);
+}
+
+function aiRiskText(value: any) {
+  const alerts = Array.isArray(value?.alerts) ? value.alerts.map((alert: any) => [alert.severity, alert.code, alert.message].filter(Boolean).join(" · ")).join("\n") : "";
+  return [aiText(value?.decision), alerts].filter(Boolean).join("\n") || aiText(value);
+}
+
+function aiCodingText(value: any) {
+  const codes = Array.isArray(value?.data?.codes) ? value.data.codes.map((code: any) => [code.system, code.code, code.label].filter(Boolean).join(" · ")).join("\n") : "";
+  return codes || aiText(value?.decision || value);
+}
+
 function AiResultBlock({ title, value }: { title: string; value: string }) {
-  return <section className="border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900"><h3 className="text-sm font-black uppercase tracking-wide text-blue-700 dark:text-blue-300">{title}</h3><pre className="mt-3 whitespace-pre-wrap text-sm font-semibold leading-7 text-slate-800 dark:text-slate-100">{value || "Aucune recommandation générée."}</pre></section>;
+  return <section className="border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"><h3 className="text-sm font-black uppercase tracking-wide text-blue-700 dark:text-blue-300">{title}</h3><TypewriterText text={value || "Aucune recommandation générée."} /></section>;
+}
+
+function TypewriterText({ text }: { text: string }) {
+  const words = useMemo(() => text.split(/(\s+)/).filter(Boolean), [text]);
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    setCount(0);
+    if (!words.length) return;
+    const timer = window.setInterval(() => {
+      setCount((current) => {
+        if (current >= words.length) {
+          window.clearInterval(timer);
+          return current;
+        }
+        return current + 1;
+      });
+    }, 18);
+    return () => window.clearInterval(timer);
+  }, [words]);
+  return <p className="mt-3 whitespace-pre-wrap text-sm font-semibold leading-7 text-slate-800 dark:text-slate-100">{words.slice(0, count).join("")}<span className="ml-0.5 inline-block h-4 w-1 animate-pulse bg-blue-600 align-middle" /></p>;
 }
 
 function aiText(value: any): string {
   if (value === null || value === undefined || value === "") return "";
-  if (typeof value === "string") return value;
+  if (typeof value === "string") return cleanAiString(value);
   if (Array.isArray(value)) return value.map(aiText).filter(Boolean).join("\n");
   if (typeof value === "object") {
-    const preferred = [value.summary, value.result, value.content, value.text, value.message].map(aiText).find(Boolean);
+    const preferred = [
+      value.answer,
+      value.decision,
+      value.message,
+      value.data?.summary,
+      value.data?.sections,
+      value.data?.codes,
+      value.alerts,
+      value.summary,
+      value.result,
+      value.content,
+      value.text,
+    ].map(aiText).find(Boolean);
     if (preferred) return preferred;
-    return Object.entries(value).map(([key, item]) => detailLabel(key) + ": " + aiText(item)).join("\n");
+    return Object.entries(value)
+      .filter(([key]) => !["status", "disclaimer", "clinicalValidationRequired", "scope", "title"].includes(key))
+      .map(([key, item]) => detailLabel(key) + ": " + aiText(item))
+      .filter((line) => !line.endsWith(": "))
+      .join("\n");
   }
   return String(value);
+}
+
+function cleanAiString(value: string) {
+  return value
+    .replace(new RegExp("<\\/?(div|p|br|li|tr|table|thead|tbody|th|td)[^>]*>", "gi"), " ")
+    .replace(new RegExp("<[^>]+>", "g"), "")
+    .replace(new RegExp("&nbsp;", "g"), " ")
+    .replace(new RegExp("&amp;", "g"), "&")
+    .replace(new RegExp("&lt;", "g"), "<")
+    .replace(new RegExp("&gt;", "g"), ">")
+    .replace(new RegExp("\\s+", "g"), " ")
+    .trim();
 }
 function MissingPricingDialog({ state, posting, locale, onChange, onClose, onSubmit }: { state: MissingPricingState; posting: boolean; locale: string; onChange: (state: MissingPricingState) => void; onClose: () => void; onSubmit: () => void }) {
   const updateRow = (index: number, patch: Partial<MissingPricingRow>) => onChange({ ...state, rows: state.rows.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row) });
