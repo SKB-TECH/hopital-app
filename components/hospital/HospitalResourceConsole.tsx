@@ -1890,7 +1890,7 @@ function getRowActions(endpoint: string, row: any): OperationAction[] {
   if (row?.patientId && endpoint !== "/patients") actions.push({ kind: "patient-record", label: "Dossier patient", icon: UserRound });
   if (endpoint === "/pharmacy/dispensations" && row?.patientId && canBillDispensation(row)) actions.push({ kind: "generate-invoice", label: "Facturer / encaisser", icon: Receipt });
   if (endpoint === "/laboratory/results" && !row?.validatedAt) actions.push({ kind: "validate-lab", label: "Valider résultat", icon: CheckCircle2 });
-  if (["/patients", "/prescriptions", "/pharmacy/sales", "/billing/invoices", "/pediatrics/growth"].includes(endpoint)) actions.push({ kind: "resource-ai", label: aiActionTitle(endpoint, ""), icon: BrainCircuit });
+  if (["/patients", "/prescriptions", "/pharmacy/sales", "/billing/invoices", "/pediatrics/growth", "/logistics/items", "/logistics/inventories", "/logistics/requests", "/logistics/lines", "/logistics/movements"].includes(endpoint)) actions.push({ kind: "resource-ai", label: aiActionTitle(endpoint, ""), icon: BrainCircuit });
   if (endpoint === "/consultations") actions.push({ kind: "consultation-ai", label: "Assistant IA", icon: BrainCircuit });
   if (endpoint === "/consultations" && row?.status !== "COMPLETED") actions.push({ kind: "complete-consultation", label: "Terminer consultation", icon: CheckCircle2 });
   if (endpoint === "/maternity/pregnancy-records" && String(row?.status ?? "").toUpperCase() === "ACTIVE") {
@@ -1915,6 +1915,7 @@ function aiActionTitle(endpoint: string, fallback: string) {
   if (endpoint === "/pharmacy/sales") return "Analyse IA vente";
   if (endpoint === "/billing/invoices") return "Analyse IA facture";
   if (endpoint === "/pediatrics/growth") return "Lecture IA OMS";
+  if (endpoint.startsWith("/logistics/")) return "Analyse IA logistique";
   if (endpoint.includes("dashboard") || endpoint.startsWith("/reports/")) return "Analyse IA dashboard";
   return fallback || "Assistant IA";
 }
