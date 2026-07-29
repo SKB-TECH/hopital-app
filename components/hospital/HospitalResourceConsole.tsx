@@ -77,7 +77,7 @@ export default function HospitalResourceConsole() {
   const [missingPricing, setMissingPricing] = useState<MissingPricingState | null>(null);
   const [printDialog, setPrintDialog] = useState<{ row?: any } | null>(null);
   const [badgeDialog, setBadgeDialog] = useState<{ row: any } | null>(null);
-  const [aiDialog, setAiDialog] = useState<{ row: any; result?: any; loading: boolean } | null>(null);
+  const [aiDialog, setAiDialog] = useState<{ row: any; result?: any; loading: boolean; title?: string; subtitle?: string } | null>(null);
   const [referenceLabels, setReferenceLabels] = useState<Record<string, Record<string, string>>>({});
   const [importingWho, setImportingWho] = useState(false);
 
@@ -267,6 +267,31 @@ export default function HospitalResourceConsole() {
     } catch (err: any) {
       const message = readError(err);
       setAiDialog({ row, result: { error: message }, loading: false });
+      setError(message);
+      toast.error(message);
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  const openResourceAi = async (row?: any) => {
+    const contextRow = row ?? rows[0] ?? {};
+    const title = aiActionTitle(selected.endpoint, selected.title);
+    setAiDialog({ row: contextRow, loading: true, title, subtitle: selected.title });
+    setPosting(true);
+    setError("");
+    try {
+      const response = await api.post("/ai-assistant/analyze", {
+        scope: selected.key,
+        title,
+        endpoint: selected.endpoint,
+        record: row ? contextRow : { dashboard: rows[0] ?? {}, sampleRows: rows.slice(0, 20) },
+      });
+      setAiDialog({ row: contextRow, result: response.data, loading: false, title, subtitle: selected.title });
+      toast.success("Analyse IA générée. Validation humaine obligatoire.");
+    } catch (err: any) {
+      const message = readError(err);
+      setAiDialog({ row: contextRow, result: { error: message }, loading: false, title, subtitle: selected.title });
       setError(message);
       toast.error(message);
     } finally {
@@ -592,7 +617,7 @@ export default function HospitalResourceConsole() {
                       {module.key === "reception" && <button onClick={() => router.push(`/${locale}/doctor/waiting-room`)} className="inline-flex h-11 items-center gap-2 bg-slate-950 px-4 text-sm font-black text-white hover:bg-slate-800"><Activity className="size-4" />Gérer les appels</button>}
                       {module.key === "reception" && <button onClick={() => window.open(`/${locale}/waiting-room/display`, "_blank", "noopener,noreferrer")} className="inline-flex h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-800 hover:bg-slate-50"><Monitor className="size-4" />Écran TV</button>}
                       {module.key === "reception" && <button onClick={() => window.open(`/${locale}/ticket-kiosk`, "_blank", "noopener,noreferrer")} className="inline-flex h-11 items-center gap-2 border border-blue-700 bg-white px-4 text-sm font-black text-blue-800 hover:bg-blue-50"><Printer className="size-4" />Impression tickets</button>}
-                      {moduleActions.map((action) => <button key={action.kind} onClick={() => openOperation(action.kind)} className="inline-flex h-11 items-center gap-2 border border-blue-700 bg-white px-4 text-sm font-black text-blue-800 hover:bg-blue-50"><action.icon className="size-4" />{hospitalText(action.label, locale)}</button>)}
+                      {moduleActions.map((action) => <button key={action.kind} onClick={() => action.kind === "resource-ai" ? openResourceAi() : openOperation(action.kind)} className="inline-flex h-11 items-center gap-2 border border-blue-700 bg-white px-4 text-sm font-black text-blue-800 hover:bg-blue-50"><action.icon className="size-4" />{hospitalText(action.label, locale)}</button>)}
                       {!isDashboard && <button onClick={printCurrentList} disabled={posting || loading} className="inline-flex h-11 items-center gap-2 border border-blue-700 bg-white px-4 text-sm font-black text-blue-800 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50">{posting ? <Loader2 className="size-4 animate-spin" /> : <Printer className="size-4" />}Imprimer la liste</button>}
                       <button onClick={load} className="inline-flex h-11 items-center gap-2 border border-slate-300 bg-white px-4 text-sm font-black text-slate-800 hover:bg-slate-50"><RefreshCcw className="size-4" />{hospitalUi(locale, "refresh")}</button>
                     </div>
@@ -630,7 +655,7 @@ export default function HospitalResourceConsole() {
                     </thead>
                     <tbody>
                       {loading ? <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center text-sm font-semibold text-slate-500"><Loader2 className="mx-auto mb-3 size-6 animate-spin text-blue-700" />{hospitalUi(locale, "loadingData")}</td></tr> :
-                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs px-5 py-4 text-sm font-semibold text-slate-700"><TableCellValue row={row} columnKey={column.key} referenceLabels={referenceLabels} /></td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => openView(row)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title={selected.endpoint === "/billing/invoices/route" ? "Voir les actes" : "Voir"}><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Imprimer"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "download-backup" ? downloadBackup(row) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : action.kind === "close-queue" ? closeQueueEncounter(row) : action.kind === "print-employee-badge" ? setBadgeDialog({ row }) : action.kind === "consultation-ai" ? openConsultationAi(row) : openOperation(action.kind, row)} className={action.kind === "pay-invoice" || action.kind === "consultation-ai" || (selected.endpoint === "/billing/invoices/route" && action.kind === "generate-invoice") ? "inline-flex items-center gap-2 border-l border-blue-700 bg-blue-700 px-3 py-2 text-xs font-black text-white hover:bg-blue-800" : "border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50"} title={action.label}><action.icon className="size-4" />{action.kind === "pay-invoice" ? <span>Encaisser</span> : action.kind === "consultation-ai" ? <span>Assistant IA</span> : selected.endpoint === "/billing/invoices/route" && action.kind === "generate-invoice" ? <span>Créer la facture</span> : null}</button>)}</div></td></tr>) :
+                      filtered.length ? filtered.map((row, index) => <tr key={row.id ?? index} className="border-t border-slate-100 hover:bg-slate-50">{selected.columns.map((column) => <td key={column.key} className="max-w-xs px-5 py-4 text-sm font-semibold text-slate-700"><TableCellValue row={row} columnKey={column.key} referenceLabels={referenceLabels} /></td>)}<td className="px-5 py-4 text-right"><div className="inline-flex border border-slate-200"><button onClick={() => openView(row)} className="px-3 py-2 text-slate-600 hover:bg-slate-50" title={selected.endpoint === "/billing/invoices/route" ? "Voir les actes" : "Voir"}><Eye className="size-4" /></button>{canUpdateSelected && <button onClick={() => openEdit(row)} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Modifier"><Edit3 className="size-4" /></button>}{canPrintSelected && <button onClick={() => setPrintDialog({ row })} className="border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50" title="Imprimer"><Printer className="size-4" /></button>}{getRowActions(selected.endpoint, row).filter((action) => canRunOperation(action.kind, canCreateSelected, canUpdateSelected, canPrintSelected)).map((action) => <button key={action.label} onClick={() => action.kind === "print-invoice" ? setPrintDialog({ row }) : action.kind === "download-backup" ? downloadBackup(row) : action.kind === "patient-record" ? router.push(`/${locale}/hospital/patients/${row.patientId}`) : action.kind === "close-queue" ? closeQueueEncounter(row) : action.kind === "print-employee-badge" ? setBadgeDialog({ row }) : action.kind === "consultation-ai" ? openConsultationAi(row) : action.kind === "resource-ai" ? openResourceAi(row) : openOperation(action.kind, row)} className={action.kind === "pay-invoice" || action.kind === "consultation-ai" || action.kind === "resource-ai" || (selected.endpoint === "/billing/invoices/route" && action.kind === "generate-invoice") ? "inline-flex items-center gap-2 border-l border-blue-700 bg-blue-700 px-3 py-2 text-xs font-black text-white hover:bg-blue-800" : "border-l border-slate-200 px-3 py-2 text-slate-600 hover:bg-slate-50"} title={action.label}><action.icon className="size-4" />{action.kind === "pay-invoice" ? <span>Encaisser</span> : action.kind === "consultation-ai" || action.kind === "resource-ai" ? <span>{action.label}</span> : selected.endpoint === "/billing/invoices/route" && action.kind === "generate-invoice" ? <span>Créer la facture</span> : null}</button>)}</div></td></tr>) :
                       <tr><td colSpan={selected.columns.length + 1} className="px-5 py-20 text-center"><Database className="mx-auto mb-3 size-8 text-slate-300" /><p className="font-black text-slate-800">{hospitalUi(locale, "noData")}</p><p className="mt-1 text-sm text-slate-500">{hospitalUi(locale, "noDataHint")}</p></td></tr>}
                     </tbody>
                     </table>
@@ -1060,7 +1085,7 @@ function escapeHtml(value: any) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char] ?? char));
 }
 
-function ConsultationAiDialog({ state, onClose }: { state: { row: any; result?: any; loading: boolean }; onClose: () => void }) {
+function ConsultationAiDialog({ state, onClose }: { state: { row: any; result?: any; loading: boolean; title?: string; subtitle?: string }; onClose: () => void }) {
   const result = state.result;
   const summaryText = aiText(result?.summary) || aiText(result?.summary?.summary) || aiText(result?.summary?.content);
   const riskText = aiText(result?.risk) || aiText(result?.risk?.alerts) || aiText(result?.risk?.message);
@@ -1072,17 +1097,17 @@ function ConsultationAiDialog({ state, onClose }: { state: { row: any; result?: 
           <div className="flex items-center gap-4">
             <span className="flex size-12 items-center justify-center bg-blue-700 text-white"><BrainCircuit className="size-6" /></span>
             <div>
-              <h2 className="text-2xl font-black text-slate-950 dark:text-white">Assistant IA consultation</h2>
-              <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">{[state.row?.patientName, state.row?.medicalRecordNumber].filter(Boolean).join(" · ") || "Consultation"}</p>
+              <h2 className="text-2xl font-black text-slate-950 dark:text-white">{state.title || "Assistant IA"}</h2>
+              <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-slate-400">{[state.row?.patientName, state.row?.medicalRecordNumber].filter(Boolean).join(" · ") || state.subtitle || "Analyse métier"}</p>
             </div>
           </div>
           <button onClick={onClose} className="border border-slate-300 p-2 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900"><X className="size-5" /></button>
         </div>
         <div className="space-y-4 p-7">
           <div className="border border-amber-300 bg-amber-50 p-4 text-sm font-black text-amber-950 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-100">Validation médicale obligatoire. L’IA aide à synthétiser, elle ne remplace pas le médecin.</div>
-          {state.loading ? <div className="border border-slate-200 p-10 text-center text-sm font-bold text-slate-500 dark:border-slate-800 dark:text-slate-300"><Loader2 className="mx-auto mb-3 size-6 animate-spin text-blue-700" />Analyse de la consultation en cours...</div> : result?.error ? <div className="border border-red-200 bg-red-50 p-4 text-sm font-black text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">{result.error}</div> : (
+          {state.loading ? <div className="border border-slate-200 p-10 text-center text-sm font-bold text-slate-500 dark:border-slate-800 dark:text-slate-300"><Loader2 className="mx-auto mb-3 size-6 animate-spin text-blue-700" />Analyse IA en cours...</div> : result?.error ? <div className="border border-red-200 bg-red-50 p-4 text-sm font-black text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">{result.error}</div> : (
             <div className="grid gap-4">
-              <AiResultBlock title="Synthèse clinique" value={summaryText} />
+              <AiResultBlock title="Synthèse métier" value={summaryText} />
               <AiResultBlock title="Alertes et risques" value={riskText} />
               <AiResultBlock title="Aide au codage" value={codingText} />
             </div>
@@ -1785,6 +1810,7 @@ function detailLabel(key: string) {
 }
 
 function getModuleActions(endpoint: string): OperationAction[] {
+  if (endpoint.includes("dashboard") || endpoint.startsWith("/reports/")) return [{ kind: "resource-ai", label: "Analyser avec IA", icon: BrainCircuit }];
   if (endpoint === "/billing/invoices") return [
     { kind: "generate-invoice", label: "Générer facture", icon: FileText },
   ];
@@ -1802,6 +1828,7 @@ function getRowActions(endpoint: string, row: any): OperationAction[] {
   if (row?.patientId && endpoint !== "/patients") actions.push({ kind: "patient-record", label: "Dossier patient", icon: UserRound });
   if (endpoint === "/pharmacy/dispensations" && row?.patientId && canBillDispensation(row)) actions.push({ kind: "generate-invoice", label: "Facturer / encaisser", icon: Receipt });
   if (endpoint === "/laboratory/results" && !row?.validatedAt) actions.push({ kind: "validate-lab", label: "Valider résultat", icon: CheckCircle2 });
+  if (["/patients", "/prescriptions", "/pharmacy/sales", "/billing/invoices", "/pediatrics/growth"].includes(endpoint)) actions.push({ kind: "resource-ai", label: aiActionTitle(endpoint, ""), icon: BrainCircuit });
   if (endpoint === "/consultations") actions.push({ kind: "consultation-ai", label: "Assistant IA", icon: BrainCircuit });
   if (endpoint === "/consultations" && row?.status !== "COMPLETED") actions.push({ kind: "complete-consultation", label: "Terminer consultation", icon: CheckCircle2 });
   if (endpoint === "/maternity/pregnancy-records" && String(row?.status ?? "").toUpperCase() === "ACTIVE") {
@@ -1818,6 +1845,16 @@ function getRowActions(endpoint: string, row: any): OperationAction[] {
   if ((endpoint === "/reception/check-in" || endpoint === "/reception/walk-in-ticket") && String(row?.status ?? "").toUpperCase() === "IN_PROGRESS") actions.push({ kind: "close-queue", label: "Clôturer le passage", icon: CheckCircle2 });
   if (row?.status && !["/nursing/medications", "/nursing/tasks"].includes(endpoint) && nextStatuses(endpoint, row.status).length) actions.push({ kind: "change-status", label: "Changer statut", icon: CheckCircle2 });
   return actions;
+}
+
+function aiActionTitle(endpoint: string, fallback: string) {
+  if (endpoint === "/patients") return "Résumé IA patient";
+  if (endpoint === "/prescriptions") return "Vérifier IA";
+  if (endpoint === "/pharmacy/sales") return "Analyse IA vente";
+  if (endpoint === "/billing/invoices") return "Analyse IA facture";
+  if (endpoint === "/pediatrics/growth") return "Lecture IA OMS";
+  if (endpoint.includes("dashboard") || endpoint.startsWith("/reports/")) return "Analyse IA dashboard";
+  return fallback || "Assistant IA";
 }
 
 function canPayInvoice(row: any) {
@@ -1862,7 +1899,7 @@ function autoPaymentReference(method: string) {
 }
 
 function canRunOperation(kind: OperationKind, canCreate: boolean, canUpdate: boolean, canPrint: boolean) {
-  if (kind === "consultation-ai") return true;
+  if (kind === "consultation-ai" || kind === "resource-ai") return true;
   if (kind === "print-invoice") return canPrint;
   if (kind === "print-employee-badge") return canPrint;
   if (kind === "download-backup") return true;
