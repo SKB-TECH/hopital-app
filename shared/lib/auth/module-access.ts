@@ -97,7 +97,7 @@ function normalizeRoleName(value: any) {
 export function canAccessHospitalModule(user: any, moduleKey?: string) {
   if (!moduleKey) return false;
   const roles = getUserRoles(user);
-  if (roles.includes("SUPER_ADMIN") || roles.includes("HOSPITAL_ADMIN")) return true;
+  if (roles.includes("SUPER_ADMIN")) return true;
   const explicit = getModuleAssignments(user).filter((assignment) => assignment.moduleKey === moduleKey && assignment.active !== false);
   if (explicit.length) {
     return explicit.some((assignment) => assignment.permissions.includes("VIEW") || assignment.permissions.includes("ADMIN"));
@@ -108,7 +108,7 @@ export function canAccessHospitalModule(user: any, moduleKey?: string) {
 
 export function getAccessibleHospitalModules(user: any): HospitalModule[] {
   const roles = getUserRoles(user);
-  if (roles.includes("SUPER_ADMIN") || roles.includes("HOSPITAL_ADMIN")) return HOSPITAL_MODULES;
+  if (roles.includes("SUPER_ADMIN")) return HOSPITAL_MODULES;
   const assignments = getModuleAssignments(user);
   if (!roles.length && !assignments.length) return [];
   const allowed = new Set(roles.flatMap((role) => ROLE_MODULE_ACCESS[role] ?? []));
@@ -142,7 +142,7 @@ export function getModuleAssignments(user: any): ModulePermissionAssignment[] {
 export function hasHospitalModulePermission(user: any, moduleKey?: string, resourceKey?: string | null, action: ModulePermissionAction = "VIEW") {
   if (!moduleKey) return false;
   const roles = getUserRoles(user);
-  if (roles.includes("SUPER_ADMIN") || roles.includes("HOSPITAL_ADMIN")) return true;
+  if (roles.includes("SUPER_ADMIN")) return true;
 
   const moduleAssignments = getModuleAssignments(user).filter((assignment) => assignment.moduleKey === moduleKey && assignment.active !== false);
   if (moduleAssignments.length) {
