@@ -21,9 +21,14 @@ function deleteCookie(name: string) {
     document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`;
 }
 
+function emitAuthChange() {
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("doclyn-auth-changed"));
+}
+
 export const tokenStore = {
     set(accessToken: string) {
         setCookie(ACCESS_TOKEN_KEY, accessToken);
+        emitAuthChange();
     },
 
     get() {
@@ -33,6 +38,7 @@ export const tokenStore = {
 
     setRefresh(refreshToken: string) {
         setCookie(REFRESH_TOKEN_KEY, refreshToken, 30);
+        emitAuthChange();
     },
 
     getRefresh() {
@@ -43,5 +49,6 @@ export const tokenStore = {
     clear() {
         deleteCookie(ACCESS_TOKEN_KEY);
         deleteCookie(REFRESH_TOKEN_KEY);
+        emitAuthChange();
     },
 };

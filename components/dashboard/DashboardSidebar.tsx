@@ -38,6 +38,7 @@ import { hospitalText, hospitalUi, localizeHospitalModule } from "@/shared/confi
 import Image from "next/image";
 import { useMe } from "@/shared/hooks/auth.hooks";
 import { getAccessibleHospitalModules, getAccessibleHospitalResources } from "@/shared/lib/auth/module-access";
+import { useTenantConfig } from "@/providers/TenantConfigProvider";
 
 const icons: Record<string, any> = {
   patients: UserRound,
@@ -77,6 +78,9 @@ export default function DashboardSidebar() {
   const locale = params.locale || "fr";
   const activeResource = searchParams.get("resource");
   const { data: user, isLoading } = useMe();
+  const tenantConfig = useTenantConfig();
+  const tenantLogo = tenantConfig.branding.logoUrl;
+  const tenantName = tenantConfig.tenant.name || "Doclyn";
   const accessibleModules = getAccessibleHospitalModules(user).map((module) => localizeHospitalModule(module, locale));
 
   const filtered = accessibleModules.filter((module) =>
@@ -91,8 +95,14 @@ export default function DashboardSidebar() {
           <Link href={`/${locale}/overview`} className="flex items-center gap-4">
             {!isCollapsed && (
               <div className="flex items-center">
-                <Image src="/doclyn-logo-light.png" alt="Doclyn" width={360} height={160} className="h-24 w-auto max-w-[17rem] object-contain dark:hidden" priority />
-                <Image src="/doclyn-logo-dark.png" alt="Doclyn" width={360} height={160} className="hidden h-24 w-auto max-w-[17rem] object-contain dark:block" priority />
+                {tenantLogo ? (
+                  <img src={tenantLogo} alt={tenantName} className="h-24 w-auto max-w-[17rem] object-contain" />
+                ) : (
+                  <>
+                    <Image src="/doclyn-logo-light.png" alt="Doclyn" width={360} height={160} className="h-24 w-auto max-w-[17rem] object-contain dark:hidden" priority />
+                    <Image src="/doclyn-logo-dark.png" alt="Doclyn" width={360} height={160} className="hidden h-24 w-auto max-w-[17rem] object-contain dark:block" priority />
+                  </>
+                )}
               </div>
             )}
           </Link>
@@ -113,7 +123,7 @@ export default function DashboardSidebar() {
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 pb-6 pt-4">
-          <Link onClick={closeMobileSidebar} href={`/${locale}/overview`} className={`mb-5 flex items-center gap-4 border-l-4 px-4 py-3 text-sm font-medium ${pathname?.includes('/overview') ? "border-blue-700 bg-blue-50 text-blue-800" : "border-transparent text-slate-700 hover:bg-slate-50"}`}>
+          <Link onClick={closeMobileSidebar} href={`/${locale}/overview`} style={pathname?.includes('/overview') ? tenantActiveStyle : undefined} className={`mb-5 flex items-center gap-4 border-l-4 px-4 py-3 text-sm font-medium ${pathname?.includes('/overview') ? "" : "border-transparent text-slate-700 hover:bg-slate-50"}`}>
             <BarChart3 className="size-6 shrink-0" />{!isCollapsed && <span>{hospitalUi(locale, "overview")}</span>}
           </Link>
 
@@ -138,7 +148,8 @@ export default function DashboardSidebar() {
                             type="button"
                             title={module.title}
                             onClick={() => toggleModule(module.key)}
-                            className={`flex w-full items-center gap-4 border-l-4 px-4 py-3 text-left text-sm font-medium transition ${active ? "border-blue-700 bg-blue-50 text-blue-800" : "border-transparent text-slate-700 hover:bg-slate-50"}`}
+                            style={active ? tenantActiveStyle : undefined}
+                            className={`flex w-full items-center gap-4 border-l-4 px-4 py-3 text-left text-sm font-medium transition ${active ? "" : "border-transparent text-slate-700 hover:bg-slate-50"}`}
                           >
                             <Icon className="size-6 shrink-0" />
                             <span className="min-w-0 flex-1 truncate">{module.shortTitle || module.title}</span>
@@ -149,7 +160,8 @@ export default function DashboardSidebar() {
                             href={href}
                             title={module.title}
                             onClick={closeMobileSidebar}
-                            className={`flex items-center gap-4 border-l-4 px-4 py-3 text-sm font-medium transition ${active ? "border-blue-700 bg-blue-50 text-blue-800" : "border-transparent text-slate-700 hover:bg-slate-50"} ${isCollapsed ? "justify-center" : ""}`}
+                            style={active ? tenantActiveStyle : undefined}
+                            className={`flex items-center gap-4 border-l-4 px-4 py-3 text-sm font-medium transition ${active ? "" : "border-transparent text-slate-700 hover:bg-slate-50"} ${isCollapsed ? "justify-center" : ""}`}
                           >
                             <Icon className="size-6 shrink-0" />
                             {!isCollapsed && <span className="min-w-0 flex-1 truncate">{module.shortTitle || module.title}</span>}
@@ -165,7 +177,8 @@ export default function DashboardSidebar() {
                                   key={resource.key}
                                   href={`${href}?resource=${resource.key}`}
                                   onClick={closeMobileSidebar}
-                                  className={`block border-l-4 px-3 py-2 text-xs font-normal transition ${resourceActive ? "border-blue-700 bg-blue-50 text-blue-800" : "border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}
+                                  style={resourceActive ? tenantActiveStyle : undefined}
+                                  className={`block border-l-4 px-3 py-2 text-xs font-normal transition ${resourceActive ? "" : "border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}
                                 >
                                   <span className="line-clamp-2">{resource.title}</span>
                                 </Link>
@@ -208,3 +221,9 @@ export default function DashboardSidebar() {
     </>
   );
 }
+
+const tenantActiveStyle = {
+  borderColor: "var(--primary)",
+  backgroundColor: "color-mix(in srgb, var(--primary) 10%, white)",
+  color: "var(--primary)",
+} as const;

@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { authService } from "@/shared/services/auth.service";
 
 type TenantConfig = {
   tenant: { id: string | null; name: string; code: string; status: string };
@@ -38,7 +39,12 @@ export function TenantConfigProvider({ children }: { children: React.ReactNode }
     async function loadTenantConfig() {
       const hostname = window.location.hostname;
       try {
-        const response = await fetch(`/api/proxy/tenant/config?hostname=${encodeURIComponent(hostname)}`, { cache: "no-store" });
+        const me = await authService.me().catch(() => null);
+        const organizationId = typeof me?.organizationId === "string" ? me.organizationId : null;
+        const query = organizationId
+          ? `organizationId=${encodeURIComponent(organizationId)}`
+          : `hostname=${encodeURIComponent(hostname)}`;
+        const response = await fetch(`/api/proxy/tenant/config?${query}`, { cache: "no-store" });
         if (!response.ok) throw new Error(`Tenant config ${response.status}`);
         const payload = (await response.json()) as TenantConfig;
         if (!cancelled) setConfig(payload);
@@ -47,8 +53,10 @@ export function TenantConfigProvider({ children }: { children: React.ReactNode }
       }
     }
     loadTenantConfig();
+    window.addEventListener("doclyn-auth-changed", loadTenantConfig);
     return () => {
       cancelled = true;
+      window.removeEventListener("doclyn-auth-changed", loadTenantConfig);
     };
   }, []);
 
@@ -59,6 +67,7 @@ export function TenantConfigProvider({ children }: { children: React.ReactNode }
     root.style.setProperty("--accent", config.branding.colors.accent);
     root.style.setProperty("--ring", config.branding.colors.accent);
     if (config.branding.logoUrl) root.style.setProperty("--tenant-logo-url", `url("${config.branding.logoUrl}")`);
+    else root.style.removeProperty("--tenant-logo-url");
     Object.entries(config.branding.cssVariables || {}).forEach(([key, value]) => {
       if (/^--[a-z0-9-]+$/i.test(key)) root.style.setProperty(key, String(value));
     });
