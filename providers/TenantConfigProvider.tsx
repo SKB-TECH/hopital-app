@@ -14,6 +14,12 @@ type TenantConfig = {
   features: Record<string, unknown>;
 };
 
+declare global {
+  interface Window {
+    __DOCLYN_TENANT_CONFIG__?: TenantConfig;
+  }
+}
+
 const defaultConfig: TenantConfig = {
   tenant: { id: null, name: "Doclyn", code: "DEFAULT", status: "DEFAULT" },
   branding: {
@@ -71,6 +77,8 @@ export function TenantConfigProvider({ children }: { children: React.ReactNode }
     Object.entries(config.branding.cssVariables || {}).forEach(([key, value]) => {
       if (/^--[a-z0-9-]+$/i.test(key)) root.style.setProperty(key, String(value));
     });
+    window.__DOCLYN_TENANT_CONFIG__ = config;
+    window.localStorage.setItem("doclyn-tenant-config", JSON.stringify(config));
     document.title = config.tenant.name || "Doclyn";
   }, [config]);
 

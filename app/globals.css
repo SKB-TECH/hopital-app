@@ -136,6 +136,71 @@
 }
 
 @layer utilities {
+  .bg-blue-50 {
+    background-color: color-mix(in srgb, var(--primary) 8%, white) !important;
+  }
+
+  .bg-blue-500,
+  .bg-blue-600,
+  .bg-blue-700,
+  .bg-blue-800 {
+    background-color: var(--primary) !important;
+  }
+
+  .hover\:bg-blue-50:hover {
+    background-color: color-mix(in srgb, var(--primary) 10%, white) !important;
+  }
+
+  .hover\:bg-blue-600:hover,
+  .hover\:bg-blue-700:hover,
+  .hover\:bg-blue-800:hover {
+    background-color: color-mix(in srgb, var(--primary) 84%, black) !important;
+  }
+
+  .border-blue-100,
+  .border-blue-200,
+  .border-blue-500,
+  .border-blue-600,
+  .border-blue-700,
+  .focus\:border-blue-400:focus,
+  .focus\:border-blue-500:focus,
+  .focus\:border-blue-700:focus,
+  .focus-within\:border-blue-700:focus-within,
+  .hover\:border-blue-700:hover {
+    border-color: var(--primary) !important;
+  }
+
+  .text-blue-200,
+  .text-blue-300,
+  .text-blue-500,
+  .text-blue-600,
+  .text-blue-700,
+  .text-blue-800 {
+    color: var(--primary) !important;
+  }
+
+  .focus\:ring-blue-100:focus,
+  .focus\:ring-blue-500:focus {
+    --tw-ring-color: color-mix(in srgb, var(--primary) 35%, transparent) !important;
+  }
+
+  .dark .bg-blue-50 {
+    background-color: color-mix(in srgb, var(--primary) 16%, #020617) !important;
+  }
+
+  .dark .hover\:bg-blue-50:hover {
+    background-color: color-mix(in srgb, var(--primary) 22%, #020617) !important;
+  }
+
+  .dark .text-blue-200,
+  .dark .text-blue-300,
+  .dark .text-blue-500,
+  .dark .text-blue-600,
+  .dark .text-blue-700,
+  .dark .text-blue-800 {
+    color: color-mix(in srgb, var(--primary) 82%, white) !important;
+  }
+
   .container-page {
     @apply mx-auto max-w-7xl px-4 md:px-8;
   }

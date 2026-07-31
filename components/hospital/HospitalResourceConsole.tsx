@@ -948,6 +948,7 @@ async function fetchPrintableRows(endpoint: string, search: string, from: string
 }
 
 function printListDocument({ title, description, locale, filters, total, rows, columns, referenceLabels }: { title: string; description: string; locale: string; filters: string[]; total: number; rows: any[]; columns: { key: string; label: string }[]; referenceLabels: Record<string, Record<string, string>> }) {
+  const brand = currentTenantPrintBrand();
   const printedAt = new Intl.DateTimeFormat(locale === "en" ? "en-US" : "fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(new Date());
   const visibleColumns = printableColumns(columns, rows).slice(0, 10);
   const bodyRows = rows.map((row) => visibleColumns.map((column) => escapeHtml(safeCellText(displayCell(row, column.key, referenceLabels)))));
@@ -963,10 +964,10 @@ function printListDocument({ title, description, locale, filters, total, rows, c
     @page { size: A4 landscape; margin: 12mm; }
     * { box-sizing: border-box; }
     body { margin: 0; color: #0f172a; font-family: Arial, Helvetica, sans-serif; background: white; }
-    .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; border-bottom: 3px solid #1d4ed8; padding-bottom: 16px; }
+    .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; border-bottom: 3px solid ${brand.primary}; padding-bottom: 16px; }
     .brand { display: flex; align-items: center; gap: 12px; }
     .brand img { width: 48px; height: 48px; object-fit: contain; }
-    .brand h1 { margin: 0; color: #0b43b5; font-size: 24px; line-height: 1; }
+    .brand h1 { margin: 0; color: ${brand.primary}; font-size: 24px; line-height: 1; }
     .brand p { margin: 5px 0 0; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; }
     .meta { text-align: right; font-size: 11px; color: #475569; font-weight: 700; line-height: 1.7; }
     .title { margin: 18px 0 8px; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
@@ -974,7 +975,7 @@ function printListDocument({ title, description, locale, filters, total, rows, c
     .title p { margin: 6px 0 0; color: #64748b; font-size: 12px; font-weight: 700; }
     .context { margin: 10px 0 14px; color: #334155; font-size: 11px; font-weight: 800; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 12px; }
-    th { background: #1d4ed8; color: white; border: 1px solid #1e40af; padding: 8px 7px; text-align: left; font-size: 10px; line-height: 1.25; text-transform: uppercase; }
+    th { background: ${brand.primary}; color: white; border: 1px solid ${brand.secondary}; padding: 8px 7px; text-align: left; font-size: 10px; line-height: 1.25; text-transform: uppercase; }
     td { border: 1px solid #dbe3ef; padding: 7px; vertical-align: top; font-size: 10.5px; line-height: 1.35; word-break: break-word; }
     tr:nth-child(even) td { background: #f8fafc; }
     .empty { margin-top: 28px; border: 1px solid #dbe3ef; background: #f8fafc; padding: 24px; text-align: center; color: #64748b; font-weight: 800; }
@@ -985,9 +986,9 @@ function printListDocument({ title, description, locale, filters, total, rows, c
 <body>
   <section class="header">
     <div class="brand">
-      <img src="/logo.png" alt="Doclyn" />
+      <img src="${escapeHtml(brand.logoUrl)}" alt="${escapeHtml(brand.name)}" />
       <div>
-        <h1>Doclyn</h1>
+        <h1>${escapeHtml(brand.name)}</h1>
         <p>Système d'information hospitalier</p>
       </div>
     </div>
@@ -1005,10 +1006,34 @@ function printListDocument({ title, description, locale, filters, total, rows, c
   </section>
   ${reportContext ? `<section class="context">${reportContext}</section>` : ""}
   ${bodyRows.length ? `<table><thead><tr>${visibleColumns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("")}</tr></thead><tbody>${bodyRows.map((cells) => `<tr>${cells.map((cell) => `<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody></table>` : `<div class="empty">Aucune donnée à imprimer.</div>`}
-  <section class="footer"><span>Doclyn Hospital OS</span><span>Page imprimée depuis le navigateur</span></section>
+  <section class="footer"><span>${escapeHtml(brand.name)}</span><span>Page imprimée depuis le navigateur</span></section>
 </body>
 </html>`;
   printHtmlInFrame(html);
+}
+
+function currentTenantPrintBrand() {
+  const fallback = { name: "Doclyn", logoUrl: "/logo.png", primary: "#1d4ed8", secondary: "#0f172a", accent: "#0284c7" };
+  if (typeof window === "undefined") return fallback;
+  const rootStyle = window.getComputedStyle(document.documentElement);
+  const stored = (() => {
+    try {
+      return (window as any).__DOCLYN_TENANT_CONFIG__ ?? JSON.parse(window.localStorage.getItem("doclyn-tenant-config") || "null");
+    } catch {
+      return null;
+    }
+  })();
+  const color = (value: unknown, cssVar: string, fallbackColor: string) => {
+    const candidate = String(value || rootStyle.getPropertyValue(cssVar) || "").trim();
+    return /^#[0-9a-f]{6}$/i.test(candidate) ? candidate : fallbackColor;
+  };
+  return {
+    name: String(stored?.tenant?.name || document.title || fallback.name),
+    logoUrl: String(stored?.branding?.logoUrl || fallback.logoUrl),
+    primary: color(stored?.branding?.colors?.primary, "--primary", fallback.primary),
+    secondary: color(stored?.branding?.colors?.secondary, "--secondary", fallback.secondary),
+    accent: color(stored?.branding?.colors?.accent, "--accent", fallback.accent),
+  };
 }
 
 function printableColumns(columns: { key: string; label: string }[], rows: any[]) {
